@@ -55,10 +55,11 @@ let handler = async (m, { conn }) => {
 ┗━━━━━━━━━━━━━━━━━━━━━┛
 
 ┏━━━ 🎶 *MÚSICA / VIDEOS* ━━━┓
-┃ 🎵 *.play* – Música desde YouTube
-┃ 🎶 *.play2* – Alternativa de descarga
+┃ 🎵 *.ytplay* – Música desde YouTube
+┃ 🎶 *.ytaudio* – Alternativa de audio
 ┃ 🔊 *.ytmp3* – Convierte a audio
-┃ 🎬 *.ytmp4* – Descarga video completo
+┃ 🎬 *.ytvideo* – Descarga video completo
+┃ 🎥 *.ytplay2* – Alternativa de video
 ┗━━━━━━━━━━━━━━━━━━━━━┛
 
 ┏━━━ 🔍 *BUSCADOR* ━━━┓
@@ -117,7 +118,7 @@ let handler = async (m, { conn }) => {
 ┃ 👑 *.owner* – Info del creador
 ┗━━━━━━━━━━━━━━━━━━━━━┛
 
-🐾 *FelixCat-Bot* siempre vigilante 😼  
+🐾 *${botname}* siempre vigilante 😼  
 ✨ _“Un maullido, una acción.”_
 `;
 
