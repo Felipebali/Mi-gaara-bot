@@ -1,43 +1,42 @@
-// 📂 plugins/resetlink.js — Comando solo para owners 👑
+// 📂 plugins/resetlink.js — Reset link solo para owners 🔗
 
-let handler = async (m, { conn }) => {
-  const owners = ['59896026646', '59898719147']
-  const sender = m.sender.split('@')[0]
+console.log('[Plugin] resetlink cargado') // <-- Log para confirmar carga en Termux
 
-  // --- VERIFICACIONES ---
-  if (!owners.includes(sender)) return // Solo owners
+const owners = ['59896026646@s.whatsapp.net', '59898719147@s.whatsapp.net'];
 
-  if (!m.isGroup) 
-    return m.reply('❌ Este comando solo funciona en grupos.')
-
-  // Verificar si el bot es admin
-  const botNumber = conn.user.id.split(':')[0]
-  const isBotAdmin = (await conn.groupMetadata(m.chat))
-    .participants
-    .some(p => p.id.split('@')[0] === botNumber && p.admin !== null)
-
-  if (!isBotAdmin) 
-    return m.reply('❌ Necesito ser *administrador* del grupo para resetear el link.')
-
+let handler = async (m, { conn, isOwner, isBotAdmin }) => {
   try {
+    if (!m.isGroup) return m.reply('❌ Este comando solo funciona en grupos.')
+
+    const sender = m.sender
+    if (!owners.includes(sender)) return
+
+    if (!isBotAdmin) return m.reply('❌ Necesito ser administrador del grupo para resetear el link.')
+
     // Resetea el link del grupo
-    let res = await conn.groupRevokeInvite(m.chat)
-    
+    const res = await conn.groupRevokeInvite(m.chat)
+
     // Envía el nuevo link
     await conn.sendMessage(m.chat, { 
       text: `🔗 *Link del grupo reseteado correctamente*\n\nNuevo link:\nhttps://chat.whatsapp.com/${res}`
     })
+
   } catch (e) {
-    console.error(e)
+    console.error('Error en resetlink:', e)
     m.reply('⚠️ Ocurrió un error al intentar resetear el link.')
   }
 }
 
-// --- Configuración del comando ---
-handler.help = ['resetlink']
-handler.tags = ['group']
+// Compatibilidad con distintos loaders
+handler.command = ['resetlink'] // array de comandos
+handler.command = handler.command || /^\.resetlink$/i // regex alternativa
 
-// Regex interno con prefijo, evita "comando no disponible"
-handler.command = /^\.resetlink$/i
+handler.help = ['resetlink']
+handler.tags = ['owner', 'group']
+handler.group = true
+
+// Meta para loader: solo owners
+handler.owner = true
+handler.rowner = true
 
 export default handler
