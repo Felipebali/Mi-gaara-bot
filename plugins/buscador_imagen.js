@@ -1,3 +1,4 @@
+// plugins/buscador_imagen.js
 import { googleImage } from '@bochilteam/scraper'
 
 let handler = async (m, { conn, text }) => {
@@ -14,10 +15,20 @@ let handler = async (m, { conn, text }) => {
     const results = res.slice(0, 20)
     const image = results[Math.floor(Math.random() * results.length)]
 
+    if (!image || !image.url) throw 'No se encontró imagen válida.'
+
     // 🔹 Reacción de búsqueda exitosa
     await conn.sendMessage(m.chat, { react: { text: '🔍', key: m.key } })
 
-    await conn.sendFile(m.chat, image, 'imagen.jpg', `🔎 Resultado de: *${text}*`, m)
+    // 🔹 Enviar imagen correctamente
+    await conn.sendMessage(
+      m.chat,
+      {
+        image: { url: image.url },
+        caption: `🔎 Resultado de: *${text}*`
+      },
+      { quoted: m }
+    )
 
     // 🔹 Reacción final OK
     await conn.sendMessage(m.chat, { react: { text: '✅', key: m.key } })
@@ -26,7 +37,11 @@ let handler = async (m, { conn, text }) => {
     console.error(e)
     // 🔹 Reacción de error
     await conn.sendMessage(m.chat, { react: { text: '❌', key: m.key } })
-    await conn.sendMessage(m.chat, { text: '⚠️ No se pudo obtener la imagen. Intenta con otro término.' }, { quoted: m })
+    await conn.sendMessage(
+      m.chat,
+      { text: '⚠️ No se pudo obtener la imagen. Intenta con otro término.' },
+      { quoted: m }
+    )
   }
 }
 
