@@ -20,14 +20,13 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
       return m.reply(`❌ El número *${number}* no tiene una cuenta de WhatsApp.`);
     }
 
-    const groupMetadata = await conn.groupMetadata(m.chat);
     const inviteCode = await conn.groupInviteCode(m.chat);
     const inviteUrl = 'https://chat.whatsapp.com/' + inviteCode;
 
-    const messageText = `👋 ¡Te han invitado a unirte a un grupo de WhatsApp!\n\nÚnete usando este enlace:\n${inviteUrl}`;
+    // Enviar solo el enlace al usuario
+    await conn.sendMessage(userJid, { text: inviteUrl });
 
-    await conn.sendMessage(userJid, { text: messageText });
-
+    // Confirmación simple sin mencionar nada
     m.reply(`✅ Enlace de invitación enviado.`);
 
   } catch (e) {
