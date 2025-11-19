@@ -1,12 +1,20 @@
 // 📂 plugins/resetlink.js — Comando solo para owners 👑
 
-let handler = async (m, { conn, isOwner, isBotAdmin }) => {
+let handler = async (m, { conn }) => {
+  const owners = ['59896026646', '59898719147']
+  const sender = m.sender.split('@')[0]
+
   // --- VERIFICACIONES ---
+  if (!owners.includes(sender)) return // Solo owners
+
   if (!m.isGroup) 
     return m.reply('❌ Este comando solo funciona en grupos.')
 
-  if (!isOwner) 
-    return m.reply('❌ Solo los *dueños* del bot pueden usar este comando.')
+  // Verificar si el bot es admin
+  const botNumber = conn.user.id.split(':')[0]
+  const isBotAdmin = (await conn.groupMetadata(m.chat))
+    .participants
+    .some(p => p.id.split('@')[0] === botNumber && p.admin !== null)
 
   if (!isBotAdmin) 
     return m.reply('❌ Necesito ser *administrador* del grupo para resetear el link.')
@@ -25,10 +33,11 @@ let handler = async (m, { conn, isOwner, isBotAdmin }) => {
   }
 }
 
-// Configuración del comando
+// --- Configuración del comando ---
 handler.help = ['resetlink']
 handler.tags = ['group']
-handler.command = /^resetlink$/i
-handler.owner = true
+
+// Regex interno con prefijo, evita "comando no disponible"
+handler.command = /^\.resetlink$/i
 
 export default handler
