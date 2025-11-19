@@ -1,57 +1,59 @@
 // 📂 plugins/grupos-mute.js — Gaara-Ultra-MD
-// Mute + Unmute + Auto-Delete para muteados
-// TODO en un solo plugin 🔥
+// Mute + Unmute + AutoDelete REAL funcionando
 
 let mutedUsers = new Set()
 
-let handler = async (m, { conn, isAdmin, isOwner, command }) => {
+// =============================
+// 🔥 AUTO-BORRAR MENSAJES
+// =============================
+let handler = m => m // obligatorio para que el plugin cargue
 
-    // ==== AUTO-ELIMINAR MENSAJES DE USUARIOS MUTEADOS ====
+handler.all = async function (m, { conn }) {
+
+    // Si el usuario está muteado → eliminar mensaje
     if (mutedUsers.has(m.sender)) {
         try {
             await conn.sendMessage(m.chat, { delete: m.key })
-        } catch {}
-        return  // No procesa más nada
+        } catch (e) {
+            // No mostrar errores
+        }
+        return
     }
 
-    // ==== SOLO FUNCIONA EN GRUPOS ====
+}
+
+// =============================
+// 🔥 COMANDOS MUTE & UNMUTE
+// =============================
+handler.before = async function (m, { conn, isAdmin, isOwner, command }) {
+
     if (!m.isGroup) return
-
-    // ==== SOLO ADMINS / OWNERS ====
     if (!isAdmin && !isOwner) return
-
-    // ==== SI EL COMANDO NO ES MUTE O UNMUTE, NO SIGUE ====
     if (!["mute", "unmute"].includes(command)) return
 
-    // ==== OBTENER USUARIO ====
-    let who = m.mentionedJid?.[0] || null
-    if (!who)
-        return m.reply("⚠️ Debes mencionar a un usuario.")
+    let who = m.mentionedJid?.[0]
+    if (!who) return m.reply("⚠️ Debes mencionar un usuario.")
 
-    // ==== PROTEGER DUEÑOS ====
     const owners = [
         "59896026646@s.whatsapp.net",
         "59898719147@s.whatsapp.net"
     ]
     if (owners.includes(who))
-        return m.reply("❌ No puedes mutear/desmutear a un *owner*.")
+        return m.reply("❌ No puedes usar este comando en un owner.")
 
-    // ==== TAG CLICKEABLE ====
     let number = who.split("@")[0]
-    let mentionTag = "@" + number
+    let tag = "@" + number
 
-    // ==== COMANDO MUTE ====
+    // MUTE
     if (command === "mute") {
-
         mutedUsers.add(who)
-
         return await conn.sendMessage(m.chat, {
-            text: `🔇 *Usuario muteado:* ${mentionTag}`,
+            text: `🔇 *Usuario muteado:* ${tag}`,
             mentions: [who]
         })
     }
 
-    // ==== COMANDO UNMUTE ====
+    // UNMUTE
     if (command === "unmute") {
 
         if (!mutedUsers.has(who))
@@ -60,7 +62,7 @@ let handler = async (m, { conn, isAdmin, isOwner, command }) => {
         mutedUsers.delete(who)
 
         return await conn.sendMessage(m.chat, {
-            text: `🔊 *Usuario desmuteado:* ${mentionTag}`,
+            text: `🔊 *Usuario desmuteado:* ${tag}`,
             mentions: [who]
         })
     }
@@ -69,7 +71,7 @@ let handler = async (m, { conn, isAdmin, isOwner, command }) => {
 handler.help = ["mute @usuario", "unmute @usuario"]
 handler.tags = ["group"]
 handler.command = ["mute", "unmute"]
-handler.group = true
 handler.admin = true
+handler.group = true
 
 export default handler
