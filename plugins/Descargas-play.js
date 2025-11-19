@@ -2,30 +2,27 @@ import fetch from "node-fetch";
 import yts from "yt-search";
 
 const youtubeRegexID = /(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/))([a-zA-Z0-9_-]{11})/;
-const cooldowns = {}; // Aquí guardaremos los timestamps de cada usuario
+const cooldowns = {};
 const owners = ["59896026646@s.whatsapp.net", "59898719147@s.whatsapp.net"];
-const bannedArtists = ["anuel", "bad bunny", "maluma"]; // Artistas "prohibidos"
+const bannedArtists = ["anuel", "bad bunny", "maluma"];
 
 const handler = async (m, { conn, text, command }) => {
   try {
     if (!text?.trim())
       return conn.reply(m.chat, `⚽ *Por favor, ingresa el nombre o enlace del video.*`, m);
 
-    // --- Revisar si contiene artista prohibido ---
     const artistCheck = bannedArtists.find(a => text.toLowerCase().includes(a));
     if (artistCheck) {
       await m.react('🤢'); 
       await m.react('🤮'); 
       await conn.reply(m.chat, `🤮 ¡Ew! Buscaste algo de ${artistCheck.toUpperCase()}… Sos gil o puto? 👀`, m);
-      // No retornamos, para que siga con la búsqueda normal
     }
 
-    // --- COOLDOWN 2 MIN ---
     const now = Date.now();
     const lastUsed = cooldowns[m.sender] || 0;
     const waitTime = 2 * 60 * 1000;
-
     const isOwner = owners.includes(m.sender);
+
     if (!isOwner) {
       if (now - lastUsed < waitTime) {
         const remaining = Math.ceil((waitTime - (now - lastUsed)) / 1000);
@@ -34,13 +31,11 @@ const handler = async (m, { conn, text, command }) => {
       cooldowns[m.sender] = now;
     }
 
-    // --- Reacción especial Rammstein ---
     if (/rammstein/i.test(text)) {
       await m.react('🔥');
       await conn.reply(m.chat, '🇩🇪 *Deutschland über alles* ⚡', m);
     }
 
-    // --- Buscar video ---
     await m.react('🔎');
     const videoIdMatch = text.match(youtubeRegexID);
     const search = await yts(videoIdMatch ? 'https://youtu.be/' + videoIdMatch[1] : text);
@@ -77,13 +72,12 @@ const handler = async (m, { conn, text, command }) => {
       }
     }, { quoted: m });
 
-    // --- AUDIO ---
-    if (command === 'play' || command === 'playaudio') {
+    // AUDIO
+    if (command === 'ytplay' || command === 'ytaudio') {
       try {
         const apiUrl = `https://api.vreden.my.id/api/v1/download/youtube/audio?url=${encodeURIComponent(url)}&quality=128`;
         const res = await fetch(apiUrl);
         const json = await res.json();
-
         if (!json.status || !json.result?.download?.url)
           throw '*⚠ No se obtuvo un enlace de audio válido.*';
 
@@ -102,14 +96,12 @@ const handler = async (m, { conn, text, command }) => {
         return conn.reply(m.chat, '*⚠ No se pudo enviar el audio. Puede ser muy pesado o hubo un error en la API.*', m);
       }
     }
-
-    // --- VIDEO ---
-    else if (command === 'playvideo' || command === 'play2') {
+    // VIDEO
+    else if (command === 'ytvideo' || command === 'ytplay2') {
       try {
         const apiUrl = `https://api.stellarwa.xyz/dow/ytmp4?url=${encodeURIComponent(url)}&apikey=Shadow_Core`;
         const res = await fetch(apiUrl);
         const json = await res.json();
-
         if (!json.status || !json.data?.dl)
           throw '⚠ No se obtuvo enlace de video válido.';
 
@@ -141,9 +133,7 @@ const handler = async (m, { conn, text, command }) => {
         console.error(e);
         return conn.reply(m.chat, '⚠ No se pudo enviar el video. Puede ser muy pesado o hubo un error en la API.', m);
       }
-    }
-
-    else {
+    } else {
       return conn.reply(m.chat, '✧ Comando no reconocido.', m);
     }
 
@@ -153,8 +143,9 @@ const handler = async (m, { conn, text, command }) => {
   }
 }
 
-handler.command = ['play', 'playaudio', 'playvideo', 'play2'];
-handler.help = ['play', 'playaudio', 'playvideo', 'play2'];
+// ✅ Cambié los nombres de comando para que no choquen con otros plugins
+handler.command = ['ytplay', 'ytaudio', 'ytvideo', 'ytplay2'];
+handler.help = ['ytplay', 'ytaudio', 'ytvideo', 'ytplay2'];
 handler.tags = ['descargas'];
 export default handler;
 
