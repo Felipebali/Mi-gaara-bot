@@ -1,8 +1,8 @@
 // 📂 plugins/owner-resetlink.js
 let handler = async (m, { conn, participants, groupMetadata }) => {
   // IDs de los dueños
-  const owners = ['59896026646', '59898719147', '59892363485']; // 🔥 Agregá más si querés
-  const sender = m.sender.replace(/[^0-9]/g, '');
+  const owners = ['59896026646@s.whatsapp.net', '59898719147@s.whatsapp.net', '59892363485@s.whatsapp.net'];
+  const sender = m.sender;
 
   // Verificación: solo dueños
   if (!owners.includes(sender)) {
@@ -15,9 +15,9 @@ let handler = async (m, { conn, participants, groupMetadata }) => {
   }
 
   // Verificar si el bot es admin
-  const botNumber = conn.user.jid ? conn.user.jid.split('@')[0] : '';
-  const botAdmin = participants.find(p => p.id.includes(botNumber))?.admin;
-  if (!botAdmin) {
+  const botJid = conn.user.jid; // ej: '59898301727@s.whatsapp.net'
+  const botParticipant = participants.find(p => p.id === botJid);
+  if (!botParticipant || (botParticipant.admin !== 'admin' && botParticipant.admin !== 'superadmin')) {
     return conn.reply(m.chat, '⚠️ Necesito ser administrador para resetear el enlace.', m);
   }
 
@@ -39,4 +39,4 @@ handler.help = ['resetlink'];
 handler.tags = ['owner'];
 handler.command = /^resetlink$/i;
 
-export default handler; 
+export default handler;
