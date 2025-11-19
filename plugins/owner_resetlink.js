@@ -1,46 +1,30 @@
-// 📂 plugins/owner-resetlink.js
-let handler = async (m, { conn, participants }) => {
-  // 🔒 Dueños autorizados
-  const owners = ['59896026646', '59898719147', '59892363485'];
-  const sender = m.sender.replace(/[^0-9]/g, '');
+// 📂 plugins/resetlink.js — Solo Owners 👑
 
-  // ❌ Solo dueños
-  if (!owners.includes(sender)) {
-    return conn.reply(m.chat, '🚫 Este comando solo puede usarlo mi creador.', m);
-  }
+let handler = async (m, { conn, isOwner, isBotAdmin }) => {
+  // --- PERMISOS ---
+  if (!m.isGroup) 
+    return m.reply('❌ Este comando solo funciona en grupos.')
 
-  // ❌ Solo en grupos
-  if (!m.isGroup) {
-    return conn.reply(m.chat, '❌ Este comando solo se puede usar en grupos.', m);
-  }
+  if (!isOwner) 
+    return m.reply('❌ Solo los *dueños* del bot pueden usar este comando.')
 
-  // 🔍 Detectar al bot dentro de los participantes
-  const botNumber = conn.user.jid.split('@')[0];
-  const botParticipant = participants.find(p => p.id.startsWith(botNumber));
+  if (!isBotAdmin) 
+    return m.reply('❌ Necesito ser *administrador* para resetear el link.')
 
-  // ❌ Verificar si el bot es admin
-  if (!botParticipant || (botParticipant.admin !== 'admin' && botParticipant.admin !== 'superadmin')) {
-    console.log("Debug participantes:", participants.map(p => ({ id: p.id, admin: p.admin })));
-    console.log("Bot participante:", botParticipant);
-    return conn.reply(m.chat, '⚠️ Necesito ser administrador para resetear el enlace.', m);
-  }
-
-  // ✅ Resetear enlace
   try {
-    const code = await conn.groupRevokeInvite(m.chat);
-    const newLink = `https://chat.whatsapp.com/${code}`;
-
-    await conn.sendMessage(m.chat, {
-      text: `✅ *Enlace de invitación reseteado correctamente*\n\nNuevo link del grupo:\n${newLink}`,
-    });
+    let res = await conn.groupRevokeInvite(m.chat)
+    await conn.sendMessage(m.chat, { 
+      text: `🔗 *Link del grupo reseteado correctamente*\n\nNuevo link:\nhttps://chat.whatsapp.com/${res}`
+    })
   } catch (e) {
-    console.error(e);
-    return conn.reply(m.chat, '❌ Error al intentar resetear el enlace. Verificá los permisos.', m);
+    console.error(e)
+    m.reply('⚠️ Ocurrió un error al intentar resetear el link.')
   }
-};
+}
 
-handler.help = ['resetlink'];
-handler.tags = ['owner'];
-handler.command = /^resetlink$/i;
+handler.help = ['resetlink']
+handler.tags = ['group']
+handler.command = /^resetlink$/i
+handler.owner = true
 
-export default handler;
+export default handler
