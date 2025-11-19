@@ -1,104 +1,75 @@
-// 📂 plugins/grupos-mute.js — FelixCat_Bot 🐾
-// Mute + Unmute + Auto-delete con nombre clickeable del usuario
+// 📂 plugins/grupos-mute.js — Gaara-Ultra-MD
+// Mute + Unmute + Auto-Delete para muteados
+// TODO en un solo plugin 🔥
 
-global.mutedUsers = global.mutedUsers || {}
+let mutedUsers = new Set()
 
-const owners = [
-    "59896026646@s.whatsapp.net",
-    "59898719147@s.whatsapp.net"
-]
+let handler = async (m, { conn, isAdmin, isOwner, command }) => {
 
-let handler = async (m, { conn, participants, isAdmin, isOwner, command }) => {
+    // ==== AUTO-ELIMINAR MENSAJES DE USUARIOS MUTEADOS ====
+    if (mutedUsers.has(m.sender)) {
+        try {
+            await conn.sendMessage(m.chat, { delete: m.key })
+        } catch {}
+        return  // No procesa más nada
+    }
 
+    // ==== SOLO FUNCIONA EN GRUPOS ====
     if (!m.isGroup) return
 
-    const chatId = m.chat
-    if (!global.mutedUsers[chatId]) global.mutedUsers[chatId] = new Set()
+    // ==== SOLO ADMINS / OWNERS ====
+    if (!isAdmin && !isOwner) return
 
-    // =====================================
-    // 🧹 AUTO BORRADO
-    // =====================================
-    if (!/^(mute|unmute)$/i.test(command)) {
-        if (global.mutedUsers[chatId].has(m.sender)) {
-            try { await conn.sendMessage(chatId, { delete: m.key }) } catch {}
-        }
-        return
-    }
+    // ==== SI EL COMANDO NO ES MUTE O UNMUTE, NO SIGUE ====
+    if (!["mute", "unmute"].includes(command)) return
 
-    // =====================================
-    // 🔐 SOLO ADMINS / DUEÑOS
-    // =====================================
-    if (!isAdmin && !isOwner)
-        return m.reply("❌ Solo administradores o dueños pueden usar este comando.")
+    // ==== OBTENER USUARIO ====
+    let who = m.mentionedJid?.[0] || null
+    if (!who)
+        return m.reply("⚠️ Debes mencionar a un usuario.")
 
-    // =====================================
-    // 🎯 DETECTAR USUARIO
-    // =====================================
-    let who = null
-
-    if (m.quoted) who = m.quoted.sender
-    if (!who && m.mentionedJid?.length) who = m.mentionedJid[0]
-    if (!who && m.message?.extendedTextMessage?.contextInfo?.mentionedJid)
-        who = m.message.extendedTextMessage.contextInfo.mentionedJid[0]
-
-    if (!who) {
-        const match = m.text.match(/@(\d{5,20})/)
-        if (match) who = match[1] + "@s.whatsapp.net"
-    }
-
-    if (!who) return m.reply("❌ Menciona o responde al usuario.")
-
-    // Reparar JID
-    if (!who.endsWith("@s.whatsapp.net"))
-        who = who.replace(/[^0-9]/g, "") + "@s.whatsapp.net"
-
-    // =====================================
-    // 🛑 VERIFICACIONES
-    // =====================================
-    const groupAdmins = participants.filter(p => p.admin)
-    const isTargetAdmin = groupAdmins.some(a => a.id === who)
-
+    // ==== PROTEGER DUEÑOS ====
+    const owners = [
+        "59896026646@s.whatsapp.net",
+        "59898719147@s.whatsapp.net"
+    ]
     if (owners.includes(who))
-        return m.reply("❌ No puedo mutear a un dueño.")
+        return m.reply("❌ No puedes mutear/desmutear a un *owner*.")
 
-    if (isTargetAdmin)
-        return m.reply("❌ No puedo mutear a un administrador del grupo.")
+    // ==== TAG CLICKEABLE ====
+    let number = who.split("@")[0]
+    let mentionTag = "@" + number
 
-    // =====================================
-    // 📛 OBTENER NOMBRE CLIKEABLE
-    // =====================================
-    let name = await conn.getName(who)
-    if (!name) name = who.split("@")[0]  // fallback seguro
+    // ==== COMANDO MUTE ====
+    if (command === "mute") {
 
-    // =====================================
-    // 🔇 MUTE
-    // =====================================
-    if (/^mute$/i.test(command)) {
+        mutedUsers.add(who)
 
-        global.mutedUsers[chatId].add(who)
-
-        return conn.sendMessage(chatId, {
-            text: `🔇 Usuario muteado: @${name}`,
+        return await conn.sendMessage(m.chat, {
+            text: `🔇 *Usuario muteado:* ${mentionTag}`,
             mentions: [who]
         })
     }
 
-    // =====================================
-    // 🔊 UNMUTE
-    // =====================================
-    if (/^unmute$/i.test(command)) {
+    // ==== COMANDO UNMUTE ====
+    if (command === "unmute") {
 
-        global.mutedUsers[chatId].delete(who)
+        if (!mutedUsers.has(who))
+            return m.reply("⚠️ Ese usuario no estaba muteado.")
 
-        return conn.sendMessage(chatId, {
-            text: `🔊 Usuario desmuteado: @${name}`,
+        mutedUsers.delete(who)
+
+        return await conn.sendMessage(m.chat, {
+            text: `🔊 *Usuario desmuteado:* ${mentionTag}`,
             mentions: [who]
         })
     }
 }
 
-handler.command = /^(mute|unmute)$/i
+handler.help = ["mute @usuario", "unmute @usuario"]
 handler.tags = ["group"]
-handler.help = ["mute @user", "unmute @user"]
+handler.command = ["mute", "unmute"]
+handler.group = true
+handler.admin = true
 
 export default handler
