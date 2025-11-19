@@ -1,98 +1,100 @@
-// 📂 plugins/mute.js — FelixCat_Bot 🐾
+// 📂 plugins/mute-unmute.js — FelixCat_Bot 🐾
+// TODO en un solo plugin: mute, unmute y borrado automático
 
-let mutedUsers = new Set()
+// Estructura global
+global.mutedUsers = global.mutedUsers || {}
 
-let handler = async (m, { conn, args, command, participants }) => {
-  const botNumber = conn.user.id.split(":")[0]
-  const botJid = botNumber + "@s.whatsapp.net"
-  const protectedOwners = ["59896026646@s.whatsapp.net", "59898719147@s.whatsapp.net"] // 🔒 Owners protegidos
+const owners = [
+    "59896026646@s.whatsapp.net",
+    "59898719147@s.whatsapp.net"
+]
 
-  // 🧠 Comprobar si es un grupo
-  if (!m.isGroup) return m.reply("👥 Este comando solo puede usarse en grupos.")
+let handler = async (m, { conn, participants, isAdmin, isOwner, command }) => {
 
-  // 🔑 Verificar si el usuario que ejecuta es admin
-  const groupAdmins = participants
-    .filter(p => p.admin)
-    .map(p => p.id)
-  const isAdmin = groupAdmins.includes(m.sender)
+    if (!m.isGroup) return
 
-  if (!isAdmin)
-    return m.reply("❌ Solo los administradores pueden usar este comando.")
+    let chatId = m.chat
 
-  // 🎯 Obtener usuario objetivo (mención, número o mensaje citado)
-  let who =
-    m.mentionedJid && m.mentionedJid[0]
-      ? m.mentionedJid[0]
-      : args[0]
-      ? args[0].replace(/[^0-9]/g, "") + "@s.whatsapp.net"
-      : m.quoted
-      ? m.quoted.sender
-      : ""
+    // Crear espacio si no existe
+    if (!global.mutedUsers[chatId]) global.mutedUsers[chatId] = new Set()
 
-  if (!who)
-    return m.reply("🔇 *Debes etiquetar, responder o escribir el número del usuario que querés silenciar o desilenciar.*")
-
-  // 🛡️ Protección: no se puede mutear al bot ni a los dueños
-  if (who === botJid || protectedOwners.includes(who))
-    return m.reply("🤨 No podés silenciar al bot ni a un owner protegido.")
-
-  // 🔇 Comando mute/silenciar
-  if (/^(mute|silenciar)$/i.test(command)) {
-    if (mutedUsers.has(who))
-      return m.reply(`⚠️ @${who.split("@")[0]} ya está silenciado.`, null, {
-        mentions: [who],
-      })
-
-    mutedUsers.add(who)
-    return m.reply(`🔇 @${who.split("@")[0]} fue silenciado.`, null, {
-      mentions: [who],
-    })
-  }
-
-  // 🔈 Comando unmute/desilenciar
-  if (/^(unmute|desilenciar)$/i.test(command)) {
-    if (!mutedUsers.has(who))
-      return m.reply(`⚠️ @${who.split("@")[0]} no está silenciado.`, null, {
-        mentions: [who],
-      })
-
-    mutedUsers.delete(who)
-    return m.reply(`🔈 @${who.split("@")[0]} fue desmuteado.`, null, {
-      mentions: [who],
-    })
-  }
-}
-
-// 🚫 Antes de procesar mensajes: borrar si el remitente está muteado
-handler.before = async (m, { conn }) => {
-  const botNumber = conn.user.id.split(":")[0]
-  const botJid = botNumber + "@s.whatsapp.net"
-  const protectedOwners = ["59896026646@s.whatsapp.net", "59898719147@s.whatsapp.net"]
-
-  if (m.sender === botJid || protectedOwners.includes(m.sender)) return false
-
-  if (mutedUsers.has(m.sender)) {
-    try {
-      await conn.sendMessage(m.chat, {
-        delete: {
-          remoteJid: m.chat,
-          id: m.key.id,
-          participant: m.sender,
-        },
-      })
-      return true
-    } catch (e) {
-      console.error("Error al borrar mensaje:", e)
+    // -------------------------------
+    // 🧹 AUTODELETE si el usuario está muteado
+    // -------------------------------
+    if (!["mute", "unmute"].includes(command)) {
+        if (global.mutedUsers[chatId].has(m.sender)) {
+            try {
+                await conn.sendMessage(chatId, { delete: m.key })
+            } catch (e) {
+                console.log("❌ Error borrando mensaje muteado:", e)
+            }
+        }
+        return
     }
-  }
-  return false
+
+    // -------------------------------
+    // 🛑 SOLO ADMINS O DUEÑOS PUEDEN USAR COMANDOS
+    // -------------------------------
+    if (!isAdmin && !isOwner)
+        return m.reply("❌ Solo administradores o dueños pueden usar este comando.")
+
+    // -------------------------------
+    // 🎯 OBTENER USUARIO POR RESPUESTA O MENCIÓN
+    // -------------------------------
+    let user
+
+    if (m.quoted) {
+        user = m.quoted.sender
+    } else if (m.mentionedJid?.length) {
+        user = m.mentionedJid[0]
+    } else {
+        return m.reply("❌ Menciona o responde al mensaje del usuario.")
+    }
+
+    // -------------------------------
+    // 🚫 NO PERMITIR MUTEAR DUEÑOS O ADMINS
+    // -------------------------------
+    const groupAdmins = participants.filter(p => p.admin)
+    const isTargetAdmin = groupAdmins.some(a => a.id === user)
+
+    if (owners.includes(user)) {
+        return m.reply("❌ No puedo mutear a un dueño del bot.")
+    }
+
+    if (isTargetAdmin) {
+        return m.reply("❌ No puedo mutear a un administrador del grupo.")
+    }
+
+    // -------------------------------
+    // 🔇 MUTE
+    // -------------------------------
+    if (command === "mute") {
+
+        global.mutedUsers[chatId].add(user)
+
+        return m.reply(
+            `🔇 *Usuario muteado:* @${user.split("@")[0]}`,
+            { mentions: [user] }
+        )
+    }
+
+    // -------------------------------
+    // 🔊 UNMUTE
+    // -------------------------------
+    if (command === "unmute") {
+
+        global.mutedUsers[chatId].delete(user)
+
+        return m.reply(
+            `🔊 *Usuario desmuteado:* @${user.split("@")[0]}`,
+            { mentions: [user] }
+        )
+    }
+
 }
 
-handler.help = ["mute", "silenciar", "unmute", "desilenciar"]
-handler.tags = ["grupo"]
-handler.command = /^(mute|silenciar|unmute|desilenciar)$/i
-handler.group = true
-handler.admin = true
-handler.botAdmin = true
+handler.command = /^(mute|unmute)$/i
+handler.tags = ["group"]
+handler.help = ["mute @user", "unmute @user"]
 
 export default handler
