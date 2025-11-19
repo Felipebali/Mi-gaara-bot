@@ -1,7 +1,7 @@
-// 📂 plugins/resetlink.js — Solo Owners 👑
+// 📂 plugins/resetlink.js — Comando solo para owners 👑
 
 let handler = async (m, { conn, isOwner, isBotAdmin }) => {
-  // --- PERMISOS ---
+  // --- VERIFICACIONES ---
   if (!m.isGroup) 
     return m.reply('❌ Este comando solo funciona en grupos.')
 
@@ -9,10 +9,13 @@ let handler = async (m, { conn, isOwner, isBotAdmin }) => {
     return m.reply('❌ Solo los *dueños* del bot pueden usar este comando.')
 
   if (!isBotAdmin) 
-    return m.reply('❌ Necesito ser *administrador* para resetear el link.')
+    return m.reply('❌ Necesito ser *administrador* del grupo para resetear el link.')
 
   try {
+    // Resetea el link del grupo
     let res = await conn.groupRevokeInvite(m.chat)
+    
+    // Envía el nuevo link
     await conn.sendMessage(m.chat, { 
       text: `🔗 *Link del grupo reseteado correctamente*\n\nNuevo link:\nhttps://chat.whatsapp.com/${res}`
     })
@@ -22,6 +25,7 @@ let handler = async (m, { conn, isOwner, isBotAdmin }) => {
   }
 }
 
+// Configuración del comando
 handler.help = ['resetlink']
 handler.tags = ['group']
 handler.command = /^resetlink$/i
