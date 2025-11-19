@@ -1,5 +1,5 @@
 // 📂 plugins/grupos-mute.js — FelixCat_Bot 🐾
-// Mute + Unmute + Auto-delete compatible con Gaara-Ultra-MD
+// Mute + Unmute + Auto-delete usando siempre who.split("@")[0]
 
 global.mutedUsers = global.mutedUsers || {}
 
@@ -16,7 +16,7 @@ let handler = async (m, { conn, participants, isAdmin, isOwner, command }) => {
     if (!global.mutedUsers[chatId]) global.mutedUsers[chatId] = new Set()
 
     // =====================================
-    // 🧹 AUTO BORRADO
+    // 🧹 AUTO BORRADO PARA MUTEADOS
     // =====================================
     if (!/^(mute|unmute)$/i.test(command)) {
         if (global.mutedUsers[chatId].has(m.sender)) {
@@ -34,42 +34,34 @@ let handler = async (m, { conn, participants, isAdmin, isOwner, command }) => {
         return m.reply("❌ Solo administradores o dueños pueden usar este comando.")
 
     // =====================================
-    // 🎯 OBTENER USUARIO
+    // 🎯 DETECTAR USUARIO
     // =====================================
-    let user = null
+    let who = null
 
-    // 1️⃣ si se respondió a un mensaje
-    if (m.quoted) user = m.quoted.sender
+    if (m.quoted) who = m.quoted.sender
+    if (!who && m.mentionedJid?.length) who = m.mentionedJid[0]
+    if (!who && m.message?.extendedTextMessage?.contextInfo?.mentionedJid)
+        who = m.message.extendedTextMessage.contextInfo.mentionedJid[0]
 
-    // 2️⃣ si existen mentionedJid
-    if (!user && m.mentionedJid?.length)
-        user = m.mentionedJid[0]
-
-    // 3️⃣ extendedTextMessage.contextInfo
-    if (!user && m.message?.extendedTextMessage?.contextInfo?.mentionedJid)
-        user = m.message.extendedTextMessage.contextInfo.mentionedJid[0]
-
-    // 4️⃣ fallback: detectar @numero
-    if (!user) {
+    if (!who) {
         const match = m.text.match(/@(\d{5,20})/)
-        if (match) user = match[1] + "@s.whatsapp.net"
+        if (match) who = match[1] + "@s.whatsapp.net"
     }
 
-    if (!user)
-        return m.reply("❌ Menciona o responde al usuario que querés mutear/desmutear.")
+    if (!who) return m.reply("❌ Menciona o responde al usuario.")
 
-    // Asegurar formato JID válido
-    if (!user.endsWith("@s.whatsapp.net") && !user.endsWith("@g.us"))
-        user = user.replace(/[^0-9]/g, "") + "@s.whatsapp.net"
+    // Convertir a JID válido si viene crudo
+    if (!who.endsWith("@s.whatsapp.net") && !who.endsWith("@g.us"))
+        who = who.replace(/[^0-9]/g, "") + "@s.whatsapp.net"
 
     // =====================================
-    // 🚫 VERIFICAR NO ADMIN / NO OWNER
+    // 🛑 EVITAR MUTEAR ADMINS / OWNERS
     // =====================================
     const groupAdmins = participants.filter(p => p.admin)
-    const isTargetAdmin = groupAdmins.some(a => a.id === user)
+    const isTargetAdmin = groupAdmins.some(a => a.id === who)
 
-    if (owners.includes(user))
-        return m.reply("❌ No puedo mutear a un dueño del bot.")
+    if (owners.includes(who))
+        return m.reply("❌ No puedo mutear a un dueño.")
 
     if (isTargetAdmin)
         return m.reply("❌ No puedo mutear a un administrador del grupo.")
@@ -79,11 +71,11 @@ let handler = async (m, { conn, participants, isAdmin, isOwner, command }) => {
     // =====================================
     if (/^mute$/i.test(command)) {
 
-        global.mutedUsers[chatId].add(user)
+        global.mutedUsers[chatId].add(who)
 
         return conn.sendMessage(chatId, {
-            text: `🔇 *Usuario muteado:* @${user.split("@")[0]}`,
-            mentions: [user]
+            text: `🔇 *Usuario muteado:* @${who.split("@")[0]}`,
+            mentions: [who]
         })
     }
 
@@ -92,14 +84,13 @@ let handler = async (m, { conn, participants, isAdmin, isOwner, command }) => {
     // =====================================
     if (/^unmute$/i.test(command)) {
 
-        global.mutedUsers[chatId].delete(user)
+        global.mutedUsers[chatId].delete(who)
 
         return conn.sendMessage(chatId, {
-            text: `🔊 *Usuario desmuteado:* @${user.split("@")[0]}`,
-            mentions: [user]
+            text: `🔊 *Usuario desmuteado:* @${who.split("@")[0]}`,
+            mentions: [who]
         })
     }
-
 }
 
 handler.command = /^(mute|unmute)$/i
