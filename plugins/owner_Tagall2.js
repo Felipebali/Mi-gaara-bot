@@ -1,10 +1,11 @@
-// 📢 tagall2.js — Mención oculta x4 con frases aleatorias 🌍 (solo owners)
+// 📂 plugins/tagall2.js — Mención oculta x4 con frases aleatorias 🌍 (solo owners)
+// Versión compat: log de carga + array/regEx en comando para evitar "no activado"
+
+console.log('[Plugin] tagall2 cargado') // <-- Mirá en Termux para confirmar que se cargó
 
 const owners = ['59898719147@s.whatsapp.net', '59896026646@s.whatsapp.net', '59892363485@s.whatsapp.net'];
 
-// 🌐 Frases aleatorias (multiidioma y divertidas)
 const frases = [
-  // 🐱 Español
   '🌞 ¡Despierten, gatos dormilones!',
   '🔥 ¡Hora de mover el grupo!',
   '🎯 ¡Vamos equipo, que hoy rompemos todo!',
@@ -15,57 +16,21 @@ const frases = [
   '💬 ¡No se duerman, que el grupo se enfría!',
   '🎵 ¡Vamos a ponerle ritmo al chat!',
   '💪 ¡Fuerza, energía y memes nuevos!',
-  
-  // 🇺🇸 English
   '🚀 Wake up everyone, the fun is starting!',
   '🔥 Let’s shake the group up!',
   '💫 Coffee time, group warriors!',
   '🎮 Game mode ON!',
   '😎 Let’s make this chat alive again!',
-  '💥 Rise and shine, legends!',
-  '🪩 Party’s here, no excuses!',
-  
-  // 🇧🇷 Portugués
   '💥 Levantem-se, guerreiros do grupo!',
   '🔥 Bora animar o chat!',
-  '🌈 Bom dia, tropa!',
-  '🎶 Vamos agitar isso aqui!',
-  
-  // 🇫🇷 Francés
   '💫 Il est temps de briller, mes amis!',
-  '🎉 Réveillez-vous, le groupe a besoin de vous!',
-  '🔥 On bouge, la team!',
-  
-  // 🇮🇹 Italiano
-  '🐾 Tutti pronti per l’azione?',
-  '🌟 È ora di svegliarsi, amici!',
-  '🎯 Forza ragazzi, si riparte!',
-  
-  // 🇩🇪 Alemán
+  '🐾 Tutti pronti per l’action?',
   '💥 Aufwachen Leute, los geht’s!',
-  '🔥 Energie! Heute wird legendär!',
-  
-  // 🇯🇵 Japonés
   '🌸 みんな、起きて！',
-  '💥 グループを盛り上げよう！',
-  
-  // 🇷🇺 Ruso
   '⚡ Все готовы к бою?',
-  '🔥 Время просыпаться, друзья!',
-  
-  // 🇰🇷 Coreano
   '🌺 깨어나세요, 친구들!',
-  '💫 이 그룹이 다시 빛날 시간이에요!',
-  
-  // 🇨🇳 Chino
   '🌼 大家好，准备开始吧！',
-  '💥 该醒来了，朋友们！',
-  
-  // 🇸🇦 Árabe
   '🌙 استيقظوا أيها الأبطال!',
-  '🔥 حان وقت النشاط يا أصدقاء!',
-  
-  // 😸 Personalizadas
   '🐱 FelixCat dice: ¡Hora de activarse!',
   '🎭 FelixCatBot: ¡Vamos a romper el silencio!',
   '💌 Mensaje secreto del gato: ¡Muevan el grupo!',
@@ -84,34 +49,28 @@ function sleep(ms) {
 
 let handler = async (m, { conn, isBotAdmin }) => {
   try {
-    // 📋 Solo en grupos
     if (!m.isGroup) return;
 
-    // 🔒 Solo owners
     const sender = m.sender;
     if (!owners.includes(sender)) return;
 
-    // ⚙️ Verificar permisos
     if (!isBotAdmin) return conn.sendMessage(m.chat, { text: '🤖 Necesito ser administrador para mencionar a todos.' });
 
-    // 📜 Obtener participantes
     const groupMetadata = await conn.groupMetadata(m.chat);
     const members = groupMetadata.participants.map(u => u.id).filter(v => v !== conn.user.jid);
 
     if (!members.length) return;
 
-    // 🔕 Texto invisible (mención oculta)
+    // Texto invisible (mención oculta)
     const hidden = '\u200B'.repeat(500);
 
-    // 🔁 Enviar 4 veces con frases distintas
     for (let i = 0; i < 4; i++) {
       const frase = frases[Math.floor(Math.random() * frases.length)];
       const text = `${frase}\n${hidden}`;
 
       await conn.sendMessage(
         m.chat,
-        { text, mentions: members },
-        { quoted: null } // ❌ No responde al comando
+        { text, mentions: members }
       );
 
       await sleep(1500);
@@ -122,9 +81,18 @@ let handler = async (m, { conn, isBotAdmin }) => {
   }
 };
 
-handler.help = ['tagall2'];
-handler.tags = ['owner', 'group'];
-handler.command = /^tagall2$/i;
-handler.group = true;
+// Compatibilidad: array de comandos (muchas builds la usan)
+handler.command = ['tagall2']
+// Y además regex (otras builds lo prefieren)
+handler.command = handler.command || /^tagall2$/i
 
-export default handler;
+// Meta para el loader del bot
+handler.help = ['tagall2']
+handler.tags = ['owner', 'group']
+handler.group = true
+
+// Marcar owner/rowner por compatibilidad con distintos loaders
+handler.owner = true
+handler.rowner = true
+
+export default handler
