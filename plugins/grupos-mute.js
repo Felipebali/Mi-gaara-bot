@@ -1,5 +1,5 @@
 // 📂 plugins/grupos-mute.js — FelixCat_Bot 🐾
-// Mute + Unmute + Auto-delete usando siempre who.split("@")[0]
+// Mute + Unmute + Auto-delete con nombre clickeable del usuario
 
 global.mutedUsers = global.mutedUsers || {}
 
@@ -16,13 +16,11 @@ let handler = async (m, { conn, participants, isAdmin, isOwner, command }) => {
     if (!global.mutedUsers[chatId]) global.mutedUsers[chatId] = new Set()
 
     // =====================================
-    // 🧹 AUTO BORRADO PARA MUTEADOS
+    // 🧹 AUTO BORRADO
     // =====================================
     if (!/^(mute|unmute)$/i.test(command)) {
         if (global.mutedUsers[chatId].has(m.sender)) {
-            try {
-                await conn.sendMessage(chatId, { delete: m.key })
-            } catch { }
+            try { await conn.sendMessage(chatId, { delete: m.key }) } catch {}
         }
         return
     }
@@ -50,12 +48,12 @@ let handler = async (m, { conn, participants, isAdmin, isOwner, command }) => {
 
     if (!who) return m.reply("❌ Menciona o responde al usuario.")
 
-    // Convertir a JID válido si viene crudo
-    if (!who.endsWith("@s.whatsapp.net") && !who.endsWith("@g.us"))
+    // Reparar JID
+    if (!who.endsWith("@s.whatsapp.net"))
         who = who.replace(/[^0-9]/g, "") + "@s.whatsapp.net"
 
     // =====================================
-    // 🛑 EVITAR MUTEAR ADMINS / OWNERS
+    // 🛑 VERIFICACIONES
     // =====================================
     const groupAdmins = participants.filter(p => p.admin)
     const isTargetAdmin = groupAdmins.some(a => a.id === who)
@@ -67,6 +65,12 @@ let handler = async (m, { conn, participants, isAdmin, isOwner, command }) => {
         return m.reply("❌ No puedo mutear a un administrador del grupo.")
 
     // =====================================
+    // 📛 OBTENER NOMBRE CLIKEABLE
+    // =====================================
+    let name = await conn.getName(who)
+    if (!name) name = who.split("@")[0]  // fallback seguro
+
+    // =====================================
     // 🔇 MUTE
     // =====================================
     if (/^mute$/i.test(command)) {
@@ -74,7 +78,7 @@ let handler = async (m, { conn, participants, isAdmin, isOwner, command }) => {
         global.mutedUsers[chatId].add(who)
 
         return conn.sendMessage(chatId, {
-            text: `🔇 *Usuario muteado:* @${who.split("@")[0]}`,
+            text: `🔇 Usuario muteado: @${name}`,
             mentions: [who]
         })
     }
@@ -87,14 +91,14 @@ let handler = async (m, { conn, participants, isAdmin, isOwner, command }) => {
         global.mutedUsers[chatId].delete(who)
 
         return conn.sendMessage(chatId, {
-            text: `🔊 *Usuario desmuteado:* @${who.split("@")[0]}`,
+            text: `🔊 Usuario desmuteado: @${name}`,
             mentions: [who]
         })
     }
 }
 
 handler.command = /^(mute|unmute)$/i
-handler.help = ["mute @user", "unmute @user"]
 handler.tags = ["group"]
+handler.help = ["mute @user", "unmute @user"]
 
 export default handler
