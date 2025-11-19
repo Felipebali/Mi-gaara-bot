@@ -1,45 +1,45 @@
-// plugins/buscador_imagen.js
+// 📂 plugins/buscador_imagen.js — FelixCat-Bot
+// Buscador de imágenes estable usando @bochilteam/scraper
+
 import { googleImage } from '@bochilteam/scraper'
 
 let handler = async (m, { conn, text }) => {
   if (!text) {
-    await conn.sendMessage(m.chat, { text: '⚠️ Ingresa algo para buscar. Ejemplo: *.imagen gatos*' }, { quoted: m })
-    return
+    return await conn.sendMessage(
+      m.chat,
+      { text: '⚠️ Ingresa algo para buscar. Ejemplo: *.imagen gatos*' },
+      { quoted: m }
+    )
   }
 
   try {
     // 🔹 Reacción de inicio
     await conn.sendMessage(m.chat, { react: { text: '🕒', key: m.key } })
 
-    const res = await googleImage(text)
-    const results = res.slice(0, 20)
-    const image = results[Math.floor(Math.random() * results.length)]
+    // 🔹 Buscar imágenes
+    const results = await googleImage(text)
+    if (!results || results.length === 0)
+      return await conn.sendMessage(
+        m.chat,
+        { text: '⚠️ No se encontraron imágenes para tu búsqueda.' },
+        { quoted: m }
+      )
 
-    if (!image || !image.url) throw 'No se encontró imagen válida.'
+    // 🔹 Tomar una imagen aleatoria entre las primeras 20
+    const images = results.slice(0, 20)
+    const image = images[Math.floor(Math.random() * images.length)]
 
-    // 🔹 Reacción de búsqueda exitosa
+    // 🔹 Enviar imagen
     await conn.sendMessage(m.chat, { react: { text: '🔍', key: m.key } })
-
-    // 🔹 Enviar imagen correctamente
-    await conn.sendMessage(
-      m.chat,
-      {
-        image: { url: image.url },
-        caption: `🔎 Resultado de: *${text}*`
-      },
-      { quoted: m }
-    )
-
-    // 🔹 Reacción final OK
+    await conn.sendFile(m.chat, image, 'imagen.jpg', `🔎 Resultado de: *${text}*`, m)
     await conn.sendMessage(m.chat, { react: { text: '✅', key: m.key } })
 
-  } catch (e) {
-    console.error(e)
-    // 🔹 Reacción de error
+  } catch (err) {
+    console.error(err)
     await conn.sendMessage(m.chat, { react: { text: '❌', key: m.key } })
     await conn.sendMessage(
       m.chat,
-      { text: '⚠️ No se pudo obtener la imagen. Intenta con otro término.' },
+      { text: '⚠️ Ocurrió un error al buscar la imagen. Intenta con otro término.' },
       { quoted: m }
     )
   }
