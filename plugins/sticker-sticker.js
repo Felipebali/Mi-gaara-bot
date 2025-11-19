@@ -1,6 +1,5 @@
 import { sticker } from '../lib/sticker.js'
 import uploadFile from '../lib/uploadFile.js'
-import uploadImage from '../lib/uploadImage.js'
 import { webp2png } from '../lib/webp2mp4.js'
 
 let handler = async (m, { conn, args }) => {
@@ -10,7 +9,7 @@ let handler = async (m, { conn, args }) => {
 
   // --- SOLO OWNERS ---
   if (!owners.includes(senderNumber)) {
-    await m.react('✖️') // Reacción de error
+    await m.react('✖️')
     return conn.reply(m.chat, '❌ Solo los *owners* pueden usar este comando.', m)
   }
 
@@ -26,6 +25,7 @@ let handler = async (m, { conn, args }) => {
     let txt = args.join(' ')
 
     if (/webp|image|video/g.test(mime) && q.download) {
+
       if (/video/.test(mime) && (q.msg || q).seconds > 16)
         return conn.reply(m.chat, '❌ El video no puede durar más de *15 segundos*', m)
 
@@ -40,7 +40,7 @@ let handler = async (m, { conn, args }) => {
       stiker = buffer
 
     } else {
-      return conn.reply(m.chat, '❌ Responde a una *imagen/video/gif* o etiqueta uno para convertirlo en sticker.', m)
+      return conn.reply(m.chat, '❌ Responde a una *imagen/video/gif* o manda una URL válida.', m)
     }
 
   } catch (e) {
@@ -57,7 +57,7 @@ let handler = async (m, { conn, args }) => {
 handler.help = ['sticker']
 handler.tags = ['sticker']
 handler.command = ['s', 'sticker']
-handler.owner = false // Ya lo controlamos arriba
+handler.owner = false
 
 export default handler
 
