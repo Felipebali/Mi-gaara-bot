@@ -52,7 +52,15 @@ const handler = async (m, { conn, command, text, isAdmin }) => {
       };
 
       userData.mute = true;
-      await conn.reply(m.chat, '*🔇 Usuario muteado*\nSus mensajes serán eliminados.', quotedMsg, null, { mentions: [target] });
+
+      await conn.reply(
+        m.chat,
+        `*🔇 Usuario muteado*\n@${target.split('@')[0]} ahora está silenciado y sus mensajes serán eliminados.`,
+        quotedMsg,
+        null,
+        { mentions: [target] }
+      );
+
       return;
     }
 
@@ -84,7 +92,15 @@ const handler = async (m, { conn, command, text, isAdmin }) => {
       };
 
       userData.mute = false;
-      await conn.reply(m.chat, '*🔊 Usuario desmuteado*\nAhora sus mensajes no serán eliminados.', quotedMsg, null, { mentions: [target] });
+
+      await conn.reply(
+        m.chat,
+        `*🔊 Usuario desmuteado*\n@${target.split('@')[0]} ahora puede hablar nuevamente.`,
+        quotedMsg,
+        null,
+        { mentions: [target] }
+      );
+
       return;
     }
 
@@ -99,7 +115,6 @@ const handler = async (m, { conn, command, text, isAdmin }) => {
 handler.command = ['mute', 'unmute'];
 handler.admin = true;
 handler.botAdmin = true;
-
 
 handler.before = async (m, { conn, isAdmin, isBotAdmin }) => {
   try {
