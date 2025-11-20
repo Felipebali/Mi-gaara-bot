@@ -1,5 +1,13 @@
 import fetch from 'node-fetch';
 
+// Normalizador de JID para evitar fallos
+function cleanJid(jid = "") {
+  if (typeof jid !== "string") return "";
+  return jid
+    .replace(/:[0-9]+/g, "") // elimina device IDs ':0' ':18' etc
+    .replace(/\/.+$/, "");   // elimina sufijos '/something'
+}
+
 const handler = async (m, { conn, command, text, isAdmin }) => {
   try {
     if (!isAdmin) throw '🌳 *Solo un administrador puede ejecutar este comando*';
@@ -14,8 +22,11 @@ const handler = async (m, { conn, command, text, isAdmin }) => {
     if (target && !target.includes('@')) target = target.replace(/\D/g, '') + '@s.whatsapp.net';
     if (!target) throw '❄️ Especifica a quién mutear/desmutear (mención, reply o número).';
 
+    // Normalizar JID
+    target = cleanJid(target);
+
     if (ownerId && target === ownerId) throw '🍬 *El creador del bot no puede ser mutado*';
-    if (target === conn.user?.jid) throw '🍭 *No puedes mutar el bot*';
+    if (target === cleanJid(conn.user?.jid)) throw '🍭 *No puedes mutar el bot*';
 
     if (!global.db) global.db = { data: { users: {} } };
     if (!global.db.data) global.db.data = { users: {} };
@@ -33,26 +44,20 @@ const handler = async (m, { conn, command, text, isAdmin }) => {
         message: {
           locationMessage: {
             name: '𝗨𝘀𝘂𝗮𝗿𝗶𝗼 mutado',
-            jpegThumbnail: thumbnail,
-            vcard: [
-              'BEGIN:VCARD',
-              'VERSION:3.0',
-              'N:;Unlimited;;;',
-              'FN:Unlimited',
-              'ORG:Unlimited',
-              'item1.TEL;waid=19709001746:+1 (970) 900-1746',
-              'item1.X-ABLabel:Unlimited',
-              'X-WA-BIZ-DESCRIPTION:ofc',
-              'X-WA-BIZ-NAME:Unlimited',
-              'END:VCARD'
-            ].join('\n')
+            jpegThumbnail: thumbnail
           }
         },
         participant: '0@s.whatsapp.net'
       };
 
       userData.mute = true;
-      await conn.reply(m.chat, '*🔇 Usuario muteado*\nSus mensajes serán eliminados.', quotedMsg, null, { mentions: [target] });
+      await conn.reply(
+        m.chat,
+        `*🔇 Usuario muteado*\n@${target.split("@")[0]} ahora está silenciado.`,
+        quotedMsg,
+        null,
+        { mentions: [target] }
+      );
       return;
     }
 
@@ -64,27 +69,21 @@ const handler = async (m, { conn, command, text, isAdmin }) => {
         key: { participants: '0@s.whatsapp.net', fromMe: false, id: 'unmute-id' },
         message: {
           locationMessage: {
-            name: '𝗨𝘀𝘂𝗮𝗿𝗶𝗼 demutado',
-            jpegThumbnail: thumbnail,
-            vcard: [
-              'BEGIN:VCARD',
-              'VERSION:3.0',
-              'N:;Unlimited;;;',
-              'FN:Unlimited',
-              'ORG:Unlimited',
-              'item1.TEL;waid=19709001746:+1 (970) 900-1746',
-              'item1.X-ABLabel:Unlimited',
-              'X-WA-BIZ-DESCRIPTION:ofc',
-              'X-WA-BIZ-NAME:Unlimited',
-              'END:VCARD'
-            ].join('\n')
+            name: '𝗨𝘀𝘂𝗮𝗿𝗶𝗼 desmuteado',
+            jpegThumbnail: thumbnail
           }
         },
         participant: '0@s.whatsapp.net'
       };
 
       userData.mute = false;
-      await conn.reply(m.chat, '*🔊 Usuario desmuteado*\nAhora sus mensajes no serán eliminados.', quotedMsg, null, { mentions: [target] });
+      await conn.reply(
+        m.chat,
+        `*🔊 Usuario desmuteado*\n@${target.split("@")[0]} ahora puede hablar.`,
+        quotedMsg,
+        null,
+        { mentions: [target] }
+      );
       return;
     }
 
@@ -92,7 +91,7 @@ const handler = async (m, { conn, command, text, isAdmin }) => {
 
   } catch (err) {
     const e = typeof err === 'string' ? err : (err?.message || String(err));
-    try { await conn.reply(m.chat, `🌿 Error: ${e}`, m); } catch (__) { }
+    try { await conn.reply(m.chat, `🌿 Error: ${e}`, m); } catch (_) {}
   }
 };
 
@@ -100,17 +99,35 @@ handler.command = ['mute', 'unmute'];
 handler.admin = true;
 handler.botAdmin = true;
 
-
-handler.before = async (m, { conn, isAdmin, isBotAdmin }) => {
+// Auto-delete funcional siempre
+handler.before = async (m, { conn, isBotAdmin }) => {
   try {
     if (!m.isGroup) return;
-    if (!global.db?.data?.users[m.sender]) return;
-    if (!global.db.data.users[m.sender].mute) return;
     if (!isBotAdmin) return;
-    if (isAdmin) return;
+
+    // Detectar correctamente el remitente
+    let sender = m.sender || m.key?.participant || m.participant || m.author;
+    if (!sender) return;
+
+    sender = cleanJid(sender);
+
+    if (!global.db?.data?.users[sender]) return;
+    if (!global.db.data.users[sender].mute) return;
+
+    // Obtener admins para no borrarlos
+    const metadata = await conn.groupMetadata(m.chat);
+    const admins = metadata.participants
+      .filter(p => p.admin)
+      .map(p => cleanJid(p.id));
+
+    // Evitar borrar mensajes de admins
+    if (admins.includes(sender)) return;
 
     await conn.sendMessage(m.chat, { delete: m.key });
-  } catch {}
+
+  } catch (err) {
+    console.log('Error en mute-before:', err);
+  }
 };
 
 export default handler;
