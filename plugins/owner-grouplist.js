@@ -6,30 +6,38 @@ const handler = async (m, { conn }) => {
       .filter(([jid, chat]) => jid.endsWith('@g.us') && chat.isChats);
 
     const totalGroups = groups.length;
-    const botJid = conn.decodeJid(conn.user.id);
+
+    // Bot JID real normalizado
+    const botJid = conn.user.id.split(':')[0] + '@s.whatsapp.net';
 
     for (let i = 0; i < groups.length; i++) {
       const [jid] = groups[i];
 
-      // Obtiene metadata
+      // Obtener metadata real del grupo
       const metadata = await conn.groupMetadata(jid).catch(() => null) || {};
-
       const participants = metadata.participants || [];
 
-      // Lista REAL de admins
+      // Nueva forma correcta de detectar admins en Baileys 2024/2025
       const adminList = participants
-        .filter(p => p.admin || p.role === 'admin' || p.role === 'superadmin')
-        .map(p => conn.decodeJid(p.id));
+        .filter(p => p.isAdmin || p.isSuperAdmin)
+        .map(p => p.id.replace(/:.*$/, ''));
 
-      // Detecta admin correctamente
-      const isBotAdmin = adminList.includes(botJid);
+      const isBotAdmin = adminList.includes(botJid.replace(/:.*$/, ''));
 
-      // Detecta si el bot está en el grupo
-      const isParticipant = participants.some(p => conn.decodeJid(p.id) === botJid);
+      const isParticipant = participants.some(
+        p => p.id.replace(/:.*$/, '') === botJid.replace(/:.*$/, '')
+      );
 
-      const link = isBotAdmin
-        ? 'https://chat.whatsapp.com/' + (await conn.groupInviteCode(jid).catch(() => '--- (Error) ---'))
-        : '--- (No admin) ---';
+      let inviteLink = '--- (No admin) ---';
+
+      if (isBotAdmin) {
+        try {
+          const code = await conn.groupInviteCode(jid);
+          inviteLink = `https://chat.whatsapp.com/${code}`;
+        } catch {
+          inviteLink = '--- (Error obteniendo código) ---';
+        }
+      }
 
       txt += `*◉ Grupo ${i + 1}*
 *➤ Nombre:* ${metadata.subject || '(Sin nombre)'}
@@ -37,7 +45,7 @@ const handler = async (m, { conn }) => {
 *➤ Admin:* ${isBotAdmin ? '✔ Sí' : '❌ No'}
 *➤ Estado:* ${isParticipant ? '👤 Participante' : '❌ Ex participante'}
 *➤ Total Participantes:* ${participants.length}
-*➤ Link:* ${link}
+*➤ Link:* ${inviteLink}
 
 `;
     }
