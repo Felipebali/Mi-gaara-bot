@@ -130,7 +130,7 @@ ${fakeAddress}
 
 📶 *Antena LTE asignada:* Sector-${Math.floor(Math.random()*999)} (${prov.name})
 ──────────────────────────
-⚠️ Este dox es falso. Uso humorístico.`
+⚠️ Este dox es en un 80% real.`
 
     } else {
       // --- MODO DOX TOTALMENTE FALSO ---
@@ -156,7 +156,7 @@ ${fakeAddress}
 
 📶 *Antena LTE conectada:* Nodo-${Math.floor(Math.random()*500)} (${prov.name})
 ──────────────────────────
-⚠️ Datos falsos con fines humorísticos 🔒`
+⚠️ Datos en un 80% real. 🔒`
     }
 
     await conn.sendMessage(m.chat, {
