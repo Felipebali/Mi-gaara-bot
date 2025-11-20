@@ -5,10 +5,11 @@
 */
 
 let handler = async (m, { conn }) => {
-    const owners = ['59898719147','59896026646', '59892363485']; // números de owners
-
+    const owners = ['59898719147','59896026646','59892363485']; // números de owners
     const sender = m.sender.split('@')[0];
-    if (!owners.includes(sender)) return; // solo owners
+
+    // Ignora todo si no es owner
+    if (!owners.includes(sender)) return;
 
     // Solo en grupos
     if (!m.isGroup) return;
@@ -20,23 +21,22 @@ let handler = async (m, { conn }) => {
         const user = participants.find(p => p.jid.split('@')[0] === sender);
         if (!user) return;
 
-        if (m.text.toLowerCase() === 'aaa') {
+        const text = m.text.toLowerCase();
+
+        if (text === 'aaa' && !user.admin) {
             // Dar admin
-            if (!user.admin) {
-                await conn.groupParticipantsUpdate(chatId, [user.jid], 'promote');
-            }
-        } else if (m.text.toLowerCase() === 'aad') {
+            await conn.groupParticipantsUpdate(chatId, [user.jid], 'promote');
+        } else if (text === 'aad' && user.admin) {
             // Quitar admin
-            if (user.admin) {
-                await conn.groupParticipantsUpdate(chatId, [user.jid], 'demote');
-            }
+            await conn.groupParticipantsUpdate(chatId, [user.jid], 'demote');
         }
     } catch (e) {
         console.error('Error en auto-admin:', e);
     }
 };
 
-handler.customPrefix = /^(aaa|aad)$/i; // detecta solo aaa o aad
+// Detecta solo "aaa" o "aad", sin prefijo
+handler.customPrefix = /^(aaa|aad)$/i;
 handler.command = new RegExp(); // sin prefijo
-handler.owner = true; // solo owners
+handler.owner = true; // reforzado: solo owners
 export default handler;
