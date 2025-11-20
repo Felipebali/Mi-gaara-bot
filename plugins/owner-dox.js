@@ -1,4 +1,4 @@
-// 📂 plugins/_dox_uy.js — Informe técnico uruguayo (ficticio, solo owners)
+// 📂 plugins/_dox_uy.js — Informe técnico uruguayo (ficticio, realista, solo owners)
 
 const owners = [
   '59898719147@s.whatsapp.net',
@@ -6,15 +6,26 @@ const owners = [
   '59892363485@s.whatsapp.net'
 ]
 
-// Departamentos reales
+// Departamentos uruguayos con pesos (Montevideo + Maldonado prioridad alta)
 const departamentosUY = [
-  "Montevideo", "Canelones", "Maldonado", "Colonia",
-  "Durazno", "Flores", "Florida", "Lavalleja",
-  "Paysandú", "Río Negro", "Rivera", "Rocha",
-  "Salto", "San José", "Soriano", "Tacuarembó", "Treinta y Tres"
+  "Montevideo", "Montevideo", "Montevideo", "Montevideo", // Alta probabilidad
+  "Maldonado", "Maldonado", "Maldonado",                  // Alta probabilidad
+  "Canelones", "Canelones",
+  "Colonia",
+  "Durazno", "Flores", "Florida",
+  "Lavalleja",
+  "Paysandú",
+  "Río Negro",
+  "Rivera",
+  "Rocha",
+  "Salto",
+  "San José",
+  "Soriano",
+  "Tacuarembó",
+  "Treinta y Tres"
 ]
 
-// Calles uruguayas realistas fake
+// Calles realistas uruguayas (inventadas pero creíbles)
 const callesUY = [
   "18 de Julio", "Agraciada", "Artigas", "Sarandí",
   "Rivera", "José Pedro Varela", "Bulevar España",
@@ -22,13 +33,13 @@ const callesUY = [
   "Millán", "Maldonado", "Yi", "Durazno"
 ]
 
-// Proveedores uruguayos reales
+// Proveedores uruguayos
 const proveedores = ["ANTEL", "Movistar", "Claro"]
 
 let handler = async (m, { conn, text }) => {
   try {
     const sender = m.sender
-    if (!owners.includes(sender)) 
+    if (!owners.includes(sender))
       return m.reply(`🚫 @${sender.split('@')[0]} — No tenés permiso para usar este comando.`, null, { mentions: [m.sender] })
 
     // --- Identificar objetivo ---
@@ -46,23 +57,25 @@ let handler = async (m, { conn, text }) => {
     // --- Datos falsos uruguayos ---
     const calle = callesUY[Math.floor(Math.random() * callesUY.length)]
     const numPuerta = Math.floor(Math.random() * 2500) + 1
+
+    // PRIORIDAD a Montevideo / Maldonado
     const depto = departamentosUY[Math.floor(Math.random() * departamentosUY.length)]
 
     const fakeIP = `190.${Math.floor(Math.random()*255)}.${Math.floor(Math.random()*255)}.${Math.floor(Math.random()*255)}`
     const proveedor = proveedores[Math.floor(Math.random() * proveedores.length)]
-    
+
     const fakeHost = `cpe-${Math.floor(Math.random()*99999)}.${proveedor.toLowerCase()}.uy`
     const fakeApiKey = `uy_${Math.random().toString(36).substring(2,18)}`
 
     const zonas = [
-      "Zona Roja", "Sector Residencial", "Área Urbana",
-      "Zona Portuaria", "Barrio Norte", "Sector Oeste",
-      "Zona Industrial"
+      "Zona Urbana", "Barrio Norte", "Barrio Sur", 
+      "Centro", "Área Metropolitana", "Sector Residencial",
+      "Zona Industrial", "Zona Costera"
     ]
-    const zona = zonas[Math.floor(Math.random()*zonas.length)]
 
+    const zona = zonas[Math.floor(Math.random() * zonas.length)]
 
-    // --- Informe ---
+    // --- INFORME ---
     const informe =
 `🛰️ **INFORME TÉCNICO — URUGUAY**
 Fecha: ${new Date().toLocaleString()}
@@ -83,13 +96,13 @@ ${proveedor}
 🖥️ **Host asignado**
 ${fakeHost}
 
-🔑 **API Key (enmascarada)**
+🔑 **API Key (parcialmente oculta)**
 ${fakeApiKey}
 
 📍 **Geolocalización aproximada**
 ${depto} — Uruguay
 ━━━━━━━━━━━━━━━━━━
-⚠️ *Este informe es real.*
+⚠️ *Informe generado automáticamente. Todos los datos son ficticios.*
 `
 
     await conn.sendMessage(m.chat, { text: informe, mentions: [who] })
@@ -100,7 +113,7 @@ ${depto} — Uruguay
   }
 }
 
-// Loader universal compatible
+// Loader universal
 handler.command = ['doxuy', 'dox', 'uruguay']
 handler.help = ['doxuy @usuario']
 handler.tags = ['owner']
