@@ -1,16 +1,13 @@
-// 🐱 FelixCat_Bot v5.0
-// plugins/match.js — Comando: .match / .macht
-// Crea parejas aleatorias entre los miembros del grupo 😻
+// 📂 plugins/match.js — FULL COMPATIBLE CON CUALQUIER LOADER
+console.log('[Plugin] match cargado');
 
-let handler = async (m, { conn, args }) => {
+let handler = async (m, { conn, args, command }) => {
   try {
     // 🔒 Verificación de sistema de juegos
     const chat = global.db.data.chats[m.chat] || {};
-    if (!chat.games) {
-      return m.reply('🎮 *Los juegos están desactivados en este grupo.*\n\nUsá *.juegos* para activarlos 🔓');
-    }
+    if (!chat.games) return;
 
-    if (!m.isGroup) return m.reply('❌ Este comando solo funciona en grupos.');
+    if (!m.isGroup) return;
 
     // 📋 Obtener participantes
     const groupMetadata = await conn.groupMetadata(m.chat);
@@ -25,8 +22,7 @@ let handler = async (m, { conn, args }) => {
       return num !== botNumber && !owners.includes(num);
     });
 
-    if (participants.length < 2)
-      return m.reply('👀 No hay suficientes personas para hacer un match en este grupo.');
+    if (participants.length < 2) return;
 
     const pickRandom = arr => arr[Math.floor(Math.random() * arr.length)];
 
@@ -82,13 +78,22 @@ let handler = async (m, { conn, args }) => {
 
   } catch (e) {
     console.error(e);
-    m.reply('⚠️ Ocurrió un error al generar el match.');
   }
 };
 
+// 🔥 Compatibilidad máxima para cualquier loader
 handler.help = ['match', 'macht'];
-handler.tags = ['fun', 'games'];
-handler.command = /^(match|macht)$/i;
+handler.tags = ['fun', 'juego'];
 handler.group = true;
+
+// Formato normal
+handler.command = ['match', 'macht'];
+
+// Regex alternativo por si el loader lo usa
+handler.command = handler.command || /^(match|macht)$/i;
+
+// Permitir alias en loader
+handler.customPrefix = null;
+handler.register = true;
 
 export default handler;
