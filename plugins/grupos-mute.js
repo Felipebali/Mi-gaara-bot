@@ -1,62 +1,58 @@
 // 📂 plugins/grupos-mute.js — Gaara-Ultra-MD
-// Mute + Unmute + Auto-delete con sistema 100% funcional
+// Mute + Unmute + Auto-delete (handler.before REAL)
 
 let mutedUsers = new Set()
 
-let handler = async (m, { conn, isAdmin, isOwner, isBotAdmin, command }) => {
+// ==========================================
+//   BORRADO AUTOMÁTICO — SE EJECUTA PRIMERO
+// ==========================================
+let before = async (m, { conn, isBotAdmin }) => {
+    try {
+        if (!m.isGroup) return
 
-    // ==========================================
-    //   AUTO-BORRAR MENSAJES DE USUARIOS MUTEADOS
-    // ==========================================
-    if (mutedUsers.has(m.sender)) {
+        const sender = m.sender || m.participant
 
-        // El bot debe ser admin para borrar
-        if (!isBotAdmin) return
+        if (mutedUsers.has(sender)) {
 
-        try {
+            if (!isBotAdmin) return  // El bot debe ser admin
+
             await conn.sendMessage(m.chat, {
                 delete: {
                     remoteJid: m.chat,
                     fromMe: false,
                     id: m.key.id,
-                    participant: m.key.participant || m.participant || m.sender
+                    participant: m.key.participant || sender
                 }
             })
-        } catch (e) {
-            console.log("❌ Error borrando mensaje de usuario muteado:", e)
         }
-        return
-    }
 
-    // ==========================================
-    //   VALIDACIONES BÁSICAS
-    // ==========================================
+    } catch (e) {
+        console.log("Error borrando mensaje de muteado:", e)
+    }
+    return true
+}
+
+// ==========================================
+//   COMANDO MUTE / UNMUTE
+// ==========================================
+let handler = async (m, { conn, isAdmin, isOwner, isBotAdmin, command }) => {
     if (!m.isGroup) return
-    if (!isAdmin && !isOwner) return  
+    if (!isAdmin && !isOwner) return
     if (!["mute", "unmute"].includes(command)) return
 
-    // ==========================================
-    //   OBTENER USUARIO
-    // ==========================================
-    let who = m.mentionedJid?.[0] || (m.quoted?.sender ? m.quoted.sender : null)
-    if (!who) return m.reply("⚠️ Debes mencionar o citar un usuario.")
+    let who = m.mentionedJid?.[0] || m.quoted?.sender
+    if (!who) return m.reply("⚠️ Menciona o responde a un usuario.")
 
-    // ==========================================
-    //   PROTEGER OWNERS
-    // ==========================================
     const owners = [
         "59896026646@s.whatsapp.net",
         "59898719147@s.whatsapp.net"
     ]
 
     if (owners.includes(who))
-        return m.reply("❌ No puedes mutear o desmutear a un *owner*.")
+        return m.reply("❌ No puedes mutear a un owner.")
 
     let tag = "@" + who.split("@")[0]
 
-    // ==========================================
-    //   MUTE
-    // ==========================================
     if (command === "mute") {
         mutedUsers.add(who)
         return conn.sendMessage(m.chat, {
@@ -65,16 +61,11 @@ let handler = async (m, { conn, isAdmin, isOwner, isBotAdmin, command }) => {
         })
     }
 
-    // ==========================================
-    //   UNMUTE
-    // ==========================================
     if (command === "unmute") {
-
         if (!mutedUsers.has(who))
             return m.reply("⚠️ Ese usuario no estaba muteado.")
 
         mutedUsers.delete(who)
-
         return conn.sendMessage(m.chat, {
             text: `🔊 *Usuario desmuteado:* ${tag}`,
             mentions: [who]
@@ -82,10 +73,11 @@ let handler = async (m, { conn, isAdmin, isOwner, isBotAdmin, command }) => {
     }
 }
 
+handler.before = before
 handler.help = ["mute @usuario", "unmute @usuario"]
 handler.tags = ["group"]
 handler.command = ["mute", "unmute"]
-handler.group = true
 handler.admin = true
+handler.group = true
 
 export default handler
