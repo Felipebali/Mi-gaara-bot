@@ -23,8 +23,11 @@ if (!global.db.data.users) global.db.data.users = {};
 if (!global.db.data.users[target]) global.db.data.users[target] = { mute: false };  
 
 const userData = global.db.data.users[target];  
-let who = target; // ← agregado para usar who.split("@")[0]
+let who = target; // Para la mención clickeable
 
+// ===================================
+// 🔇 MUTE
+// ===================================
 if (command === 'mute') {  
   if (userData.mute === true) throw '🍭 *Este usuario ya ha sido mutado*';  
 
@@ -34,19 +37,7 @@ if (command === 'mute') {
     message: {  
       locationMessage: {  
         name: '𝗨𝘀𝘂𝗮𝗿𝗶𝗼 mutado',  
-        jpegThumbnail: thumbnail,  
-        vcard: [  
-          'BEGIN:VCARD',  
-          'VERSION:3.0',  
-          'N:;Unlimited;;;',  
-          'FN:Unlimited',  
-          'ORG:Unlimited',  
-          'item1.TEL;waid=19709001746:+1 (970) 900-1746',  
-          'item1.X-ABLabel:Unlimited',  
-          'X-WA-BIZ-DESCRIPTION:ofc',  
-          'X-WA-BIZ-NAME:Unlimited',  
-          'END:VCARD'  
-        ].join('\n')  
+        jpegThumbnail: thumbnail  
       }  
     },  
     participant: '0@s.whatsapp.net'  
@@ -54,17 +45,17 @@ if (command === 'mute') {
 
   userData.mute = true;  
 
-  // 🔇 MENSAJE CON LA MENCIÓN QUE PEDISTE
-  await conn.reply(
-    m.chat,
-    `*🔇 Usuario muteado*\n@${who.split("@")[0]} ha sido silenciado y sus mensajes serán eliminados.`,
-    quotedMsg,
-    null,
-    { mentions: [who] }
-  );  
+  await conn.sendMessage(m.chat, {
+    text: `*🔇 Usuario muteado*\n@${who.split("@")[0]} ha sido silenciado y sus mensajes serán eliminados.`,
+    mentions: [who]
+  }, { quoted: quotedMsg });
+
   return;  
 }  
 
+// ===================================
+// 🔊 UNMUTE
+// ===================================
 if (command === 'unmute') {  
   if (userData.mute === false) throw '🍭 *Este usuario no ha sido mutado*';  
 
@@ -73,20 +64,8 @@ if (command === 'unmute') {
     key: { participants: '0@s.whatsapp.net', fromMe: false, id: 'unmute-id' },  
     message: {  
       locationMessage: {  
-        name: '𝗨𝘀𝘂𝗮𝗿𝗶𝗼 demutado',  
-        jpegThumbnail: thumbnail,  
-        vcard: [  
-          'BEGIN:VCARD',  
-          'VERSION:3.0',  
-          'N:;Unlimited;;;',  
-          'FN:Unlimited',  
-          'ORG:Unlimited',  
-          'item1.TEL;waid=19709001746:+1 (970) 900-1746',  
-          'item1.X-ABLabel:Unlimited',  
-          'X-WA-BIZ-DESCRIPTION:ofc',  
-          'X-WA-BIZ-NAME:Unlimited',  
-          'END:VCARD'  
-        ].join('\n')  
+        name: '𝗨𝘀𝘂𝗮𝗿𝗶𝗼 desmuteado',  
+        jpegThumbnail: thumbnail  
       }  
     },  
     participant: '0@s.whatsapp.net'  
@@ -94,14 +73,11 @@ if (command === 'unmute') {
 
   userData.mute = false;  
 
-  // 🔊 MENSAJE CON LA MENCIÓN QUE PEDISTE
-  await conn.reply(
-    m.chat,
-    `*🔊 Usuario desmuteado*\n@${who.split("@")[0]} ahora puede hablar nuevamente.`,
-    quotedMsg,
-    null,
-    { mentions: [who] }
-  );  
+  await conn.sendMessage(m.chat, {
+    text: `*🔊 Usuario desmuteado*\n@${who.split("@")[0]} ahora puede hablar nuevamente.`,
+    mentions: [who]
+  }, { quoted: quotedMsg });
+
   return;  
 }  
 
@@ -113,10 +89,16 @@ try { await conn.reply(m.chat, `🌿 Error: ${e}`, m); } catch (__) {}
 }
 };
 
+// ===================================
+// CONFIG DEL COMANDO
+// ===================================
 handler.command = ['mute', 'unmute'];
 handler.admin = true;
 handler.botAdmin = true;
 
+// ===================================
+// AUTO-DELETE SI ESTÁ MUTEADO
+// ===================================
 handler.before = async (m, { conn, isAdmin, isBotAdmin }) => {
 try {
 if (!m.isGroup) return;
