@@ -1,5 +1,7 @@
-// plugins/trivia.js
-let activeTrivia = {}
+// 📂 plugins/trivia.js — FULL COMPATIBLE CON CUALQUIER LOADER
+console.log('[Plugin] trivia cargado');
+
+let activeTrivia = {};
 
 const preguntasTrivia = [
   { pregunta: "¿Cuál es el planeta más grande del sistema solar?", opciones: ["Marte", "Júpiter", "Saturno", "Neptuno"], respuesta: "Júpiter" },
@@ -22,52 +24,66 @@ const preguntasTrivia = [
   { pregunta: "¿Cuál es el país más poblado del mundo?", opciones: ["China", "India", "Estados Unidos", "Indonesia"], respuesta: "India" },
   { pregunta: "¿Qué órgano bombea la sangre en el cuerpo?", opciones: ["Pulmón", "Corazón", "Riñón", "Hígado"], respuesta: "Corazón" },
   { pregunta: "¿Qué instrumento mide la temperatura?", opciones: ["Barómetro", "Termómetro", "Higrómetro", "Anemómetro"], respuesta: "Termómetro" }
-]
+];
 
-let handler = async (m, { conn }) => {
-  const chat = global.db.data.chats[m.chat] || {}
+let handler = async (m, { conn, command }) => {
+  try {
+    const chat = global.db.data.chats[m.chat] || {};
 
-  // 🟡 Si los juegos están desactivados
-  if (!chat.games) {
-    return conn.reply(m.chat, "🚫 Los mini-juegos están desactivados en este grupo.\nUsa *.juegos* para activarlos.", m)
+    // 🔒 Juegos activados?
+    if (!chat.games) return;
+
+    if (activeTrivia[m.chat]) return;
+
+    const pregunta = preguntasTrivia[Math.floor(Math.random() * preguntasTrivia.length)];
+    const texto = `🎯 *Trivia de Conocimiento* 🎯\n\n${pregunta.pregunta}\n\n${pregunta.opciones.map((o, i) => `${i + 1}) ${o}`).join('\n')}\n\n📝 *Responde escribiendo el nombre completo de la respuesta.*`;
+
+    await conn.reply(m.chat, texto, m);
+    activeTrivia[m.chat] = { ...pregunta };
+
+    // ⏳ Tiempo límite
+    activeTrivia[m.chat].timeout = setTimeout(() => {
+      if (activeTrivia[m.chat]) {
+        conn.reply(m.chat, `⏰ Tiempo agotado. La respuesta correcta era: *${pregunta.respuesta}*.`);
+        delete activeTrivia[m.chat];
+      }
+    }, 30000);
+  } catch (err) {
+    console.error(err);
   }
+};
 
-  if (activeTrivia[m.chat]) return conn.reply(m.chat, "❗ Ya hay una trivia en curso. Espera a que termine.", m)
-
-  const pregunta = preguntasTrivia[Math.floor(Math.random() * preguntasTrivia.length)]
-  const texto = `🎯 *Trivia de Conocimiento* 🎯\n\n${pregunta.pregunta}\n\n${pregunta.opciones.map((o, i) => `${i + 1}) ${o}`).join('\n')}\n\n📝 *Responde escribiendo el nombre completo de la respuesta.*`
-
-  await conn.reply(m.chat, texto, m)
-  activeTrivia[m.chat] = { ...pregunta }
-
-  // ⏳ Tiempo límite
-  activeTrivia[m.chat].timeout = setTimeout(() => {
-    if (activeTrivia[m.chat]) {
-      conn.reply(m.chat, `⏰ Tiempo agotado. La respuesta correcta era: *${pregunta.respuesta}*.`)
-      delete activeTrivia[m.chat]
-    }
-  }, 30000)
-}
-
-handler.command = /^trivia$/i
-handler.group = true
-export default handler
-
-// 📩 Captura las respuestas de los usuarios
+// Captura las respuestas de los usuarios
 handler.all = async function (m) {
-  const conn = global.conn
-  if (!m.text || !activeTrivia[m.chat]) return
-  const juego = activeTrivia[m.chat]
+  const conn = global.conn;
+  if (!m.text || !activeTrivia[m.chat]) return;
+  const juego = activeTrivia[m.chat];
 
-  const respuestaUsuario = m.text.trim().toLowerCase()
-  const respuestaCorrecta = juego.respuesta.toLowerCase()
+  const respuestaUsuario = m.text.trim().toLowerCase();
+  const respuestaCorrecta = juego.respuesta.toLowerCase();
 
-  // Si la respuesta coincide
   if (respuestaUsuario === respuestaCorrecta) {
-    clearTimeout(juego.timeout)
-    await conn.reply(m.chat, `✅ ¡Correcto, ${m.pushName || "usuario"}! La respuesta era *${juego.respuesta}*.`)
-    delete activeTrivia[m.chat]
+    clearTimeout(juego.timeout);
+    await conn.reply(m.chat, `✅ ¡Correcto, ${m.pushName || "usuario"}! La respuesta era *${juego.respuesta}*.`);
+    delete activeTrivia[m.chat];
   } else {
-    await conn.reply(m.chat, `❌ Incorrecto, ${m.pushName || "usuario"}. Intenta de nuevo.`)
+    await conn.reply(m.chat, `❌ Incorrecto, ${m.pushName || "usuario"}. Intenta de nuevo.`);
   }
-}
+};
+
+// 🔥 Compatibilidad máxima para cualquier loader
+handler.help = ['trivia'];
+handler.tags = ['fun', 'juego'];
+handler.group = true;
+
+// Formato normal
+handler.command = ['trivia'];
+
+// Regex alternativo por si el loader lo usa
+handler.command = handler.command || /^trivia$/i;
+
+// Permitir alias en loader
+handler.customPrefix = null;
+handler.register = true;
+
+export default handler;
