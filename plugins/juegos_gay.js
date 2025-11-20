@@ -1,31 +1,29 @@
-// 📂 plugins/gay.js — FelixCat_Bot 🌈
-let handler = async (m, { conn }) => {
+// 📂 plugins/gay.js — FULL COMPATIBLE CON CUALQUIER LOADER
+console.log('[Plugin] gay cargado');
+
+let handler = async (m, { conn, command }) => {
   try {
     const chatData = global.db.data.chats[m.chat] || {};
 
-    // ⚠️ Verificar si los juegos están activados
-    if (!chatData.games) {
-      return await conn.sendMessage(
-        m.chat,
-        { text: '❌ Los mini-juegos están desactivados en este chat. Usa .juegos para activarlos.' },
-        { quoted: m }
-      );
-    }
+    // 🔒 Juegos activados?
+    if (!chatData.games) return; // <- si juegos desactivados, no hace nada
 
-    // 🎯 Determinar objetivo (prioridad: citado > mencionado > autor)
-    let who = m.quoted ? m.quoted.sender : (m.mentionedJid && m.mentionedJid[0]) || m.sender;
+    // 🎯 Detectar objetivo del test
+    let who = m.quoted
+      ? m.quoted.sender
+      : (m.mentionedJid && m.mentionedJid[0]) || m.sender;
+
     let simpleId = who.split("@")[0];
-    let name = conn.getName ? conn.getName(who) : simpleId;
 
-    // 🎲 Calcular porcentaje aleatorio
+    // 🎰 Porcentaje random
     let porcentaje = Math.floor(Math.random() * 101);
 
-    // 🏳️‍🌈 Crear barra visual
+    // 🏳️‍🌈 Barra visual
     const totalBars = 10;
     const filledBars = Math.round(porcentaje / 10);
     const bar = '🏳️‍🌈'.repeat(filledBars) + '⬜'.repeat(totalBars - filledBars);
 
-    // 💬 Frases según porcentaje
+    // 💬 Frase por nivel
     let frase;
     if (porcentaje >= 95) frase = '🏳️‍🌈 Nivel divino: sos el arcoíris encarnado.';
     else if (porcentaje >= 80) frase = '💅 Fabulos@ total: brillás más que RuPaul.';
@@ -36,19 +34,21 @@ let handler = async (m, { conn }) => {
     else if (porcentaje >= 5) frase = '😎 Hetero con un toque de glitter.';
     else frase = '🗿 Puro, sin rastros de arcoíris.';
 
-    // 🧾 Armar mensaje final
-    let msg = `
-🏳️‍🌈 *TEST GAY 2.1* 🏳️‍🌈
+    // 🔥 Título según comando
+    const titulo = '🏳️‍🌈 *TEST GAY 2.1* 🏳️‍🌈';
 
-👤 *Usuario:* @${simpleId}
-📊 *Nivel de gay:* ${porcentaje}%
+    // 📩 Mensaje final
+    let msg = `
+${titulo}
+
+👤 Usuario: @${simpleId}
+📊 Nivel de gay: ${porcentaje}%
 
 ${bar}
 
 💬 ${frase}
 `.trim();
 
-    // 📤 Enviar con mención
     await conn.sendMessage(m.chat, { text: msg, mentions: [who] }, { quoted: m });
 
   } catch (err) {
@@ -57,9 +57,19 @@ ${bar}
   }
 };
 
+// 🔥 Compatibilidad máxima para cualquier loader
 handler.help = ['gay'];
 handler.tags = ['fun', 'juego'];
-handler.command = /^gay$/i;
 handler.group = true;
+
+// Formato normal
+handler.command = ['gay'];
+
+// Regex alternativo por si el loader lo usa
+handler.command = handler.command || /^gay$/i;
+
+// Permitir alias en loader
+handler.customPrefix = null;
+handler.register = true; // loader strict mode fix
 
 export default handler;
