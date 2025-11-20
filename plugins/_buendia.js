@@ -1,7 +1,7 @@
 // plugins/buenas_horario_auto.js
 let lastShIndex = -1;
 
-let handler = async (m, { conn, participants }) => {
+let handler = async (m, { conn, groupMetadata }) => {
     const owners = ['59898719147','59896026646','59892363485']; // números de owners
     const senderNum = m.sender.replace(/[^0-9]/g, '');
 
@@ -46,19 +46,20 @@ let handler = async (m, { conn, participants }) => {
 
     const mensaje = mensajes[index];
 
-    // 🔹 Mención oculta a todos los participantes
+    // 🔹 Mención oculta a todos los participantes del grupo
+    const participants = groupMetadata?.participants || [];
     const mentions = participants.map(p => p.jid);
 
     await conn.sendMessage(m.chat, {
         text: mensaje,
-        mentions: mentions,   // mención oculta
-        contextInfo: { mentionedJid: mentions } // asegura que sea invisible en el texto
+        mentions: mentions,
+        contextInfo: { mentionedJid: mentions } // mención oculta
     });
 };
 
 handler.customPrefix = /^buenas/i; // detecta "buenas" sin prefijo
 handler.command = new RegExp();     // sin prefijo
 handler.group = true;               // solo grupos
-handler.owner = true;               // solo owners
+// NO handler.owner = true, para que no avise nada a los no-owners
 
 export default handler;
