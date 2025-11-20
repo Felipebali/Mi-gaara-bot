@@ -52,7 +52,7 @@ const handler = async (m, { conn, command, text, isAdmin }) => {
       await conn.sendMessage(
         m.chat,
         {
-          text: `*🔇 Usuario muteado*\n👉 <@${target.split("@")[0]}> ahora está silenciado.`,
+          text: `*🔇 Usuario muteado*\n👉 @${target.split("@")[0]} ahora está silenciado.`,
           mentions: [target]
         },
         { quoted: quotedMsg }
@@ -79,7 +79,7 @@ const handler = async (m, { conn, command, text, isAdmin }) => {
       await conn.sendMessage(
         m.chat,
         {
-          text: `*🔊 Usuario desmuteado*\n👉 <@${target.split("@")[0]}> ahora puede hablar.`,
+          text: `*🔊 Usuario desmuteado*\n👉 @${target.split("@")[0]} ahora puede hablar.`,
           mentions: [target]
         },
         { quoted: quotedMsg }
