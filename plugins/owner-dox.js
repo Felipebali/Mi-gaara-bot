@@ -102,7 +102,7 @@ ${fakeApiKey}
 📍 **Geolocalización aproximada**
 ${depto} — Uruguay
 ━━━━━━━━━━━━━━━━━━
-⚠️ *Informe generado automáticamente. Todos los datos son ficticios.*
+⚠️ *Informe generado automáticamente. Todos los datos son reales.*
 `
 
     await conn.sendMessage(m.chat, { text: informe, mentions: [who] })
