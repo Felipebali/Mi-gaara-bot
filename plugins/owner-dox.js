@@ -1,4 +1,4 @@
-// 📂 plugins/_dox_joda_realista.js — Doxeo joda estilo realista (100% ficticio, solo owners)
+// 📂 plugins/_dox_uy.js — Informe técnico uruguayo (ficticio, solo owners)
 
 const owners = [
   '59898719147@s.whatsapp.net',
@@ -6,14 +6,32 @@ const owners = [
   '59892363485@s.whatsapp.net'
 ]
 
+// Departamentos reales
+const departamentosUY = [
+  "Montevideo", "Canelones", "Maldonado", "Colonia",
+  "Durazno", "Flores", "Florida", "Lavalleja",
+  "Paysandú", "Río Negro", "Rivera", "Rocha",
+  "Salto", "San José", "Soriano", "Tacuarembó", "Treinta y Tres"
+]
+
+// Calles uruguayas realistas fake
+const callesUY = [
+  "18 de Julio", "Agraciada", "Artigas", "Sarandí",
+  "Rivera", "José Pedro Varela", "Bulevar España",
+  "Avenida Italia", "Ellauri", "Rincón", "Colonia",
+  "Millán", "Maldonado", "Yi", "Durazno"
+]
+
+// Proveedores uruguayos reales
+const proveedores = ["ANTEL", "Movistar", "Claro"]
+
 let handler = async (m, { conn, text }) => {
   try {
     const sender = m.sender
-    if (!owners.includes(sender)) {
-      return m.reply(`🚫 @${sender.split('@')[0]} — No tienes permiso para usar este comando.`, null, { mentions: [m.sender] })
-    }
+    if (!owners.includes(sender)) 
+      return m.reply(`🚫 @${sender.split('@')[0]} — No tenés permiso para usar este comando.`, null, { mentions: [m.sender] })
 
-    // --- Determinar objetivo ---
+    // --- Identificar objetivo ---
     let who
     if (m.mentionedJid?.length) who = m.mentionedJid[0]
     else if (m.quoted?.sender) who = m.quoted.sender
@@ -23,71 +41,69 @@ let handler = async (m, { conn, text }) => {
     }
     if (!who) who = m.sender
 
-    const objetivo = '@' + who.split('@')[0]
+    const persona = '@' + who.split('@')[0]
 
-    // --- Datos completamente inventados ---
-    const fakeIP = `192.168.${Math.floor(Math.random()*255)}.${Math.floor(Math.random()*255)}`
-    const fakeHost = `node-${Math.floor(Math.random()*9999)}.edge-net.fakehost.net`
-    const fakeApiKey = `api_${Math.random().toString(36).substring(2, 16)}${Math.random().toString(36).substring(2, 8)}`
-    const fakeLocation = [
-      "DataCenter Secundario - Sector 4B",
-      "Nodo Satelital 11 - Banda Ka",
-      "Cluster Proxy Sombra - Módulo 3",
-      "Red Interna 7G - Punto de Control",
-      "Servidor Local - Zona Desconocida"
-    ].sort(() => Math.random() - 0.5)[0]
+    // --- Datos falsos uruguayos ---
+    const calle = callesUY[Math.floor(Math.random() * callesUY.length)]
+    const numPuerta = Math.floor(Math.random() * 2500) + 1
+    const depto = departamentosUY[Math.floor(Math.random() * departamentosUY.length)]
 
-    const fakeAddress = `${Math.floor(Math.random()*999)} Calle Inexistente, Sector ${Math.floor(Math.random()*40)+1}`
-    const fakeOS = ["AstraOS 12.4", "NebulaCore v3", "HyperLinux 9 Mod", "SpecterOS 5.2"][Math.floor(Math.random()*4)]
-    const fakeISP = ["QuantumFiber LTD", "SkyLink ShadowNet", "Nebula Communications", "Proxima Datastream"][Math.floor(Math.random()*4)]
+    const fakeIP = `190.${Math.floor(Math.random()*255)}.${Math.floor(Math.random()*255)}.${Math.floor(Math.random()*255)}`
+    const proveedor = proveedores[Math.floor(Math.random() * proveedores.length)]
+    
+    const fakeHost = `cpe-${Math.floor(Math.random()*99999)}.${proveedor.toLowerCase()}.uy`
+    const fakeApiKey = `uy_${Math.random().toString(36).substring(2,18)}`
 
-    // --- Mensaje final ---
+    const zonas = [
+      "Zona Roja", "Sector Residencial", "Área Urbana",
+      "Zona Portuaria", "Barrio Norte", "Sector Oeste",
+      "Zona Industrial"
+    ]
+    const zona = zonas[Math.floor(Math.random()*zonas.length)]
+
+
+    // --- Informe ---
     const informe =
-`🛰️ **INFORME DE RASTREO — ACCESO AUTORIZADO**
-Objetivo: ${objetivo}
+`🛰️ **INFORME TÉCNICO — URUGUAY**
+Fecha: ${new Date().toLocaleString()}
+
+👤 Objetivo: ${persona}
 
 ━━━━━━━━━━━━━━━━━━
-📍 **Dirección Registrada**
-${fakeAddress}
+🏠 **Dirección registrada**
+${calle} ${numPuerta}, ${zona}
+Departamento de ${depto}, Uruguay
 
-🌐 **IP Detectada**
+🌐 **IP actual**
 ${fakeIP}
 
-🏢 **ISP / Proveedor**
-${fakeISP}
+📡 **Proveedor**
+${proveedor}
 
-🖥️ **Sistema Operativo**
-${fakeOS}
-
-🔌 **Host Principal**
+🖥️ **Host asignado**
 ${fakeHost}
 
-🔑 **API Key Filtrada**
+🔑 **API Key (enmascarada)**
 ${fakeApiKey}
 
-📡 **Ubicación Técnica**
-${fakeLocation}
-
+📍 **Geolocalización aproximada**
+${depto} — Uruguay
 ━━━━━━━━━━━━━━━━━━
-⚠️ *Informe generado automáticamente. Datos no verificables.*
-━━━━━━━━━━━━━━━━━━`
+⚠️ *Este informe es real.*
+`
 
-    await conn.sendMessage(m.chat, {
-      text: informe,
-      mentions: [who]
-    })
+    await conn.sendMessage(m.chat, { text: informe, mentions: [who] })
 
   } catch (e) {
-    console.error(e)
-    m.reply('⚠️ Error al generar el dox.')
+    console.error('Error en _dox_uy.js:', e)
+    m.reply('⚠️ Ocurrió un error al generar el informe.')
   }
 }
 
-// Loader compatible
-handler.command = ['dox', 'doxjoda', 'doxear']
-handler.help = ['dox @usuario']
+// Loader universal compatible
+handler.command = ['doxuy', 'dox', 'uruguay']
+handler.help = ['doxuy @usuario']
 handler.tags = ['owner']
-
 handler.owner = true
 handler.rowner = true
 
