@@ -1,122 +1,156 @@
-// 📂 plugins/_dox_uy.js — Informe técnico uruguayo (ficticio, realista, solo owners)
+// 📂 plugins/doxear.js — Dox falso super realista (solo owners)
 
 const owners = [
   '59898719147@s.whatsapp.net',
-  '59896026646@s.whatsapp.net',
-  '59892363485@s.whatsapp.net'
+  '59896026646@s.whatsapp.net'
 ]
 
-// Departamentos uruguayos con pesos (Montevideo + Maldonado prioridad alta)
-const departamentosUY = [
-  "Montevideo", "Montevideo", "Montevideo", "Montevideo", // Alta probabilidad
-  "Maldonado", "Maldonado", "Maldonado",                  // Alta probabilidad
-  "Canelones", "Canelones",
-  "Colonia",
-  "Durazno", "Flores", "Florida",
-  "Lavalleja",
-  "Paysandú",
-  "Río Negro",
-  "Rivera",
-  "Rocha",
-  "Salto",
-  "San José",
-  "Soriano",
-  "Tacuarembó",
-  "Treinta y Tres"
-]
+// Generador de IP de Uruguay
+function randomUruguayIP() {
+  const blocks = [
+    [45, 232],     // Antel
+    [168, 197],    // Claro
+    [186, 52],     // Movistar
+  ]
+  const b = blocks[Math.floor(Math.random() * blocks.length)]
+  return `${b[0]}.${b[1]}.${Math.floor(Math.random()*255)}.${Math.floor(Math.random()*255)}`
+}
 
-// Calles realistas uruguayas (inventadas pero creíbles)
-const callesUY = [
-  "18 de Julio", "Agraciada", "Artigas", "Sarandí",
-  "Rivera", "José Pedro Varela", "Bulevar España",
-  "Avenida Italia", "Ellauri", "Rincón", "Colonia",
-  "Millán", "Maldonado", "Yi", "Durazno"
-]
+// Direcciones falsas pero realistas de Uruguay
+function randomAddress() {
+  const dirs = [
+    "Av. Italia 4321, Montevideo",
+    "Bvar. Artigas 2567, Montevideo",
+    "Camino Maldonado 998, Montevideo",
+    "Calle 18 de Julio 1445, Maldonado",
+    "Av. Roosevelt 3200, Punta del Este",
+    "Av. Flores 765, Paysandú",
+    "Sarandí 1320, Salto",
+    "Av. Lavalleja 2101, Rivera"
+  ]
+  return dirs[Math.floor(Math.random() * dirs.length)]
+}
 
-// Proveedores uruguayos
-const proveedores = ["ANTEL", "Movistar", "Claro"]
+// Proveedores reales de Uruguay (falsificado)
+function randomISP() {
+  const isps = [
+    "Antel Fibra",
+    "Claro Uruguay LTE",
+    "Movistar Uruguay",
+    "Dedicado S.A.",
+    "Montevideo COMM"
+  ]
+  return isps[Math.floor(Math.random() * isps.length)]
+}
+
+// Departamentos para geolocalización
+function randomDept() {
+  const deps = [
+    "Montevideo",
+    "Maldonado",
+    "Canelones",
+    "San José",
+    "Colonia",
+    "Salto",
+    "Paysandú",
+    "Rivera",
+    "Florida",
+    "Rocha"
+  ]
+  return deps[Math.floor(Math.random() * deps.length)]
+}
 
 let handler = async (m, { conn, text }) => {
   try {
-    const sender = m.sender
-    if (!owners.includes(sender))
-      return m.reply(`🚫 @${sender.split('@')[0]} — No tenés permiso para usar este comando.`, null, { mentions: [m.sender] })
+    // Permisos
+    if (!owners.includes(m.sender))
+      return m.reply(`🚫 No tienes permiso para usar este comando.`)
 
-    // --- Identificar objetivo ---
     let who
-    if (m.mentionedJid?.length) who = m.mentionedJid[0]
-    else if (m.quoted?.sender) who = m.quoted.sender
-    else if (text) {
+    if (m.isGroup) {
+      if (m.mentionedJid?.length) who = m.mentionedJid[0]
+      else if (m.quoted?.sender) who = m.quoted.sender
+    }
+
+    if (!who && text) {
       const num = text.replace(/[^0-9]/g, '')
       if (num) who = `${num}@s.whatsapp.net`
     }
+
     if (!who) who = m.sender
 
-    const persona = '@' + who.split('@')[0]
+    // --- Ver si mandó ubicación real ---
+    let realLoc = null
 
-    // --- Datos falsos uruguayos ---
-    const calle = callesUY[Math.floor(Math.random() * callesUY.length)]
-    const numPuerta = Math.floor(Math.random() * 2500) + 1
+    if (m.quoted && m.quoted.message?.locationMessage) {
+      realLoc = {
+        lat: m.quoted.message.locationMessage.degreesLatitude,
+        lon: m.quoted.message.locationMessage.degreesLongitude,
+        name: m.quoted.message.locationMessage.name || "Ubicación enviada"
+      }
+    }
 
-    // PRIORIDAD a Montevideo / Maldonado
-    const depto = departamentosUY[Math.floor(Math.random() * departamentosUY.length)]
+    // Datos falsos
+    const fakeIP = randomUruguayIP()
+    const fakeAddress = randomAddress()
+    const fakeISP = randomISP()
+    const fakeDept = randomDept()
 
-    const fakeIP = `190.${Math.floor(Math.random()*255)}.${Math.floor(Math.random()*255)}.${Math.floor(Math.random()*255)}`
-    const proveedor = proveedores[Math.floor(Math.random() * proveedores.length)]
+    let texto
 
-    const fakeHost = `cpe-${Math.floor(Math.random()*99999)}.${proveedor.toLowerCase()}.uy`
-    const fakeApiKey = `uy_${Math.random().toString(36).substring(2,18)}`
+    if (realLoc) {
+      // ------ UBICACIÓN REAL ENVIADA ------
+      texto = 
+`📍 *INFORME DE GEOLOCALIZACIÓN — DOX MODE*
+──────────────────────────
+👤 *Objetivo:* @${who.split('@')[0]}
 
-    const zonas = [
-      "Zona Urbana", "Barrio Norte", "Barrio Sur", 
-      "Centro", "Área Metropolitana", "Sector Residencial",
-      "Zona Industrial", "Zona Costera"
-    ]
+📌 *Coordenadas reales detectadas:*
+• Latitud: ${realLoc.lat}
+• Longitud: ${realLoc.lon}
+• Punto: ${realLoc.name}
 
-    const zona = zonas[Math.floor(Math.random() * zonas.length)]
+🌐 *IP probable:* ${fakeIP}
+🏢 *Proveedor:* ${fakeISP}
+📡 *Antena conectada (${fakeDept}):* Sector LTE-UR-${Math.floor(Math.random()*999)}
 
-    // --- INFORME ---
-    const informe =
-`🛰️ **INFORME TÉCNICO — URUGUAY**
-Fecha: ${new Date().toLocaleString()}
+🏠 *Dirección estimada según triangulación:*
+${fakeAddress}
+──────────────────────────
+⚠️ Este dox es en un 89% real 🔒`
+    } else {
+      // ------ DOX FALSO COMPLETO ------
+      texto =
+`📍 *INFORME DE GEOLOCALIZACIÓN — DOX MODE*
+──────────────────────────
+👤 *Objetivo:* @${who.split('@')[0]}
 
-👤 Objetivo: ${persona}
+🌐 *IP:* ${fakeIP}
+🏢 *Proveedor:* ${fakeISP}
+📡 *Antena registrada en:* ${fakeDept}
 
-━━━━━━━━━━━━━━━━━━
-🏠 **Dirección registrada**
-${calle} ${numPuerta}, ${zona}
-Departamento de ${depto}, Uruguay
+🏠 *Dirección asociada:*
+${fakeAddress}
 
-🌐 **IP actual**
-${fakeIP}
+🗂️ *Host Reverse Lookup:* srv-${Math.floor(Math.random()*999)}.uy.net
+🔍 *API Response:* status=OK | data.match=TRUE(1)
+──────────────────────────
+⚠️ Dox en un 89% real.`
+    }
 
-📡 **Proveedor**
-${proveedor}
+    await conn.sendMessage(m.chat, {
+      text: texto,
+      mentions: [who]
+    })
 
-🖥️ **Host asignado**
-${fakeHost}
-
-🔑 **API Key (parcialmente oculta)**
-${fakeApiKey}
-
-📍 **Geolocalización aproximada**
-${depto} — Uruguay
-━━━━━━━━━━━━━━━━━━
-⚠️ *Informe generado automáticamente. Todos los datos son reales.*
-`
-
-    await conn.sendMessage(m.chat, { text: informe, mentions: [who] })
-
-  } catch (e) {
-    console.error('Error en _dox_uy.js:', e)
-    m.reply('⚠️ Ocurrió un error al generar el informe.')
+  } catch (err) {
+    console.error(err)
+    m.reply("⚠️ Error en el comando.")
   }
 }
 
-// Loader universal
-handler.command = ['doxuy', 'dox', 'uruguay']
-handler.help = ['doxuy @usuario']
-handler.tags = ['owner']
+handler.command = ["doxear"]
+handler.tags = ["owner"]
 handler.owner = true
 handler.rowner = true
 
