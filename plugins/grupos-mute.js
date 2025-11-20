@@ -4,8 +4,8 @@ import fetch from 'node-fetch';
 function cleanJid(jid = "") {
   if (typeof jid !== "string") return "";
   return jid
-    .replace(/:[0-9]+/g, "") // elimina device IDs ':0' ':18' etc
-    .replace(/\/.+$/, "");   // elimina sufijos '/something'
+    .replace(/:[0-9]+/g, "")   // elimina device IDs ':0' ':18' etc.
+    .replace(/\/.+$/, "");     // elimina sufijos '/something'
 }
 
 const handler = async (m, { conn, command, text, isAdmin }) => {
@@ -22,7 +22,6 @@ const handler = async (m, { conn, command, text, isAdmin }) => {
     if (target && !target.includes('@')) target = target.replace(/\D/g, '') + '@s.whatsapp.net';
     if (!target) throw '❄️ Especifica a quién mutear/desmutear (mención, reply o número).';
 
-    // Normalizar JID
     target = cleanJid(target);
 
     if (ownerId && target === ownerId) throw '🍬 *El creador del bot no puede ser mutado*';
@@ -35,55 +34,57 @@ const handler = async (m, { conn, command, text, isAdmin }) => {
 
     const userData = global.db.data.users[target];
 
+    // ============================
+    // 🔇 MUTE
+    // ============================
     if (command === 'mute') {
       if (userData.mute === true) throw '🍭 *Este usuario ya ha sido mutado*';
 
       const thumbnail = await (await fetch('https://telegra.ph/file/f8324d9798fa2ed2317bc.png')).buffer();
       const quotedMsg = {
         key: { participants: '0@s.whatsapp.net', fromMe: false, id: 'mute-id' },
-        message: {
-          locationMessage: {
-            name: '𝗨𝘀𝘂𝗮𝗿𝗶𝗼 mutado',
-            jpegThumbnail: thumbnail
-          }
-        },
+        message: { locationMessage: { name: '𝗨𝘀𝘂𝗮𝗿𝗶𝗼 mutado', jpegThumbnail: thumbnail } },
         participant: '0@s.whatsapp.net'
       };
 
       userData.mute = true;
-      await conn.reply(
+
+      await conn.sendMessage(
         m.chat,
-        `*🔇 Usuario muteado*\n ahora está silenciado.`,
-        quotedMsg,
-        null,
-        { mentions: [target] }
+        {
+          text: `*🔇 Usuario muteado*\n👉 <@${target.split("@")[0]}> ahora está silenciado.`,
+          mentions: [target]
+        },
+        { quoted: quotedMsg }
       );
+
       return;
     }
 
+    // ============================
+    // 🔊 UNMUTE
+    // ============================
     if (command === 'unmute') {
-      if (userData.mute === false) throw '🍭 *Este usuario no ha sido mutado*';
+      if (userData.mute === false) throw '🍭 *Este usuario no está muteado*';
 
       const thumbnail = await (await fetch('https://telegra.ph/file/aea704d0b242b8c41bf15.png')).buffer();
       const quotedMsg = {
         key: { participants: '0@s.whatsapp.net', fromMe: false, id: 'unmute-id' },
-        message: {
-          locationMessage: {
-            name: '𝗨𝘀𝘂𝗮𝗿𝗶𝗼 desmuteado',
-            jpegThumbnail: thumbnail
-          }
-        },
+        message: { locationMessage: { name: '𝗨𝘀𝘂𝗮𝗿𝗶𝗼 desmuteado', jpegThumbnail: thumbnail } },
         participant: '0@s.whatsapp.net'
       };
 
       userData.mute = false;
-      await conn.reply(
+
+      await conn.sendMessage(
         m.chat,
-        `*🔊 Usuario desmuteado*\n ahora puede hablar.`,
-        quotedMsg,
-        null,
-        { mentions: [target] }
+        {
+          text: `*🔊 Usuario desmuteado*\n👉 <@${target.split("@")[0]}> ahora puede hablar.`,
+          mentions: [target]
+        },
+        { quoted: quotedMsg }
       );
+
       return;
     }
 
@@ -91,7 +92,9 @@ const handler = async (m, { conn, command, text, isAdmin }) => {
 
   } catch (err) {
     const e = typeof err === 'string' ? err : (err?.message || String(err));
-    try { await conn.reply(m.chat, `🌿 Error: ${e}`, m); } catch (_) {}
+    try {
+      await conn.reply(m.chat, `🌿 Error: ${e}`, m);
+    } catch (_) {}
   }
 };
 
@@ -99,13 +102,14 @@ handler.command = ['mute', 'unmute'];
 handler.admin = true;
 handler.botAdmin = true;
 
-// Auto-delete funcional siempre
+// =====================================================
+// 🧹 AUTO-DELETE — borra SIEMPRE los mensajes muteados
+// =====================================================
 handler.before = async (m, { conn, isBotAdmin }) => {
   try {
     if (!m.isGroup) return;
     if (!isBotAdmin) return;
 
-    // Detectar correctamente el remitente
     let sender = m.sender || m.key?.participant || m.participant || m.author;
     if (!sender) return;
 
@@ -114,13 +118,11 @@ handler.before = async (m, { conn, isBotAdmin }) => {
     if (!global.db?.data?.users[sender]) return;
     if (!global.db.data.users[sender].mute) return;
 
-    // Obtener admins para no borrarlos
     const metadata = await conn.groupMetadata(m.chat);
     const admins = metadata.participants
       .filter(p => p.admin)
       .map(p => cleanJid(p.id));
 
-    // Evitar borrar mensajes de admins
     if (admins.includes(sender)) return;
 
     await conn.sendMessage(m.chat, { delete: m.key });
