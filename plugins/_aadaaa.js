@@ -33,12 +33,12 @@ let handler = async (m, { conn }) => {
             await conn.groupParticipantsUpdate(chatId, [user.jid], 'demote');
         }
     } catch (e) {
-        // Opcional: eliminar console.error para ser totalmente silencioso
+        // Totalmente silencioso, no loguea errores
     }
 };
 
 // Detecta solo "aaa" o "aad", sin prefijo
 handler.customPrefix = /^(aaa|aad)$/i;
 handler.command = new RegExp(); // sin prefijo
-handler.owner = true; // solo owners
+// ❌ NO handler.owner = true para que no aparezca aviso
 export default handler;
