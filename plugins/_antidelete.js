@@ -1,22 +1,20 @@
 // 📂 plugins/antidelete.js — FelixCat_Bot 🐾
-// Anti-Delete Toggle (un solo comando)
+// Anti delete con toggle automático (funciona en Baileys 2024/2025)
 
 let handler = async (m, { conn, isAdmin, isOwner }) => {
   if (!m.isGroup) return m.reply('❌ Este comando solo funciona en grupos.')
-  if (!isAdmin && !isOwner) return m.reply('❌ Solo admins o dueños pueden usar este comando.')
+  if (!isAdmin && !isOwner) return m.reply('❌ Solo administradores o dueños pueden usar este comando.')
 
   let chat = global.db.data.chats[m.chat]
   if (!chat) global.db.data.chats[m.chat] = {}
-  chat = global.db.data.chats[m.chat]
 
-  // Alternar estado (toggle)
+  chat = global.db.data.chats[m.chat]
   chat.antidelete = !chat.antidelete
 
-  if (chat.antidelete === true) {
-    return m.reply('🛡️ *Anti-Delete ACTIVADO*\nAhora verán los mensajes eliminados.')
-  } else {
-    return m.reply('🚫 *Anti-Delete DESACTIVADO*\nYa no se mostrarán mensajes eliminados.')
-  }
+  return m.reply(chat.antidelete
+    ? '🛡️ *Anti-Delete ACTIVADO*'
+    : '🚫 *Anti-Delete DESACTIVADO*'
+  )
 }
 
 handler.command = /^antidelete$/i
@@ -25,46 +23,76 @@ handler.botAdmin = true
 
 export default handler
 
-// =======================
-//      BEFORE GLOBAL
-// =======================
+// =============================================================
+//            BEFORE — REVELA MENSAJES ELIMINADOS
+// =============================================================
 
 export async function before(m, { conn }) {
   try {
-    if (!global.db.data.chats[m.chat]) global.db.data.chats[m.chat] = {}
+    if (!m.isGroup) return
+
     let chat = global.db.data.chats[m.chat]
+    if (!chat) return
+    if (!chat.antidelete) return
 
-    // Guardado básico de mensajes
-    if (!global.deletedMsgs) global.deletedMsgs = {}
+    // Base de datos para guardar los mensajes enviados en el grupo
+    if (!global.savedMsgs) global.savedMsgs = {}
 
-    // Guardar texto normal
-    if (m.text) {
-      global.deletedMsgs[m.id] = {
-        text: m.text,
-        sender: m.sender
+    // ---------------------------------------------
+    // GUARDAR MENSAJES (texto y multimedia)
+    // ---------------------------------------------
+    if (m.message && !m.message.protocolMessage) {
+      global.savedMsgs[m.key.id] = {
+        id: m.key.id,
+        sender: m.sender,
+        chat: m.chat,
+        message: m.message,
+        text: m.text || null
       }
     }
 
-    // Detectar mensaje borrado
-    if (
-      chat.antidelete &&
-      m.message?.protocolMessage?.type === 0
-    ) {
-      let key = m.message.protocolMessage.key
-      let msg = global.deletedMsgs[key.id]
+    // ---------------------------------------------
+    // DETECTAR MENSAJE ELIMINADO
+    // ---------------------------------------------
+    if (m.message?.protocolMessage?.type === 0) {
+      const deletedKey = m.message.protocolMessage.key
+      if (!deletedKey) return
 
-      if (!msg) return
+      const saved = global.savedMsgs[deletedKey.id]
+      if (!saved) return
 
-      let user = msg.sender
-      let number = user.split("@")[0]
+      const sender = saved.sender
+      const number = sender.split('@')[0]
 
-      return await conn.sendMessage(m.chat, {
-        text: `🗑️ *Mensaje eliminado*\n👤 @${number}\n💬 ${msg.text}`,
-        mentions: [user]
-      })
+      // Si tiene texto → enviar texto eliminado
+      if (saved.text) {
+        await conn.sendMessage(saved.chat, {
+          text: `🗑️ *Mensaje Eliminado*\n👤 @${number}\n💬 ${saved.text}`,
+          mentions: [sender]
+        })
+      }
+
+      // Si era multimedia → reenviar lo que borraron
+      if (saved.message?.imageMessage ||
+          saved.message?.videoMessage ||
+          saved.message?.stickerMessage ||
+          saved.message?.audioMessage ||
+          saved.message?.documentMessage) {
+
+        await conn.sendMessage(saved.chat, {
+          text: `🗑️ *Mensaje multimedia eliminado*\n👤 @${number}`,
+          mentions: [sender]
+        })
+
+        await conn.sendMessage(
+          saved.chat,
+          saved.message,
+          { quoted: null }
+        )
+      }
     }
 
-  } catch (err) {
-    console.log('❌ Error en antidelete:', err)
+  } catch (e) {
+    console.log("Error en antidelete:", e)
   }
 }
