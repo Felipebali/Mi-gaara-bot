@@ -1,5 +1,5 @@
 // 📂 plugins/antidelete.js — FelixCat_Bot 🐾
-// Anti delete con toggle automático (funciona en Baileys 2024/2025)
+// Anti Delete 100% funcional en Baileys 2024/2025
 
 let handler = async (m, { conn, isAdmin, isOwner }) => {
   if (!m.isGroup) return m.reply('❌ Este comando solo funciona en grupos.')
@@ -23,24 +23,21 @@ handler.botAdmin = true
 
 export default handler
 
-// =============================================================
-//            BEFORE — REVELA MENSAJES ELIMINADOS
-// =============================================================
 
+// =============================================================
+//         BEFORE — Guarda y detecta mensajes eliminados
+// =============================================================
 export async function before(m, { conn }) {
   try {
     if (!m.isGroup) return
-
     let chat = global.db.data.chats[m.chat]
-    if (!chat) return
-    if (!chat.antidelete) return
+    if (!chat || !chat.antidelete) return
 
-    // Base de datos para guardar los mensajes enviados en el grupo
     if (!global.savedMsgs) global.savedMsgs = {}
 
-    // ---------------------------------------------
-    // GUARDAR MENSAJES (texto y multimedia)
-    // ---------------------------------------------
+    // ------------------------------
+    // GUARDAR MENSAJES
+    // ------------------------------
     if (m.message && !m.message.protocolMessage) {
       global.savedMsgs[m.key.id] = {
         id: m.key.id,
@@ -51,33 +48,36 @@ export async function before(m, { conn }) {
       }
     }
 
-    // ---------------------------------------------
-    // DETECTAR MENSAJE ELIMINADO
-    // ---------------------------------------------
-    if (m.message?.protocolMessage?.type === 0) {
-      const deletedKey = m.message.protocolMessage.key
+    // ------------------------------
+    // DETECTAR DELETE (Baileys 2024/2025 usa type 1)
+    // ------------------------------
+    if (m.message?.protocolMessage?.type === 1) {
+
+      const deletedKey = m.message.protocolMessage.key  
       if (!deletedKey) return
 
       const saved = global.savedMsgs[deletedKey.id]
       if (!saved) return
 
       const sender = saved.sender
-      const number = sender.split('@')[0]
+      const number = sender.split("@")[0]
 
-      // Si tiene texto → enviar texto eliminado
+      // Si era texto
       if (saved.text) {
         await conn.sendMessage(saved.chat, {
-          text: `🗑️ *Mensaje Eliminado*\n👤 @${number}\n💬 ${saved.text}`,
+          text: `🗑️ *Mensaje eliminado*\n👤 @${number}\n💬 ${saved.text}`,
           mentions: [sender]
         })
       }
 
-      // Si era multimedia → reenviar lo que borraron
-      if (saved.message?.imageMessage ||
-          saved.message?.videoMessage ||
-          saved.message?.stickerMessage ||
-          saved.message?.audioMessage ||
-          saved.message?.documentMessage) {
+      // Si era multimedia
+      if (
+        saved.message?.imageMessage ||
+        saved.message?.videoMessage ||
+        saved.message?.audioMessage ||
+        saved.message?.stickerMessage ||
+        saved.message?.documentMessage
+      ) {
 
         await conn.sendMessage(saved.chat, {
           text: `🗑️ *Mensaje multimedia eliminado*\n👤 @${number}`,
@@ -90,9 +90,10 @@ export async function before(m, { conn }) {
           { quoted: null }
         )
       }
+
     }
 
   } catch (e) {
-    console.log("Error en antidelete:", e)
+    console.error("❌ Error AntiDelete:", e)
   }
 }
