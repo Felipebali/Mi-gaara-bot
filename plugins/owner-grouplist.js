@@ -6,31 +6,38 @@ const handler = async (m, { conn }) => {
       .filter(([jid, chat]) => jid.endsWith('@g.us') && chat.isChats);
 
     const totalGroups = groups.length;
+    const botJid = conn.decodeJid(conn.user.id);
 
     for (let i = 0; i < groups.length; i++) {
       const [jid] = groups[i];
 
-      // Obtiene metadata real
+      // Obtiene metadata
       const metadata = await conn.groupMetadata(jid).catch(() => null) || {};
+
       const participants = metadata.participants || [];
 
-      // Encuentra al bot dentro de los participantes
-      const botJid = conn.decodeJid(conn.user.id);
-      const bot = participants.find(p => conn.decodeJid(p.id) === botJid);
+      // Lista REAL de admins
+      const adminList = participants
+        .filter(p => p.admin || p.role === 'admin' || p.role === 'superadmin')
+        .map(p => conn.decodeJid(p.id));
 
-      // Verifica admin correctamente
-      const isBotAdmin = bot && (bot.admin === 'admin' || bot.admin === 'superadmin');
+      // Detecta admin correctamente
+      const isBotAdmin = adminList.includes(botJid);
 
-      // El bot está en el grupo?
-      const isParticipant = Boolean(bot);
+      // Detecta si el bot está en el grupo
+      const isParticipant = participants.some(p => conn.decodeJid(p.id) === botJid);
+
+      const link = isBotAdmin
+        ? 'https://chat.whatsapp.com/' + (await conn.groupInviteCode(jid).catch(() => '--- (Error) ---'))
+        : '--- (No admin) ---';
 
       txt += `*◉ Grupo ${i + 1}*
 *➤ Nombre:* ${metadata.subject || '(Sin nombre)'}
 *➤ ID:* ${jid}
 *➤ Admin:* ${isBotAdmin ? '✔ Sí' : '❌ No'}
 *➤ Estado:* ${isParticipant ? '👤 Participante' : '❌ Ex participante'}
-*➤ Total de Participantes:* ${participants.length}
-*➤ Link:* ${isBotAdmin ? 'https://chat.whatsapp.com/' + (await conn.groupInviteCode(jid).catch(() => '--- (Error) ---')) : '--- (No admin) ---'}
+*➤ Total Participantes:* ${participants.length}
+*➤ Link:* ${link}
 
 `;
     }
@@ -41,8 +48,8 @@ const handler = async (m, { conn }) => {
     );
 
   } catch (e) {
-    console.log('Error en listgroup:', e);
-    return m.reply('❌ Ocurrió un error obteniendo la lista de grupos.');
+    console.log('Error listgroup:', e);
+    return m.reply('❌ Error al obtener la lista de grupos.');
   }
 };
 
