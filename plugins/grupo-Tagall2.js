@@ -1,12 +1,16 @@
 // plugins/tagallT.js
 // Activador: letra "T" o "t" (sin prefijo)
-// SOLO OWNER puede activarlo
+// SOLO DUEÑOS ESPECÍFICOS pueden activarlo
 // Mención visible a un usuario al azar + mención oculta al resto
 
-let handler = async (m, { conn, groupMetadata, isOwner }) => {
+const OWNERS = ['59896026646@s.whatsapp.net', '59898719147@s.whatsapp.net']; // Tus owners
+
+let handler = async (m, { conn, groupMetadata }) => {
   try {
     if (!m.isGroup) return; // Solo grupos
-    if (!isOwner) return;   // ❌ SOLO OWNER PUEDE ACTIVARLO
+
+    const sender = m.sender || m.key?.participant;
+    if (!OWNERS.includes(sender)) return; // Ignorar todos los demás
 
     const texto = (m.text || '').trim();
     if (!texto || texto.toLowerCase() !== 't') return; // Activador: T o t
@@ -15,7 +19,7 @@ let handler = async (m, { conn, groupMetadata, isOwner }) => {
       .map(p => (conn.decodeJid ? conn.decodeJid(p.id) : p.id))
       .filter(Boolean);
 
-    if (participantes.length < 2) return; // No hay suficientes miembros
+    if (participantes.length < 2) return;
 
     const usuarioAzar = participantes[Math.floor(Math.random() * participantes.length)];
     const mencionesOcultas = participantes.filter(u => u !== usuarioAzar);
@@ -45,7 +49,5 @@ let handler = async (m, { conn, groupMetadata, isOwner }) => {
 handler.customPrefix = /^\s*t\s*$/i;
 handler.command = [''];
 handler.group = true;
-// 🔒 SOLO OWNER
-handler.owner = true;
 
 export default handler;
