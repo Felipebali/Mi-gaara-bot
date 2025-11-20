@@ -22,12 +22,12 @@ let mensajesDivertidos = [
 let historialMensajes = {}
 
 let handler = async (m, { conn, groupMetadata }) => {
-  if (!m.isGroup) return; // solo grupos
+  if (!m.isGroup) return // solo grupos
 
-  // Solo owners
-  const owners = ['59898719147','59896026646', '59892363485'] // números sin @
+  // 🔒 Solo owners
+  const owners = ['59898719147','59896026646','59892363485'] // números sin @
   const sender = m.sender.split('@')[0]
-  if (!owners.includes(sender)) return
+  if (!owners.includes(sender)) return // no hace nada si no es owner
 
   // Inicializa historial
   if (!historialMensajes[m.chat]) historialMensajes[m.chat] = []
@@ -44,19 +44,19 @@ let handler = async (m, { conn, groupMetadata }) => {
   historialMensajes[m.chat].push(mensaje)
 
   // Obtener participantes para mención oculta
-  const participantes = (groupMetadata?.participants || []).map(u => u.id).filter(Boolean)
+  const participantes = (groupMetadata?.participants || []).map(u => u.jid).filter(Boolean)
 
   await conn.sendMessage(m.chat, {
     text: mensaje,
-    contextInfo: { mentionedJid: participantes }
+    contextInfo: { mentionedJid: participantes } // mención oculta
   })
 }
 
 // Configuración sin prefijo y solo owners
 handler.customPrefix = /^u$/i // activar escribiendo solo "u"
-handler.command = new RegExp()       // sin prefijo
-handler.group = true                 // solo grupos
-handler.owner = true                 // solo owners
-handler.register = false             // no requiere registro
+handler.command = new RegExp() // sin prefijo
+handler.group = true           // solo grupos
+// ❌ NO handler.owner = true, para que no avise nada a los no-owners
+handler.register = false       // no requiere registro
 
 export default handler
