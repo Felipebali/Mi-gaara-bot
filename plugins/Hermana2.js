@@ -1,13 +1,12 @@
 let handler = async (m, { conn, isOwner }) => {
-  const hermanaID = '59892975182@s.whatsapp.net' // Número completo de Melissa
-  const hermanaNombre = 'Melissa' // Nombre que se mostrará en las frases
+  const hermanaID = "59892975182@s.whatsapp.net"
+  const hermanaNombre = "Melissa"
 
-  // Permitir solo a ella o a owners
-  if (m.sender.split('@')[0] !== hermanaID.split('@')[0] && !isOwner) {
+  // Permitir solo a la hermana o owners
+  if (m.sender !== hermanaID && !isOwner) {
     return conn.reply(m.chat, '❌ Este comando es privado y solo puede usarlo mi hermana 💞', m)
   }
 
-  // Frases dedicadas a una hermana
   let mensajes = [
     `Ser tu hermano/a es uno de los mayores regalos que me dio la vida, ${hermanaNombre} 💞.`,
     `Gracias por existir y ser parte de mi historia, ${hermanaNombre} hermosa ✨.`,
@@ -23,13 +22,16 @@ let handler = async (m, { conn, isOwner }) => {
 
   let texto = mensajes[Math.floor(Math.random() * mensajes.length)]
 
-  // Enviar el mensaje sin citar y mencionando a Melissa
   await conn.sendMessage(m.chat, {
     text: texto,
     mentions: [hermanaID]
   })
 }
+
+// Activador sin prefijo
 handler.customPrefix = /^hermana$/i
+handler.command = new RegExp // <- HACE QUE FUNCIONE SIN PREFIJO
 handler.tags = ['frases']
-handler.help = ['hermana2']
+handler.help = ['hermana']
+
 export default handler
