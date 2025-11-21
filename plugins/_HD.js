@@ -45,7 +45,7 @@ let handler = async (m, { conn, usedPrefix, command }) => {
 
     await conn.sendMessage(m.chat, {
       image: resultBuffer,
-      caption: `🍃 *𝙰𝚀𝚄𝙸 𝚃𝙸𝙴𝙽𝙴𝚂 𝚃𝚄 𝙸𝙼𝙰𝙶𝙴𝙽 𝙴𝙽 𝙷𝙳* 🚀\n> ${global.textbot}`.trim()
+      caption: `🍃 *𝙰𝚀𝚄𝙸 𝚃𝙸𝙴𝙽𝙴𝚂 𝚃𝚄 𝙸𝙼𝙰𝙶𝙴𝙽 𝙴𝙽 𝙷𝙳* 🚀\n>`.trim()
     }, { quoted: m })
 
     await conn.sendMessage(m.chat, { react: { text: '🚀', key: m.key } })
