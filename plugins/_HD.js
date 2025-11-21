@@ -12,7 +12,8 @@ let handler = async (m, { conn, usedPrefix, command }) => {
 
   try {
     await conn.sendMessage(m.chat, { react: { text: '🍃', key: m.key } })
-    conn.reply(m.chat, `*✧ Mejorando la calidad de la imagen....*`, m, rcanal)  
+    await conn.sendMessage(m.chat, { text: `*✧ Mejorando la calidad de la imagen....*`, quoted: m })  
+
     const media = await quoted.download()
     const ext = mime.split('/')[1]
     const filename = `upscaled_${Date.now()}.${ext}`
@@ -45,9 +46,10 @@ let handler = async (m, { conn, usedPrefix, command }) => {
     await conn.sendMessage(m.chat, {
       image: resultBuffer,
       caption: `🍃 *𝙰𝚀𝚄𝙸 𝚃𝙸𝙴𝙽𝙴𝚂 𝚃𝚄 𝙸𝙼𝙰𝙶𝙴𝙽 𝙴𝙽 𝙷𝙳* 🚀\n> ${global.textbot}`.trim()
-    }, { quoted: fkontak })
+    }, { quoted: m })
 
     await conn.sendMessage(m.chat, { react: { text: '🚀', key: m.key } })
+
   } catch (err) {
     await conn.sendMessage(m.chat, { react: { text: '❌', key: m.key } })
     m.reply(`❌ Ocurrio un error:\n${err.message || err}`)
@@ -59,28 +61,30 @@ handler.tags = ["tools"]
 handler.command = ["remini", "hd", "enhance"]
 
 export default handler
+
 async function remini(imageData, operation) {
   return new Promise(async (resolve, reject) => {
     const availableOperations = ["enhance", "recolor", "dehaze"];
-    if (availableOperations.includes(operation)) {
-      operation = operation;
-    } else {
-      operation = availableOperations[0];
-    }
+    if (!availableOperations.includes(operation)) operation = availableOperations[0];
+
     const baseUrl = "https://inferenceengine.vyro.ai/" + operation + ".vyro";
     const formData = new FormData();
     formData.append("image", Buffer.from(imageData), {filename: "enhance_image_body.jpg", contentType: "image/jpeg"});
     formData.append("model_version", 1, {"Content-Transfer-Encoding": "binary", contentType: "multipart/form-data; charset=utf-8"});
-    formData.submit({url: baseUrl, host: "inferenceengine.vyro.ai", path: "/" + operation, protocol: "https:", headers: {"User-Agent": "okhttp/4.9.3", Connection: "Keep-Alive", "Accept-Encoding": "gzip"}},
-      function (err, res) {
-        if (err) reject(err);
-        const chunks = [];
-        res.on("data", function (chunk) {chunks.push(chunk)});
-        res.on("end", function () {resolve(Buffer.concat(chunks))});
-        res.on("error", function (err) {
-        reject(err);
-        });
-      },
-    );
+
+    formData.submit({
+      url: baseUrl,
+      host: "inferenceengine.vyro.ai",
+      path: "/" + operation,
+      protocol: "https:",
+      headers: {"User-Agent": "okhttp/4.9.3", Connection: "Keep-Alive", "Accept-Encoding": "gzip"}
+    },
+    function (err, res) {
+      if (err) reject(err);
+      const chunks = [];
+      res.on("data", chunk => chunks.push(chunk))
+      res.on("end", () => resolve(Buffer.concat(chunks)))
+      res.on("error", err => reject(err))
+    })
   });
 }
