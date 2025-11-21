@@ -1,9 +1,7 @@
-// 📂 plugins/grupos-llamar.js — FelixCat_Bot 🐾
-// .llamar @usuario → llama 10 veces
-// .cancelar → corta la llamada de inmediato
+// 📂 plugins/_llamar.js — FelixCat_Bot 🐾
+// Comando .llamar solo owners + cancelar seguro
 
 const owners = ["59896026646@s.whatsapp.net", "59898719147@s.whatsapp.net"]
-
 let cancelCall = {}
 
 let handler = async (m, { conn, text, command }) => {
@@ -13,31 +11,50 @@ let handler = async (m, { conn, text, command }) => {
   // Solo owners siempre
   if (!owners.includes(sender)) return
 
-  // ===============================
-  //        COMANDO LLAMAR
-  // ===============================
+  // ==================================
+  //         CANCELAR
+  // ==================================
+  if (command === "cancelar") {
+    cancelCall[chatId] = true
+    return
+  }
+
+  // ==================================
+  //          LLAMAR
+  // ==================================
   if (command === "llamar") {
-    if (!m.isGroup) return m.reply("❌ Este comando solo funciona en grupos.")
+    if (!m.isGroup)
+      return m.reply("❌ Este comando solo funciona en grupos.")
 
-    const usuario = m.mentionedJid?.[0]
-    if (!usuario) return m.reply("⚠️ Debes mencionar a alguien.\nEjemplo: *.llamar @usuario*")
+    // Extraer JID del usuario mencionado
+    let usuario = (
+      m.mentionedJid && 
+      Array.isArray(m.mentionedJid) && 
+      m.mentionedJid[0]
+    ) ? m.mentionedJid[0] : null
 
+    // Validación fuerte
+    if (!usuario || typeof usuario !== "string" || !usuario.includes("@s.whatsapp.net"))
+      return m.reply("⚠️ Debes mencionar correctamente a un usuario.\nEjemplo: *.llamar @usuario*")
+
+    // Iniciar bandera de cancelación
     cancelCall[chatId] = false
 
-    m.reply(`📞 *Llamada iniciada a @${usuario.split('@')[0]}*\n🛑 Escribe *.cancelar* para detener.`, {
+    m.reply(`📞 *Llamada iniciada a @${usuario.split("@")[0]}*\n🛑 Escribe *.cancelar* para detener.`, {
       mentions: [usuario]
     })
 
+    // Enviar 10 menciones
     for (let i = 0; i < 10; i++) {
 
-      // Si se canceló →
+      // CANCELA SI EL OWNER LO ORDENA
       if (cancelCall[chatId]) {
         delete cancelCall[chatId]
         return m.reply("🛑 *Llamada cancelada.*")
       }
 
       await conn.sendMessage(chatId, {
-        text: `📞 *LLAMADA #${i+1}*\n➡️ <@${usuario.split('@')[0]}>`,
+        text: `📞 *LLAMADA #${i+1}*\n➡️ <@${usuario.split("@")[0]}>`,
         mentions: [usuario]
       })
 
@@ -47,18 +64,10 @@ let handler = async (m, { conn, text, command }) => {
     delete cancelCall[chatId]
     return
   }
-
-  // ===============================
-  //        COMANDO CANCELAR
-  // ===============================
-  if (command === "cancelar") {
-    cancelCall[chatId] = true
-    return
-  }
 }
 
-handler.help = ["llamar @usuario", "cancelar"]
-handler.tags = ["owner"]
 handler.command = /^(llamar|cancelar)$/i
+handler.tags = ["owner"]
+handler.help = ["llamar @usuario", "cancelar"]
 
-export default handler 
+export default handler
