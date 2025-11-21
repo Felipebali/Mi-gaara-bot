@@ -1,14 +1,8 @@
 // 📂 plugins/buscador_imagen.js — FelixCat-Bot
-// Buscador de imágenes estable usando image-search-google
+// Buscador de imágenes estable sin API Key
 
-import ImageSearch from 'image-search-google'
 import fetch from 'node-fetch'
-
-// 🔒 Configura tu API Key y Custom Search Engine ID
-const GOOGLE_API_KEY = 'TU_API_KEY'
-const GOOGLE_CSE_ID = 'TU_CSE_ID'
-
-const client = new ImageSearch(GOOGLE_API_KEY, GOOGLE_CSE_ID)
+import cheerio from 'cheerio'
 
 let handler = async (m, { conn, text }) => {
   if (!text) {
@@ -22,19 +16,32 @@ let handler = async (m, { conn, text }) => {
   try {
     await conn.sendMessage(m.chat, { react: { text: '🕒', key: m.key } })
 
-    const results = await client.search(text, { num: 10 })
-    if (!results || results.length === 0)
+    // 🔹 Buscar imágenes en Google
+    const query = encodeURIComponent(text)
+    const res = await fetch(`https://www.google.com/search?tbm=isch&q=${query}`, {
+      headers: { 'User-Agent': 'Mozilla/5.0' }
+    })
+    const html = await res.text()
+    const $ = cheerio.load(html)
+    const images = []
+    $('img').each((i, el) => {
+      const src = $(el).attr('src')
+      if (src && !src.startsWith('data:')) images.push(src)
+    })
+
+    if (images.length === 0) {
       return await conn.sendMessage(
         m.chat,
         { text: '⚠️ No se encontraron imágenes para tu búsqueda.' },
         { quoted: m }
       )
+    }
 
-    // Elegir una al azar
-    const image = results[Math.floor(Math.random() * results.length)]
+    // 🔹 Elegir una al azar
+    const image = images[Math.floor(Math.random() * images.length)]
 
-    // Descargar imagen
-    const response = await fetch(image.url)
+    // 🔹 Descargar imagen
+    const response = await fetch(image)
     const buffer = await response.arrayBuffer()
 
     await conn.sendMessage(m.chat, { react: { text: '🔍', key: m.key } })
