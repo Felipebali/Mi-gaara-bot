@@ -1,47 +1,47 @@
-// 📂 plugins/auto_insta.js — FelixCat_Bot 🐾
-// Promociona IG automáticamente cuando alguien manda un link,
-// pero solo 1 vez cada 10 horas por usuario.
+// 📂 plugins/auto_ig.js — FelixCat_Bot 🐾
+// Detecta links de Instagram y promociona SOLO 1 vez cada 10 horas por usuario.
+// Si vuelve a mandar IG antes → solo reacción 👑
+
+const igLinkRegex = /(https?:\/\/)?(www\.)?instagram\.com\/[^\s]+/i;
 
 let handler = async (m, { conn }) => {
-  const texto = m.text || ""
-  
-  // Detectar link de Instagram
-  const regexIG = /https?:\/\/(www\.)?instagram\.com\/[a-zA-Z0-9._%-]+/i
-  const match = texto.match(regexIG)
+  if (!m?.text) return;
+  if (!m.isGroup) return;
 
-  if (!match) return // si no es link de IG, ignorar
+  const texto = m.text;
+  if (!igLinkRegex.test(texto)) return; // si no es link IG, ignorar
 
-  const user = m.sender
-  const link = match[0]
+  const who = m.sender;
 
-  // Asegurar base de datos
-  global.db.data.users[user] = global.db.data.users[user] || {}
+  // ==== BASE DE DATOS DE COOLDOWN POR USUARIO ====
+  global.db.data.users[who] = global.db.data.users[who] || {};
+  const last = global.db.data.users[who].cooldown_ig || 0;
+  const now = Date.now();
+  const cooldown = 10 * 60 * 60 * 1000; // 10 horas
 
-  const lastUse = global.db.data.users[user].autoIG_last || 0
-  const now = Date.now()
-  const cooldown = 10 * 60 * 60 * 1000 // 10 horas
+  // ==== GRUPO: obtener participantes ====
+  const groupMetadata = await conn.groupMetadata(m.chat);
+  const allParticipants = groupMetadata.participants.map(p => p.id);
+  const hiddenMentions = allParticipants.filter(id => id !== who);
 
-  // Si está en cooldown → reaccionar solamente
-  if (now - lastUse < cooldown) {
-    return conn.sendMessage(m.chat, { react: { text: '⏳', key: m.key } })
+  // ==== COOLDOWN ACTIVO → SOLO REACCION ====
+  if (now - last < cooldown) {
+    return await conn.sendMessage(m.chat, { react: { text: '👑', key: m.key } });
   }
 
-  // Guardar nuevo tiempo
-  global.db.data.users[user].autoIG_last = now
+  // ==== ACTUALIZAR COOLDOWN ====
+  global.db.data.users[who].cooldown_ig = now;
 
-  // Mensaje de promoción
-  const mensajePromo = `
-📸 *¡Nueva promoción de Instagram!*  
-👤 Usuario: @${user.split("@")[0]}
-🔗 Enlace: ${link}
+  // ==== REACCIÓN IGUAL QUE TU ANTI-LINK ====
+  await conn.sendMessage(m.chat, { react: { text: '👑', key: m.key } });
 
-🔥 ¡Vayan a seguirlo!
-`
+  // ==== PROMOCIÓN IGUAL QUE TU ESTILO ANTI-LINK ====
+  await conn.sendMessage(m.chat, {
+    text: `📢 Atención equipo: @${who.split("@")[0]} compartió su Instagram.\n¡Dale follow y apoyemos su perfil! ✨`,
+    mentions: [who, ...hiddenMentions]
+  });
+};
 
-  await conn.sendMessage(m.chat, { text: mensajePromo })
-}
-
-handler.customPrefix = /https?:\/\/(www\.)?instagram\.com\//i
-handler.command = new RegExp // ← necesario para customPrefix sin prefijo
-handler.tags = ['promo']
-export default handler 
+handler.customPrefix = igLinkRegex;
+handler.command = new RegExp; // necesario para customPrefix sin prefijo
+export default handler;
