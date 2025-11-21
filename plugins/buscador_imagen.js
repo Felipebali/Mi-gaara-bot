@@ -1,8 +1,14 @@
 // 📂 plugins/buscador_imagen.js — FelixCat-Bot
-// Buscador de imágenes estable usando @bochilteam/scraper y fetch
+// Buscador de imágenes estable usando image-search-google
 
-import { googleImage } from '@bochilteam/scraper'
+import ImageSearch from 'image-search-google'
 import fetch from 'node-fetch'
+
+// 🔒 Configura tu API Key y Custom Search Engine ID
+const GOOGLE_API_KEY = 'TU_API_KEY'
+const GOOGLE_CSE_ID = 'TU_CSE_ID'
+
+const client = new ImageSearch(GOOGLE_API_KEY, GOOGLE_CSE_ID)
 
 let handler = async (m, { conn, text }) => {
   if (!text) {
@@ -14,28 +20,23 @@ let handler = async (m, { conn, text }) => {
   }
 
   try {
-    // 🔹 Reacción inicial
     await conn.sendMessage(m.chat, { react: { text: '🕒', key: m.key } })
 
-    // 🔹 Buscar imágenes
-    const results = await googleImage(text)
-    if (!results || results.length === 0) {
+    const results = await client.search(text, { num: 10 })
+    if (!results || results.length === 0)
       return await conn.sendMessage(
         m.chat,
         { text: '⚠️ No se encontraron imágenes para tu búsqueda.' },
         { quoted: m }
       )
-    }
 
-    // 🔹 Tomar una imagen aleatoria entre las primeras 20
-    const images = results.slice(0, 20)
-    const image = images[Math.floor(Math.random() * images.length)]
+    // Elegir una al azar
+    const image = results[Math.floor(Math.random() * results.length)]
 
-    // 🔹 Descargar la imagen como buffer
-    const response = await fetch(image.url || image)
+    // Descargar imagen
+    const response = await fetch(image.url)
     const buffer = await response.arrayBuffer()
 
-    // 🔹 Enviar imagen
     await conn.sendMessage(m.chat, { react: { text: '🔍', key: m.key } })
     await conn.sendMessage(
       m.chat,
