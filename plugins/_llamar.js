@@ -1,60 +1,61 @@
 // 📂 plugins/_llamar.js — FelixCat_Bot 🐾
-// Comando .llamar solo owners + cancelar seguro
+// SOLO OWNERS — Solo funciona con @mención REAL
 
 const owners = ["59896026646@s.whatsapp.net", "59898719147@s.whatsapp.net"]
+
 let cancelCall = {}
 
-let handler = async (m, { conn, text, command }) => {
+let handler = async (m, { conn, command }) => {
   const chatId = m.chat
   const sender = m.sender
 
-  // Solo owners siempre
+  // SOLO OWNERS
   if (!owners.includes(sender)) return
 
-  // ==================================
-  //         CANCELAR
-  // ==================================
+  // =============================
+  //        CANCELAR
+  // =============================
   if (command === "cancelar") {
     cancelCall[chatId] = true
     return
   }
 
-  // ==================================
-  //          LLAMAR
-  // ==================================
+  // =============================
+  //         LLAMAR
+  // =============================
   if (command === "llamar") {
-    if (!m.isGroup)
-      return m.reply("❌ Este comando solo funciona en grupos.")
 
-    // Extraer JID del usuario mencionado
-    let usuario = (
-      m.mentionedJid && 
-      Array.isArray(m.mentionedJid) && 
-      m.mentionedJid[0]
-    ) ? m.mentionedJid[0] : null
+    if (!m.isGroup) return m.reply("❌ Solo en grupos.")
+    
+    // SOLO MENCIONES
+    let usuario = null
 
-    // Validación fuerte
-    if (!usuario || typeof usuario !== "string" || !usuario.includes("@s.whatsapp.net"))
-      return m.reply("⚠️ Debes mencionar correctamente a un usuario.\nEjemplo: *.llamar @usuario*")
+    if (m.mentionedJid && Array.isArray(m.mentionedJid) && m.mentionedJid[0]) {
+      usuario = m.mentionedJid[0]
+    }
 
-    // Iniciar bandera de cancelación
+    // Si no hay mención → error y no sigue
+    if (!usuario || typeof usuario !== "string" || !usuario.endsWith("@s.whatsapp.net")) {
+      return m.reply("⚠️ Debes mencionar a un usuario con @.\nEjemplo:\n*.llamar @usuario*")
+    }
+
+    // Activar cancelación
     cancelCall[chatId] = false
 
-    m.reply(`📞 *Llamada iniciada a @${usuario.split("@")[0]}*\n🛑 Escribe *.cancelar* para detener.`, {
+    m.reply(`📞 *Llamando a @${usuario.split("@")[0]} x10*\n🛑 Para cancelar: *.cancelar*`, {
       mentions: [usuario]
     })
 
-    // Enviar 10 menciones
+    // 10 llamadas
     for (let i = 0; i < 10; i++) {
 
-      // CANCELA SI EL OWNER LO ORDENA
       if (cancelCall[chatId]) {
         delete cancelCall[chatId]
         return m.reply("🛑 *Llamada cancelada.*")
       }
 
       await conn.sendMessage(chatId, {
-        text: `📞 *LLAMADA #${i+1}*\n➡️ <@${usuario.split("@")[0]}>`,
+        text: `📞 *LLAMADA #${i + 1}*\n➡️ <@${usuario.split("@")[0]}>`,
         mentions: [usuario]
       })
 
