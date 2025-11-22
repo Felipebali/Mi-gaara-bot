@@ -1,45 +1,37 @@
-import fetch from "node-fetch"
+import fetch from 'node-fetch'
 
-let handler = async (m, { text }) => {
-  if (!text) return m.reply("🎵 Usa: .letra <canción>")
-
-  await m.react("🎧")
-
+let handler = async (m, { text, usedPrefix, command, conn }) => {
+  if (!text) return m.reply(`❀ Por favor, escribe el nombre de la canción para obtener la letra`)
   try {
-
-    // 1️⃣ Intentar con Lyrist (principal)
-    let url1 = `https://lyrist.vercel.app/api/${encodeURIComponent(text)}`
-    let res1 = await fetch(url1).catch(() => null)
-
-    if (res1 && res1.headers.get("content-type")?.includes("application/json")) {
-      let json1 = await res1.json()
-      if (json1?.lyrics) {
-        await m.react("✅")
-        return m.reply(`🎶 *${json1.title} - ${json1.artist}*\n\n${json1.lyrics}`)
-      }
+    await m.react('🕒')
+    let res = await fetch(`${global.APIs.delirius.url}/search/lyrics?query=${encodeURIComponent(text)}`)
+    if (!res.ok) throw new Error(`Error HTTP: ${res.status}`)
+    let json = await res.json()
+    if (!json.status || !json.data?.lyrics) {
+      await m.react('✖️')
+      return m.reply('ꕥ No se encontró la letra de la canción')
     }
 
-    // 2️⃣ Backup: Lyrics.ovh
-    let url2 = `https://api.lyrics.ovh/v1/${encodeURIComponent(text)}`
-    let res2 = await fetch(url2).catch(() => null)
+    let { title, artists, lyrics, image, url } = json.data
+    let caption = `❀ *Título:* ${title}\n○ *Artista:* ${artists}\n○ *Letra:*\n\n${lyrics}`
+    if (caption.length > 4000) caption = caption.slice(0, 3990) + '...'
+    caption += `\n\n↯ [Ver en Musixmatch](${url})`
 
-    if (res2 && res2.headers.get("content-type")?.includes("application/json")) {
-      let json2 = await res2.json()
-      if (json2?.lyrics) {
-        await m.react("✅")
-        return m.reply(`🎶 *${text}*\n\n${json2.lyrics}`)
-      }
-    }
+    await conn.sendMessage(m.chat, { image: { url: image }, caption, mentions: [m.sender] }, { quoted: m })
+    await m.react('✔️')
 
-    await m.react("❌")
-    return m.reply("❌ No encontré la letra. Intentá escribir también el artista.\nEj: `.letra así fue juan gabriel`")
-
-  } catch (e) {
-    console.error(e)
-    await m.react("⚠️")
-    return m.reply("⚠️ Error al obtener la letra.")
+  } catch (error) {
+    await m.react('✖️')
+    return conn.reply(
+      m.chat,
+      `⚠︎ Se ha producido un problema\n> Usa *${usedPrefix}report* para informarlo\n\n${(error && error.message) ? error.message.toString() : String(error)}`,
+      m
+    )
   }
 }
 
-handler.command = ["letra"]
+handler.command = ['lyrics']
+handler.help = ['lyrics']
+handler.tags = ['tools']
+
 export default handler
