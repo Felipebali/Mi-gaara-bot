@@ -1,42 +1,39 @@
-// plugins/letra.js — .letra (nombre de canción)
+// plugins/letra.js — Buscar letra de cualquier canción
 
-import fetch from "node-fetch"
+import fetch from 'node-fetch'
 
 let handler = async (m, { conn, text }) => {
-  if (!text) return m.reply("🎵 *Escribe el nombre de una canción.*\nEjemplo: *.letra despacito*")
-
-  await m.react("🎧")
+  if (!text) return m.reply(`🎵 *Usa:* .letra <nombre de la canción>`)
 
   try {
-    // 1️⃣ Buscar canción en Genius
-    const search = await fetch(`https://some-random-api.com/lyrics?title=${encodeURIComponent(text)}`)
-    const json = await search.json()
+    await m.react('🎧')
 
-    if (!json || !json.lyrics) {
-      await m.react("❌")
-      return m.reply("❌ *No encontré la letra.* Intenta con otro nombre.")
+    // Buscar letra en Lyrist
+    let api = `https://lyrist.vercel.app/api/${encodeURIComponent(text)}`
+    let res = await fetch(api)
+    let json = await res.json()
+
+    if (!json?.lyrics) {
+      await m.react('❌')
+      return m.reply(`❌ No encontré la letra de esa canción.\nProbá con otro nombre.`)
     }
 
-    const artista = json.author || "Artista desconocido"
-    const titulo = json.title || text
-    const letra = json.lyrics.substring(0, 6000) // evita overflow
-    const partes = letra.split("\n")
+    let msg = `🎼 *LETRA ENCONTRADA*\n\n` +
+              `💿 *${json?.title || "Título desconocido"}*\n` +
+              `👤 *${json?.artist || "Artista desconocido"}*\n\n` +
+              `${json.lyrics}`
 
-    await m.react("✅")
-
-    return conn.sendMessage(m.chat, {
-      text: `🎶 *${titulo} — ${artista}*\n\n${letra}`
-    }, { quoted: m })
-
+    await m.react('✅')
+    await conn.sendMessage(m.chat, { text: msg })
   } catch (e) {
-    console.log(e)
-    await m.react("⚠️")
-    return m.reply("⚠️ Error buscando la letra. Probá otra vez.")
+    console.error(e)
+    await m.react('⚠️')
+    m.reply("⚠️ Ocurrió un error obteniendo la letra.")
   }
 }
 
-handler.help = ["letra"]
-handler.tags = ["music"]
-handler.command = /^letra$/i
+handler.help = ["letra <canción>"]
+handler.tags = ["tools"]
+handler.command = ["letra"]
 
 export default handler
