@@ -1,42 +1,42 @@
-import fetch from "node-fetch";
+// plugins/letra.js — .letra (nombre de canción)
+
+import fetch from "node-fetch"
 
 let handler = async (m, { conn, text }) => {
+  if (!text) return m.reply("🎵 *Escribe el nombre de una canción.*\nEjemplo: *.letra despacito*")
+
+  await m.react("🎧")
+
   try {
-    if (!text) 
-      return m.reply("🎵 *Usá el comando así:*\n`.letra <nombre de la canción>`");
+    // 1️⃣ Buscar canción en Genius
+    const search = await fetch(`https://some-random-api.com/lyrics?title=${encodeURIComponent(text)}`)
+    const json = await search.json()
 
-    await m.react('🎼');
-
-    // Buscar la letra
-    const api = `https://api.lyrics.ovh/v1/${encodeURIComponent(text)}`;
-    const res = await fetch(api);
-
-    if (!res.ok) {
-      await m.react('❌');
-      return m.reply("❌ *No encontré la letra de esa canción.*\nIntentá con un nombre más específico.");
+    if (!json || !json.lyrics) {
+      await m.react("❌")
+      return m.reply("❌ *No encontré la letra.* Intenta con otro nombre.")
     }
 
-    const json = await res.json();
+    const artista = json.author || "Artista desconocido"
+    const titulo = json.title || text
+    const letra = json.lyrics.substring(0, 6000) // evita overflow
+    const partes = letra.split("\n")
 
-    if (!json.lyrics) {
-      await m.react('❌');
-      return m.reply("❌ No pude obtener la letra.");
-    }
+    await m.react("✅")
 
-    // Formato
-    const mensaje = `🎤 *Letra de:* _${text}_\n\n${json.lyrics}`;
-
-    m.reply(mensaje);
+    return conn.sendMessage(m.chat, {
+      text: `🎶 *${titulo} — ${artista}*\n\n${letra}`
+    }, { quoted: m })
 
   } catch (e) {
-    console.error(e);
-    await m.react('⚠️');
-    m.reply("⚠️ Ocurrió un error al obtener la letra.");
+    console.log(e)
+    await m.react("⚠️")
+    return m.reply("⚠️ Error buscando la letra. Probá otra vez.")
   }
-};
+}
 
-handler.command = ['letra'];
-handler.help = ['letra <canción>'];
-handler.tags = ['music'];
+handler.help = ["letra"]
+handler.tags = ["music"]
+handler.command = /^letra$/i
 
-export default handler; 
+export default handler
