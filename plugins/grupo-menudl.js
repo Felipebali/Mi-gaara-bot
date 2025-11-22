@@ -1,6 +1,13 @@
 let handler = async (m, { conn }) => {
     const mensaje = `
-╭━━〔 ⚡ FelixCat-Bot ⚡ 〕━━⬣
+╭━━〔 ⚡ *FelixCat-Bot* ⚡ 〕━━⬣
+┃ ✨ *YouTube Mejorado*
+┃
+┃ • .ytplay
+┃ • .ytaudio
+┃ • .ytvideo
+┃ • .ytplay2
+┃
 ┃ 📥 *Menú de Descargas*
 ┃
 ┃ • .facebook
@@ -8,8 +15,6 @@ let handler = async (m, { conn }) => {
 ┃ • .tiktok
 ┃ • .tiktoksearch
 ┃ • .spotify
-┃ • .play
-┃ • .play2
 ┃ • .ytmp3
 ┃ • .ytmp4
 ┃ • .mediafire
