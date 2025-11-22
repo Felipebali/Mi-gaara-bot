@@ -4,18 +4,11 @@ import yts from "yt-search";
 const youtubeRegexID = /(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/))([a-zA-Z0-9_-]{11})/;
 const cooldowns = {};
 const owners = ["59896026646@s.whatsapp.net", "59898719147@s.whatsapp.net"];
-const bannedArtists = ["anuel", "bad bunny", "maluma"];
 
 const handler = async (m, { conn, text, command }) => {
   try {
     if (!text?.trim())
       return conn.reply(m.chat, `⚽ *Por favor, ingresa el nombre o enlace del video.*`, m);
-
-    const artistCheck = bannedArtists.find(a => text.toLowerCase().includes(a));
-    if (artistCheck) {
-      await m.react('🤢'); 
-      await m.react('🤮'); 
-      await conn.reply(m.chat, `🤮 ¡Ew! Buscaste algo de ${artistCheck.toUpperCase()}… Sos gil o puto? 👀`, m);
     }
 
     const now = Date.now();
