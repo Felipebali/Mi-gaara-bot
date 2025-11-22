@@ -14,7 +14,7 @@ const handler = async (m, { conn, isOwner }) => {
     chat.nsfw = !chat.nsfw;
 
     // Mensaje de confirmación sin citar + reacción 🔞
-    await conn.sendMessage(m.chat, { text: `⚡️ La función *NSFW* se *${chat.nsfw ? 'activó' : 'desactivó'}* para este chat.` });
+    await conn.sendMessage(m.chat, { text: `⚡️ La función *Nsfw* se *${chat.nsfw ? 'activó' : 'desactivó'}* para este chat.` });
     await conn.sendMessage(m.chat, { react: { text: '🔞', key: m.key } });
 };
 
@@ -54,8 +54,8 @@ export async function before(m, { conn }) {
     return true; // Permite los demás comandos
 }
 
-handler.help = ['nsfw'];
+handler.help = ['nsfw', '+18'];
 handler.tags = ['owner'];
-handler.command = ['nsfw'];
+handler.command = ['nsfw', '+18'];
 
 export default handler;
