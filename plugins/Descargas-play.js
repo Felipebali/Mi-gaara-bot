@@ -2,13 +2,16 @@ import fetch from "node-fetch";
 import yts from "yt-search";
 
 const youtubeRegexID = /(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/))([a-zA-Z0-9_-]{11})/;
+
 const cooldowns = {};
+const warnings = {}; 
+const warningTimers = {}; // ← para resetear advertencias a los 3 min
 const owners = ["59896026646@s.whatsapp.net", "59898719147@s.whatsapp.net"];
 
-const handler = async (m, { conn, text, command }) => {
+
+const handler = async (m, { conn, text, command, isAdmin, isOwner }) => {
   try {
 
-    // VALIDACIÓN DE TEXTO
     if (!text?.trim()) {
       return conn.reply(m.chat, `⚽ *Por favor, ingresa el nombre o enlace del video.*`, m);
     }
@@ -16,18 +19,59 @@ const handler = async (m, { conn, text, command }) => {
     const now = Date.now();
     const lastUsed = cooldowns[m.sender] || 0;
     const waitTime = 2 * 60 * 1000;
-    const isOwner = owners.includes(m.sender);
+    const isOwnerUser = owners.includes(m.sender);
 
-    // COOL DOWN
-    if (!isOwner) {
+    // SISTEMA DE COOL DOWN + ADVERTENCIAS + EXPULSIÓN
+    if (!isOwnerUser) {
       if (now - lastUsed < waitTime) {
+
+        // Sumar advertencia
+        warnings[m.sender] = (warnings[m.sender] || 0) + 1;
+
+        // Reset automático en 3 minutos
+        if (warningTimers[m.sender]) clearTimeout(warningTimers[m.sender]);
+        warningTimers[m.sender] = setTimeout(() => {
+          warnings[m.sender] = 0;
+        }, 3 * 60 * 1000);
+
         const remaining = Math.ceil((waitTime - (now - lastUsed)) / 1000);
-        return conn.reply(m.chat, `⏳ Por favor espera ${remaining} segundos antes de usar otro video.`, m);
+
+        // Si llega a 5 advertencias → expulsión
+        if (warnings[m.sender] >= 5) {
+
+          if (m.isGroup) {
+            try {
+              await conn.sendMessage(m.chat, {
+                text: `🚫 *${warnings[m.sender]} advertencias acumuladas.*\n🔨 @${m.sender.split("@")[0]} será expulsado.`,
+                mentions: [m.sender]
+              });
+
+              await conn.groupParticipantsUpdate(m.chat, [m.sender], "remove");
+
+            } catch (e) {
+              return m.reply("❌ No pude expulsarlo. ¿Soy admin?");
+            }
+          }
+
+          warnings[m.sender] = 0;
+          clearTimeout(warningTimers[m.sender]);
+          return;
+        }
+
+        return conn.reply(
+          m.chat,
+          `⚠ *Advertencia ${warnings[m.sender]}/5*\n⏳ Aún debes esperar *${remaining} segundos* antes de pedir otra música.`,
+          m
+        );
       }
+
+      // Reset de cooldown y advertencias si lo usa correctamente
       cooldowns[m.sender] = now;
+      warnings[m.sender] = 0;
+      if (warningTimers[m.sender]) clearTimeout(warningTimers[m.sender]);
     }
 
-    // Rammstein easter egg
+    // Easter egg
     if (/rammstein/i.test(text)) {
       await m.react('🔥');
       await conn.reply(m.chat, '🇩🇪 *Deutschland über alles* ⚡', m);
@@ -35,7 +79,7 @@ const handler = async (m, { conn, text, command }) => {
 
     await m.react('🔎');
 
-    // BUSQUEDA / OBTENER VIDEO
+    // BUSCAR VIDEO
     const videoIdMatch = text.match(youtubeRegexID);
     const search = await yts(videoIdMatch ? 'https://youtu.be/' + videoIdMatch[1] : text);
 
@@ -49,13 +93,11 @@ const handler = async (m, { conn, text, command }) => {
     }
 
     const { title, thumbnail, timestamp, views, ago, url, author } = video;
-    const vistas = formatViews(views);
-    const canal = author?.name || 'Desconocido';
 
     const infoMessage = `
 🕸️ Titulo: ${title}
-🌿 Canal: ${canal}
-🍋 Vistas: ${vistas}
+🌿 Canal: ${author?.name || 'Desconocido'}
+🍋 Vistas: ${formatViews(views)}
 🍃 Duración: ${timestamp || 'Desconocido'}
 📆 Publicado: ${ago || 'Desconocido'}
 🚀 Enlace: ${url}`.trim();
@@ -106,7 +148,7 @@ const handler = async (m, { conn, text, command }) => {
         await m.react('🎶');
       } catch (e) {
         console.error(e);
-        return conn.reply(m.chat, '*⚠ No se pudo enviar el audio. Puede ser muy pesado o hubo un error en la API.*', m);
+        return conn.reply(m.chat, '⚠ No se pudo enviar el audio. Puede ser muy pesado o hubo un error en la API.', m);
       }
     }
 
@@ -155,7 +197,6 @@ const handler = async (m, { conn, text, command }) => {
       }
     }
 
-    // COMANDO NO RECONOCIDO
     else {
       return conn.reply(m.chat, '✧ Comando no reconocido.', m);
     }
@@ -172,7 +213,7 @@ handler.help = ['ytplay', 'ytaudio', 'ytvideo', 'ytplay2'];
 handler.tags = ['descargas'];
 export default handler;
 
-// FORMATO VISTAS
+
 function formatViews(views) {
   if (views === undefined) return "No disponible";
   if (views >= 1e9) return `${(views / 1e9).toFixed(1)}B (${views.toLocaleString()})`;
