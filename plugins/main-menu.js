@@ -21,101 +21,101 @@ let handler = async (m, { conn }) => {
 ╰━━━━━━━━━━━━━━━━━━━━━━━╯
 
 🌦️ *Consultas rápidas:*
+┃ 🚨 *.reportar <motivo>* – Reporta algo indebido
 ┃ 🌍 *.clima <ciudad>* – Ver clima actual
 ┃ 🕐 *.hora* – Ver hora actual en el mundo
-┃ 🌐 *.traducir <idioma> <texto>* – Traduce mensajes o textos
+┃ 🌐 *.traducir <idioma> <texto>* – Traduce textos
 ┃ ✉️ *.sug* – Envía una sugerencia (1 cada 24h)
 ┗━━━━━━━━━━━━━━━━━━━━━┛
 
 ┏━━━ 📚 *TIPOS DE MENÚ* ━━━┓
-┃ 👤 *.menuser* – Comandos para todos los usuarios
+┃ 👤 *.menuser* – Comandos para todos
 ┃ 🎮 *.menuj* – Juegos y entretenimiento
 ┃ 💾 *.menudl* – Descargas y convertidores
 ┃ 👥 *.menugp* – Herramientas para grupos
-┃ 🔥 *.menuhot* – Humor y diversión +18 😳
+┃ 🔥 *.menuhot* – Humor y +18 😳
 ┃ 👑 *.menuowner* – Panel del dueño
 ┗━━━━━━━━━━━━━━━━━━━━━┛
 
 ┏━━━ 🛡️ *SEGURIDAD DEL GRUPO* ━━━┓
-┃ 🔗 *.antilink* – Bloquea enlaces externos
-┃ 🧩 *.antilink2* – Modo fuerte anti-links
-┃ 🚫 *.antispam* – Evita mensajes repetitivos
-┃ 🤖 *.antibot* – Expulsa otros bots
-┃ ☣️ *.antitoxico* – Frena lenguaje ofensivo
+┃ 🔗 *.antilink* – Bloquea enlaces
+┃ 🧩 *.antilink2* – Modo fuerte
+┃ 🚫 *.antispam* – Evita spam
+┃ 🤖 *.antibot* – Expulsa bots
+┃ ☣️ *.antitoxico* – Frena toxicidad
 ┃ 👻 *.antifake* – Bloquea números falsos
 ┗━━━━━━━━━━━━━━━━━━━━━┛
 
 ┏━━━ 📥 *DESCARGAS* ━━━┓
-┃ 📲 *.apk* – Descarga apps APK
-┃ 🎧 *.spotify* – Música desde Spotify
-┃ 📘 *.fb* – Videos de Facebook
-┃ 📸 *.ig* – Reels o fotos de Instagram
-┃ 📂 *.mediafire* – Descarga archivos
-┃ 🎵 *.tiktok* – Videos o sonidos de TikTok
+┃ 📲 *.apk* – Descarga apps
+┃ 🎧 *.spotify* – Música Spotify
+┃ 📘 *.fb* – Facebook
+┃ 📸 *.ig* – Instagram
+┃ 📂 *.mediafire* – Archivos
+┃ 🎵 *.tiktok* – TikTok
 ┗━━━━━━━━━━━━━━━━━━━━━┛
 
 ┏━━━ 🎶 *MÚSICA / VIDEOS* ━━━┓
-┃ 🎵 *.ytplay* – Música desde YouTube
+┃ 🎵 *.ytplay* – Música de YouTube
 ┃ 🎶 *.ytaudio* – Alternativa de audio
-┃ 🔊 *.ytmp3* – Convierte a audio
-┃ 🎬 *.ytvideo* – Descarga video completo
+┃ 🔊 *.ytmp3* – Convierte a MP3
+┃ 🎬 *.ytvideo* – Video completo
 ┃ 🎥 *.ytplay2* – Alternativa de video
 ┗━━━━━━━━━━━━━━━━━━━━━┛
 
 ┏━━━ 🔍 *BUSCADOR* ━━━┓
-┃ 🖼️ *.imagen* – Busca imágenes
-┃ 🌐 *.google* – Busca en Google
+┃ 🖼️ *.imagen* – Buscar imágenes
+┃ 🌐 *.google* – Buscar en Google
 ┗━━━━━━━━━━━━━━━━━━━━━┛
 
 ┏━━━ 🎮 *GAMES FELINOS* ━━━┓
-┃ 🕹️ *.juegos* – Activa/desactiva juegos
-┃ ❓ *.adivinanza* – Adivina la respuesta
-┃ 🏴 *.bandera* – Adivina la bandera
-┃ 🏛️ *.capital* – Capital del país
-┃ 🧠 *.pensar* – Desafío mental
-┃ 🔢 *.número* – Adivina el número
-┃ 🐈‍⬛ *.miau* – Respuesta gatuna
-┃ 🏆 *.top10* – Ranking aleatorio
-┃ 🍝 *.plato* – Adivina el plato
-┃ 💃 *.dance* – Haz bailar a alguien
-┃ 🎯 *.trivia* – Preguntas de cultura
-┃ 🧞 *.consejo* – Consejo aleatorio
-┃ 📱 *.fakewpp* – Crea perfil falso
-┃ 💔 *.infiel* – Test de infidelidad
-┃ 🦊 *.zorro/a* – Test del zorro
-┃ 🤡 *.cornudo/a* – Test de pareja
-┃ 💋 *.puta* – Versión traviesa 😳
-┃ 🏳️‍🌈 *.trolo* – Humor 💅
-┃ 💞 *.kiss* – Envía un beso 😽
+┃ 🕹️ *.juegos* – Activar juegos
+┃ ❓ *.adivinanza*
+┃ 🏴 *.bandera*
+┃ 🏛️ *.capital*
+┃ 🧠 *.pensar*
+┃ 🔢 *.número*
+┃ 🐈‍⬛ *.miau*
+┃ 🏆 *.top10*
+┃ 🍝 *.plato*
+┃ 💃 *.dance*
+┃ 🎯 *.trivia*
+┃ 🧞 *.consejo*
+┃ 📱 *.fakewpp*
+┃ 💔 *.infiel*
+┃ 🦊 *.zorro/a*
+┃ 🤡 *.cornudo/a*
+┃ 💋 *.kiss*
+┃ 💞 *.puta*
+┃ 🏳️‍🌈 *.trolo*
 ┗━━━━━━━━━━━━━━━━━━━━━┛
 
 ┏━━━ 🧰 *ADMINS / STAFF* ━━━┓
 ┃ 🗑️ *.del* – Borra mensaje citado
-┃ 👢 *.k* – Expulsa al usuario
+┃ 👢 *.k* – Expulsa usuario
 ┃ 🅿️ *.p* – Promueve a admin
 ┃ 🅳 *.d* – Quita admin
-┃ 🔇 *.mute* / *.unmute* – Silencia o reactiva a un usuario
-┃ 🚨 *.reportar* – Reporta usuario al staff
+┃ 🔇 *.mute* / *.unmute*
 ┃ 🏷️ *.tagall* – Menciona a todos
-┃ 📣 *.tag* – Menciona a uno
-┃ 🧠 *.ht* – Mención oculta (sin alerta)
-┃ ⚙️ *.g* – Cierra o abre el grupo
+┃ 📣 *.tag* – Mencionar uno
+┃ 🧠 *.ht* – Mención oculta
+┃ ⚙️ *.g* – Abrir / cerrar grupo
 ┗━━━━━━━━━━━━━━━━━━━━━┛
 
 ┏━━━ 👑 *OWNERS* ━━━┓
-┃ 🛡️ *.autoadmin* – Te da admin automático
-┃ 🎯 *.chetar* / *.deschetar* – Modo VIP
-┃ 🕵️ *.detectar* – Analiza actividad sospechosa
-┃ 🔗 *.join* – Une el bot a otro grupo
-┃ 📜 *.grouplist* – Lista de grupos activos
-┃ 🔁 *.resetuser* – Reinicia usuario
-┃ ✏️ *.setprefix* – Cambia prefijo
-┃ 🧹 *.resetprefix* – Restaura prefijo
-┃ 🔄 *.restart* – Reinicia el bot
-┃ 💣 *.wipe* – Limpieza completa
-┃ 🪄 *.resetlink* – Restaura link del grupo
-┃ ⚙️ *.update* – Actualiza el bot
-┃ 👑 *.owner* – Info del creador
+┃ 🛡️ *.autoadmin*
+┃ 🎯 *.chetar* / *.deschetar*
+┃ 🕵️ *.detectar*
+┃ 🔗 *.join*
+┃ 📜 *.grouplist*
+┃ 🔄 *.resetuser*
+┃ ✏️ *.setprefix*
+┃ 🧹 *.resetprefix*
+┃ 🔁 *.restart*
+┃ 💣 *.wipe*
+┃ 🪄 *.resetlink*
+┃ ⚙️ *.update*
+┃ 👑 *.owner*
 ┗━━━━━━━━━━━━━━━━━━━━━┛
 
 🐾 *${botname}* siempre vigilante 😼  
