@@ -5,50 +5,46 @@ let handler = async (m, { conn, isAdmin, chat }) => {
     const autoFraseEstado = chatData.autoFrase ? '🟢 Activado' : '🔴 Desactivado';
 
     let menuText = `
-╭━━━┅┅ *🐾 MENÚ ADMINISTRADORES 🐾* ┅┅━━━╮
+╭━〔 *🐾 PANEL DE ADMINISTRADORES* 〕━╮
 ┃
-┃ 👑 *Gestión del grupo y miembros*
+┃ 👑 *Administradores*
+┃   • .p @user — Promover
+┃   • .d @user — Degradar
 ┃
-┃ 💠 *PROMOVER / DEGRADAR*
-┃  ├ 🐾 .p <@user> — Promover a admin 😺
-┃  └ 🐾 .d <@user> — Degradar admin 😿
+┃ 👥 *Gestión de Usuarios*
+┃   • .k @user — Expulsar
 ┃
-┃ 💠 *ELIMINAR USUARIOS*
-┃  ├ 🐾 .k <@user> — Expulsar usuario ✂️
-┃  └ 🐾  F — Expulsar un usuario al azar 🎯
+┃ 🔐 *Control del Grupo*
+┃   • .g — Abrir / Cerrar grupo
 ┃
-┃ 💠 *CERRAR / ABRIR GRUPO*
-┃  └ 🐾 .g — Alternar grupo 🔒 / 🔓
+┃ 🤫 *Silencios*
+┃   • .mute @user — Silenciar usuario
+┃   • .unmute @user — Quitar silencio
 ┃
-┃ 💠 *SILENCIAR / DESILENCIAR*
-┃  ├ 🐾 .mute <@user> — Silenciar 🤫
-┃  └ 🐾 .unmute <@user> — Desilenciar 🗣️
+┃ 📢 *Menciones*
+┃   • .tagall — Mención general
+┃   • .ht — Mención oculta
 ┃
-┃ 💠 *MENCIÓN GENERAL*
-┃  ├ 🐾 .tagall — Mencionar a todos 📣
-┃  ├ 🐾 .ht — Mención oculta 👻
-┃  └ 🐾  T — Ultra TagAll ⚔️ (sin prefijo)
+┃ 🧹 *Moderación*
+┃   • .del — Eliminar mensaje
 ┃
-┃ 💠 *BORRAR MENSAJES*
-┃  └ 🐾 .del — Elimina mensaje respondido ❌
+┃ ⚠️ *Advertencias*
+┃   • .warn @user — Advertir
+┃   • .unwarn @user — Quitar advertencia
+┃   • .warnlist — Ver advertidos
 ┃
-┃ 💠 *ADVERTENCIAS*
-┃  ├ 🐾 .warn @user — Dar advertencia ⚠️
-┃  ├ 🐾 .unwarn @user — Quitar advertencia 🟢
-┃  └ 🐾 .warnlist — Ver lista de advertidos 📋
+┃ 🧩 *Extras*
+┃   • AutoFrase: ${autoFraseEstado}
 ┃
-┃ 🧩 *Funciones extra:*
-┃  └ AutoFrase: ${autoFraseEstado}
-┃
-╰━━━━━━━━━━━━━━━━━━━━━━━━━━━╯
-🐱 *FelixCat_Bot* — Siempre atento 🐾
+╰━━━━━━━━━━━━━━━━━━━━━━━━━━╯
+🐱 *FelixCat_Bot* — Modo administrador activo 🛡️
     `;
 
     await conn.sendMessage(m.chat, { text: menuText.trim() }, { quoted: m });
 
   } catch (e) {
     console.error(e);
-    await m.reply('✖️ Error al mostrar el menú de grupo.');
+    await m.reply('✖️ Error al mostrar el menú de administradores.');
   }
 };
 
