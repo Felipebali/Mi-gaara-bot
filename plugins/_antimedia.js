@@ -3,29 +3,21 @@
 
 const owners = ["59896026646@s.whatsapp.net", "59898719147@s.whatsapp.net"];
 
-let handler = async (m, { conn, command }) => {
+let handler = async (m, { conn, isOwner }) => {
 
-  // ============================
-  //     ACTIVAR / DESACTIVAR
-  // ============================
-  if (command === "antimedia") {
-    if (!owners.includes(m.sender))
-      return m.reply("❌ Solo los dueños pueden activar o desactivar este sistema.");
+  const chat = global.db.data.chats[m.chat] || {};
 
-    const chat = global.db.data.chats[m.chat] || {};
+  chat.antiMedia = !chat.antiMedia;
+  global.db.data.chats[m.chat] = chat;
 
-    chat.antiMedia = !chat.antiMedia;
-    global.db.data.chats[m.chat] = chat;
-
-    await conn.sendMessage(m.chat, { 
-      text: `🖼️ *Anti Fotos/Videos* fue *${chat.antiMedia ? "activado" : "desactivado"}*.\n\n🔹 Cuando está activado, el bot elimina solo imágenes y videos automáticamente.` 
-    });
-
-    return;
-  }
-
-  return false;
+  await conn.sendMessage(m.chat, { 
+    text: `🖼️ *Anti Fotos/Videos* fue *${chat.antiMedia ? "activado" : "desactivado"}*.\n\n🔹 Cuando está activado, el bot elimina solo imágenes y videos automáticamente.` 
+  });
 };
+
+handler.help = ["antimedia"];
+handler.tags = ["grupo"];
+handler.command = /^antimedia$/i; // 👈 AHORA EL COMANDO FUNCIONA
 
 export default handler;
 
