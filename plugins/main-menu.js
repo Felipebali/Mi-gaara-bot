@@ -11,6 +11,12 @@ let handler = async (m, { conn }) => {
       hour12: false
     });
 
+    // Enviar la imagen antes del menú
+    await conn.sendMessage(m.chat, {
+      image: { url: 'http://imgfz.com/i/8DJf5qF.jpeg' },
+      caption: `🐾 *${botname}* te da la bienvenida!`
+    }, { quoted: m });
+
     let menu = `
 ╭━━━ ✨ *CENTRO FELINO* ✨ ━━━╮
 │ 😺 *${botname}* 😺
@@ -29,47 +35,47 @@ let handler = async (m, { conn }) => {
 ┗━━━━━━━━━━━━━━━━━━━━━┛
 
 ┏━━━ 📚 *TIPOS DE MENÚ* ━━━┓
-┃ 👤 *.menuser* – Comandos para todos
-┃ 🎮 *.menuj* – Juegos y entretenimiento
-┃ 💾 *.menudl* – Descargas y convertidores
-┃ 👥 *.menugp* – Herramientas para grupos
-┃ 🔥 *.menuhot* – Humor y +18 😳
-┃ 👑 *.menuowner* – Panel del dueño
+┃ 👤 *.menuser*
+┃ 🎮 *.menuj*
+┃ 💾 *.menudl*
+┃ 👥 *.menugp*
+┃ 🔥 *.menuhot*
+┃ 👑 *.menuowner*
 ┗━━━━━━━━━━━━━━━━━━━━━┛
 
 ┏━━━ 🛡️ *SEGURIDAD DEL GRUPO* ━━━┓
-┃ 🔗 *.antilink* – Bloquea enlaces
-┃ 🧩 *.antilink2* – Modo fuerte
-┃ 🚫 *.antispam* – Evita spam
-┃ 🤖 *.antibot* – Expulsa bots
-┃ ☣️ *.antitoxico* – Frena toxicidad
-┃ 👻 *.antifake* – Bloquea números falsos
+┃ 🔗 *.antilink*
+┃ 🧩 *.antilink2*
+┃ 🚫 *.antispam*
+┃ 🤖 *.antibot*
+┃ ☣️ *.antitoxico*
+┃ 👻 *.antifake*
 ┗━━━━━━━━━━━━━━━━━━━━━┛
 
 ┏━━━ 📥 *DESCARGAS* ━━━┓
-┃ 📲 *.apk* – Descarga apps
-┃ 🎧 *.spotify* – Música Spotify
-┃ 📘 *.fb* – Facebook
-┃ 📸 *.ig* – Instagram
-┃ 📂 *.mediafire* – Archivos
-┃ 🎵 *.tiktok* – TikTok
+┃ 📲 *.apk*
+┃ 🎧 *.spotify*
+┃ 📘 *.fb*
+┃ 📸 *.ig*
+┃ 📂 *.mediafire*
+┃ 🎵 *.tiktok*
 ┗━━━━━━━━━━━━━━━━━━━━━┛
 
 ┏━━━ 🎶 *MÚSICA / VIDEOS* ━━━┓
-┃ 🎵 *.ytplay* – Música de YouTube
-┃ 🎶 *.ytaudio* – Alternativa de audio
-┃ 🔊 *.ytmp3* – Convierte a MP3
-┃ 🎬 *.ytvideo* – Video completo
-┃ 🎥 *.ytplay2* – Alternativa de video
+┃ 🎵 *.ytplay*
+┃ 🎶 *.ytaudio*
+┃ 🔊 *.ytmp3*
+┃ 🎬 *.ytvideo*
+┃ 🎥 *.ytplay2*
 ┗━━━━━━━━━━━━━━━━━━━━━┛
 
 ┏━━━ 🔍 *BUSCADOR* ━━━┓
-┃ 🖼️ *.imagen* – Buscar imágenes
-┃ 🌐 *.google* – Buscar en Google
+┃ 🖼️ *.imagen*
+┃ 🌐 *.google*
 ┗━━━━━━━━━━━━━━━━━━━━━┛
 
 ┏━━━ 🎮 *GAMES FELINOS* ━━━┓
-┃ 🕹️ *.juegos* – Activar juegos
+┃ 🕹️ *.juegos*
 ┃ ❓ *.adivinanza*
 ┃ 🏴 *.bandera*
 ┃ 🏛️ *.capital*
@@ -91,15 +97,15 @@ let handler = async (m, { conn }) => {
 ┗━━━━━━━━━━━━━━━━━━━━━┛
 
 ┏━━━ 🧰 *ADMINS / STAFF* ━━━┓
-┃ 🗑️ *.del* – Borra mensaje citado
-┃ 👢 *.k* – Expulsa usuario
-┃ 🅿️ *.p* – Promueve a admin
-┃ 🅳 *.d* – Quita admin
+┃ 🗑️ *.del*
+┃ 👢 *.k*
+┃ 🅿️ *.p*
+┃ 🅳 *.d*
 ┃ 🔇 *.mute* / *.unmute*
-┃ 🏷️ *.tagall* – Menciona a todos
-┃ 📣 *.tag* – Mencionar uno
-┃ 🧠 *.ht* – Mención oculta
-┃ ⚙️ *.g* – Abrir / cerrar grupo
+┃ 🏷️ *.tagall*
+┃ 📣 *.tag*
+┃ 🧠 *.ht*
+┃ ⚙️ *.g*
 ┗━━━━━━━━━━━━━━━━━━━━━┛
 
 ┏━━━ 👑 *OWNERS* ━━━┓
@@ -120,9 +126,15 @@ let handler = async (m, { conn }) => {
 
 🐾 *${botname}* siempre vigilante 😼  
 ✨ _“Un maullido, una acción.”_
+
+📢 **Canal oficial:**  
+👉 https://whatsapp.com/channel/${encodeURIComponent("120363421977886516")}
 `;
 
+    // Enviar el menú
     await conn.reply(m.chat, menu.trim(), m);
+
+    // Reacción
     await conn.sendMessage(m.chat, { react: { text: '🐾', key: m.key } });
 
   } catch (err) {
