@@ -3,19 +3,12 @@ import uploadFile from '../lib/uploadFile.js'
 import { webp2png } from '../lib/webp2mp4.js'
 
 let handler = async (m, { conn, args }) => {
-  // --- NORMALIZA NÚMEROS ---
-  const owners = global.owner.map(o => o[0].replace(/[^0-9]/g, '')) // Solo números
-  const senderNumber = m.sender.replace(/[^0-9]/g, '') // Número del que envía
-
-  // --- SOLO OWNERS ---
-  if (!owners.includes(senderNumber)) {
-    await m.react('✖️')
-    return conn.reply(m.chat, '❌ Solo los *owners* pueden usar este comando.', m)
-  }
 
   let stiker = false
   let userId = m.sender
   let packstickers = global.db.data.users[userId] || {}
+
+  // Paquetes configurados del usuario o globales
   let texto1 = packstickers.text1 || global.packsticker
   let texto2 = packstickers.text2 || global.packsticker2
 
@@ -26,6 +19,7 @@ let handler = async (m, { conn, args }) => {
 
     if (/webp|image|video/g.test(mime) && q.download) {
 
+      // Limita duración del video
       if (/video/.test(mime) && (q.msg || q).seconds > 16)
         return conn.reply(m.chat, '❌ El video no puede durar más de *15 segundos*', m)
 
@@ -36,6 +30,7 @@ let handler = async (m, { conn, args }) => {
       stiker = await sticker(buffer, false, marca[0], marca[1])
 
     } else if (args[0] && isUrl(args[0])) {
+
       let buffer = await sticker(false, args[0], texto1, texto2)
       stiker = buffer
 
@@ -57,6 +52,7 @@ let handler = async (m, { conn, args }) => {
 handler.help = ['sticker']
 handler.tags = ['sticker']
 handler.command = ['s', 'sticker']
+// >> AHORA ES PARA TODOS <<
 handler.owner = false
 
 export default handler
