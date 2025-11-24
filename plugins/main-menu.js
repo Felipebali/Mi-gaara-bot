@@ -21,139 +21,57 @@ let handler = async (m, { conn }) => {
 ╰━━━━━━━━━━━━━━━━━━━━━━━╯
 
 🌦️ *Consultas rápidas:*
-┃ 🚨 *.reportar <motivo>* – Reporta algo indebido
-┃ 🌍 *.clima <ciudad>* – Ver clima actual
-┃ 🕐 *.hora* – Ver hora actual en el mundo
-┃ 🌐 *.traducir <idioma> <texto>* – Traduce textos
-┃ ✉️ *.sug* – Envía una sugerencia (1 cada 24h)
+┃ 🚨 *.reportar <motivo>*
+┃ 🌍 *.clima <ciudad>*
+┃ 🕐 *.hora*
+┃ 🌐 *.traducir <idioma> <texto>*
+┃ ✉️ *.sug*
 ┗━━━━━━━━━━━━━━━━━━━━━┛
 
-┏━━━ 📚 *TIPOS DE MENÚ* ━━━┓
-┃ 👤 *.menuser*
-┃ 🎮 *.menuj*
-┃ 💾 *.menudl*
-┃ 👥 *.menugp*
-┃ 🔥 *.menuhot*
-┃ 👑 *.menuowner*
-┗━━━━━━━━━━━━━━━━━━━━━┛
-
-┏━━━ 🛡️ *SEGURIDAD DEL GRUPO* ━━━┓
-┃ 🔗 *.antilink*
-┃ 🧩 *.antilink2*
-┃ 🚫 *.antispam*
-┃ 🤖 *.antibot*
-┃ ☣️ *.antitoxico*
-┃ 👻 *.antifake*
-┗━━━━━━━━━━━━━━━━━━━━━┛
-
-┏━━━ 📥 *DESCARGAS* ━━━┓
-┃ 📲 *.apk*
-┃ 🎧 *.spotify*
-┃ 📘 *.fb*
-┃ 📸 *.ig*
-┃ 📂 *.mediafire*
-┃ 🎵 *.tiktok*
-┗━━━━━━━━━━━━━━━━━━━━━┛
-
-┏━━━ 🎶 *MÚSICA / VIDEOS* ━━━┓
-┃ 🎵 *.ytplay*
-┃ 🎶 *.ytaudio*
-┃ 🔊 *.ytmp3*
-┃ 🎬 *.ytvideo*
-┃ 🎥 *.ytplay2*
-┗━━━━━━━━━━━━━━━━━━━━━┛
-
-┏━━━ 🔍 *BUSCADOR* ━━━┓
-┃ 🖼️ *.imagen*
-┃ 🌐 *.google*
-┗━━━━━━━━━━━━━━━━━━━━━┛
-
-┏━━━ 🎮 *GAMES FELINOS* ━━━┓
-┃ 🕹️ *.juegos*
-┃ ❓ *.adivinanza*
-┃ 🏴 *.bandera*
-┃ 🏛️ *.capital*
-┃ 🧠 *.pensar*
-┃ 🔢 *.número*
-┃ 🐈‍⬛ *.miau*
-┃ 🏆 *.top10*
-┃ 🍝 *.plato*
-┃ 💃 *.dance*
-┃ 🎯 *.trivia*
-┃ 🧞 *.consejo*
-┃ 📱 *.fakewpp*
-┃ 💔 *.infiel*
-┃ 🦊 *.zorro/a*
-┃ 🤡 *.cornudo/a*
-┃ 💋 *.kiss*
-┃ 💞 *.puta*
-┃ 🏳️‍🌈 *.trolo*
-┗━━━━━━━━━━━━━━━━━━━━━┛
-
-┏━━━ 🧰 *ADMINS / STAFF* ━━━┓
-┃ 🗑️ *.del*
-┃ 👢 *.k*
-┃ 🅿️ *.p*
-┃ 🅳 *.d*
-┃ 🔇 *.mute* / *.unmute*
-┃ 🏷️ *.tagall*
-┃ 📣 *.tag*
-┃ 🧠 *.ht*
-┃ ⚙️ *.g*
-┗━━━━━━━━━━━━━━━━━━━━━┛
-
-┏━━━ 👑 *OWNERS* ━━━┓
-┃ 🛡️ *.autoadmin*
-┃ 🎯 *.chetar* / *.deschetar*
-┃ 🕵️ *.detectar*
-┃ 🔗 *.join*
-┃ 📜 *.grouplist*
-┃ 🔄 *.resetuser*
-┃ ✏️ *.setprefix*
-┃ 🧹 *.resetprefix*
-┃ 🔁 *.restart*
-┃ 💣 *.wipe*
-┃ 🪄 *.resetlink*
-┃ ⚙️ *.update*
-┃ 👑 *.owner*
-┗━━━━━━━━━━━━━━━━━━━━━┛
-
-🐾 *${botname}* siempre vigilante 😼  
 ✨ _“Un maullido, una acción.”_
 `;
 
-    // Enviar TODO en un solo mensaje con botón
-    await conn.sendMessage(
-      m.chat,
-      {
-        image: { url: "http://imgfz.com/i/8DJf5qF.jpeg" },
-        caption: menu,
-        footer: "📢 Toca el botón para visitar el canal",
-        templateButtons: [
-          {
-            index: 1,
-            urlButton: {
-              displayText: "📢 VER CANAL",
-              url: "https://whatsapp.com/channel/120363421977886516"
-            }
-          }
-        ]
-      },
-      { quoted: m }
-    );
+    // ⚠️ BOTONES NUEVO FORMATO (FUNCIONA 2024/2025)
+    const msg = {
+      image: { url: "http://imgfz.com/i/8DJf5qF.jpeg" },
+      caption: menu,
+      buttons: [
+        {
+          buttonId: "canal",
+          buttonText: { displayText: "📢 VER CANAL" },
+          type: 1
+        }
+      ],
+      headerType: 4
+    };
+
+    await conn.sendMessage(m.chat, msg, { quoted: m });
+
+    // Respuesta cuando presionan el botón
+    conn.ev.on("messages.upsert", async ({ messages }) => {
+      let ms = messages[0];
+      if (!ms.message?.buttonsResponseMessage) return;
+
+      if (ms.message.buttonsResponseMessage.selectedButtonId === "canal") {
+        await conn.sendMessage(
+          ms.key.remoteJid,
+          { text: "📢 Canal oficial:\nhttps://whatsapp.com/channel/120363421977886516" }
+        );
+      }
+    });
 
     // Reacción
     await conn.sendMessage(m.chat, { react: { text: '🐾', key: m.key } });
 
   } catch (err) {
     console.error(err);
-    await conn.reply(m.chat, `❌ Error al mostrar el menú\n${err}`, m);
+    await conn.reply(m.chat, `❌ Error al mostrar el menú\n${err}`);
   }
 };
 
-handler.help = ['menu', 'menú', 'allmenu'];
-handler.tags = ['main'];
-handler.command = ['menu', 'menú', 'allmenu'];
+handler.help = ["menu"];
+handler.tags = ["main"];
+handler.command = ["menu", "menú", "allmenu"];
 
 export default handler;
 
