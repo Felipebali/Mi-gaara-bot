@@ -1,8 +1,8 @@
 // plugins/dar-quitar.js
 // Comandos: .dar / .quitar
 // Solo OWNER puede usarlos
-// .dar → Da admin a todos (excepto bot y owners)
-// .quitar → Quita admin a todos (excepto bot, owners y creador del grupo)
+
+console.log('[Plugin] dar-quitar cargado');
 
 const handler = async (m, { conn, command }) => {
   try {
@@ -14,7 +14,7 @@ const handler = async (m, { conn, command }) => {
       '59896026646@s.whatsapp.net',
       '59898719147@s.whatsapp.net'
     ];
-    const botNumber = '59892682421@s.whatsapp.net'; // ✅ tu bot
+    const botNumber = '59892682421@s.whatsapp.net'; // tu bot
 
     // --- INFO DEL GRUPO ---
     const group = await conn.groupMetadata(m.chat);
@@ -26,6 +26,7 @@ const handler = async (m, { conn, command }) => {
 
     // --- DAR ADMIN A TODOS ---
     if (command === 'dar') {
+
       const toPromote = members.filter(
         id => !admins.includes(id) &&
         id !== botNumber &&
@@ -37,7 +38,7 @@ const handler = async (m, { conn, command }) => {
 
       for (let id of toPromote) {
         await conn.groupParticipantsUpdate(m.chat, [id], 'promote');
-        await new Promise(res => setTimeout(res, 1000)); // delay para evitar bloqueo
+        await new Promise(res => setTimeout(res, 1000));
       }
 
       await conn.sendMessage(m.chat, {
@@ -48,6 +49,7 @@ const handler = async (m, { conn, command }) => {
 
     // --- QUITAR ADMIN A TODOS ---
     if (command === 'quitar') {
+
       const toDemote = participants
         .filter(p =>
           (p.admin === 'admin' || p.admin === 'superadmin') &&
@@ -81,8 +83,11 @@ const handler = async (m, { conn, command }) => {
 // Datos del comando
 handler.help = ['dar', 'quitar'];
 handler.tags = ['owner'];
-handler.command = /^(dar|quitar)$/i;
+
+// ✅ ARRAY para detección de comandos
+handler.command = ['dar', 'quitar'];
+
 handler.group = true;
-handler.rowner = true; // Solo los dueños del bot pueden usarlo
+handler.rowner = true; // solo owners reales del bot
 
 export default handler;
