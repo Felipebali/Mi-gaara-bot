@@ -11,12 +11,6 @@ let handler = async (m, { conn }) => {
       hour12: false
     });
 
-    // Enviar la imagen antes del menú
-    await conn.sendMessage(m.chat, {
-      image: { url: 'http://imgfz.com/i/8DJf5qF.jpeg' },
-      caption: `🐾 *${botname}* te da la bienvenida!`
-    }, { quoted: m });
-
     let menu = `
 ╭━━━ ✨ *CENTRO FELINO* ✨ ━━━╮
 │ 😺 *${botname}* 😺
@@ -126,13 +120,27 @@ let handler = async (m, { conn }) => {
 
 🐾 *${botname}* siempre vigilante 😼  
 ✨ _“Un maullido, una acción.”_
-
-📢 **Canal oficial:**  
-👉 https://whatsapp.com/channel/${encodeURIComponent("120363421977886516")}
 `;
 
-    // Enviar el menú
-    await conn.reply(m.chat, menu.trim(), m);
+    // Enviar TODO en un solo mensaje con botón
+    await conn.sendMessage(
+      m.chat,
+      {
+        image: { url: "http://imgfz.com/i/8DJf5qF.jpeg" },
+        caption: menu,
+        footer: "📢 Toca el botón para visitar el canal",
+        templateButtons: [
+          {
+            index: 1,
+            urlButton: {
+              displayText: "📢 VER CANAL",
+              url: "https://whatsapp.com/channel/120363421977886516"
+            }
+          }
+        ]
+      },
+      { quoted: m }
+    );
 
     // Reacción
     await conn.sendMessage(m.chat, { react: { text: '🐾', key: m.key } });
