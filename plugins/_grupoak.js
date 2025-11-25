@@ -1,5 +1,5 @@
 // 📂 plugins/alerta.js — FelixCat_Bot 🐾
-// Envía un mensaje a un grupo específico con mención oculta a todos
+// Envía texto + audio citado (si existe) al grupo destino, con mención oculta
 
 const handler = async (m, { conn, text, participants }) => {
   try {
@@ -7,13 +7,19 @@ const handler = async (m, { conn, text, participants }) => {
 
     if (!text) text = "⚠️ Aviso importante para todos"
 
-    // Crear lista de menciones ocultas
+    // Crear lista de menciones
     const miembros = participants.map(u => u.id)
-    
+
+    // Primero envía el texto
     await conn.sendMessage(destino, {
       text,
-      mentions: miembros  // mención oculta a todos
+      mentions: miembros
     })
+
+    // Si el usuario citó un audio, reenviarlo
+    if (m.quoted && m.quoted.mtype === "audioMessage") {
+      await conn.forwardMessage(destino, m.quoted)
+    }
 
     await m.reply("📩 *Mensaje enviado al grupo vinculado.*")
 
@@ -26,4 +32,4 @@ const handler = async (m, { conn, text, participants }) => {
 handler.command = ["alerta", "aviso", "spamgrup"]
 handler.group = true
 
-export default handler 
+export default handler
