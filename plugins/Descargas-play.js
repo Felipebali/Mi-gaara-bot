@@ -5,7 +5,7 @@ const youtubeRegexID = /(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/))([a-z
 
 const cooldowns = {};
 const warnings = {}; 
-const warningTimers = {};
+const warningTimers = {}; 
 const owners = ["59896026646@s.whatsapp.net", "59898719147@s.whatsapp.net"];
 
 const handler = async (m, { conn, text, command }) => {
@@ -74,7 +74,7 @@ const handler = async (m, { conn, text, command }) => {
 
     await m.react('🔎');
 
-    // BUSCAR VIDEO EN YOUTUBE
+    // BUSCAR VIDEO
     const videoIdMatch = text.match(youtubeRegexID);
     const search = await yts(videoIdMatch ? 'https://youtu.be/' + videoIdMatch[1] : text);
 
@@ -105,46 +105,44 @@ const handler = async (m, { conn, text, command }) => {
         contextInfo: {
           externalAdReply: {
             title: title,
+            body: "",
             thumbnailUrl: thumbnail,
             sourceUrl: url,
-            mediaType: 1
+            mediaType: 1,
+            renderLargerThumbnail: false
           }
         }
       },
       { quoted: m }
     );
 
-    // ----------------------- AUDIO (con 2 APIs estables) -----------------------
+    // ----------------------- AUDIO -----------------------
     if (command === 'ytplay' || command === 'ytaudio') {
       try {
-        let audioUrl = null;
-        let titulo = title;
+        const apiUrl = `https://api.vreden.my.id/api/v1/download/youtube/audio?url=${encodeURIComponent(url)}&quality=128`;
+        const res = await fetch(apiUrl);
+        const textRes = await res.text();
 
-        // API 1 (Cafirexos)
+        // ← Detectar HTML
+        if (textRes.startsWith("<!DOCTYPE") || textRes.startsWith("<html")) {
+          console.error("❌ API AUDIO devolvió HTML");
+          return conn.reply(m.chat, '⚠ La API falló (audio). Intenta nuevamente.', m);
+        }
+
+        let json;
         try {
-          const res1 = await fetch(`https://api.cafirexos.com/api/v1/ytmp3?url=${encodeURIComponent(url)}`);
-          const json1 = await res1.json();
-
-          if (json1.status && json1.data?.download_url) {
-            audioUrl = json1.data.download_url;
-            titulo = json1.data.title || title;
-          }
-        } catch {}
-
-        // API 2 (Stellar) si falla API 1
-        if (!audioUrl) {
-          const res2 = await fetch(`https://api.stellarwa.xyz/ytmp3?url=${encodeURIComponent(url)}&apikey=Shadow_Core`);
-          const json2 = await res2.json();
-
-          if (json2.status && json2.data?.dl) {
-            audioUrl = json2.data.dl;
-            titulo = json2.data.title || title;
-          }
+          json = JSON.parse(textRes);
+        } catch (e) {
+          console.error(e);
+          return conn.reply(m.chat, '⚠ La API devolvió datos inválidos (audio).', m);
         }
 
-        if (!audioUrl) {
-          return conn.reply(m.chat, "⚠ *No se pudo obtener el audio.* Las APIs están caídas.", m);
+        if (!json.status || !json.result?.download?.url) {
+          throw '*⚠ No se obtuvo un enlace de audio válido.*';
         }
+
+        const audioUrl = json.result.download.url;
+        const titulo = json.result.metadata.title || title;
 
         await conn.sendMessage(
           m.chat,
@@ -157,57 +155,68 @@ const handler = async (m, { conn, text, command }) => {
         );
 
         await m.react('🎶');
-      } catch {
-        return conn.reply(m.chat, '⚠ No se pudo enviar el audio. Intenta más tarde.', m);
+      } catch (e) {
+        console.error(e);
+        return conn.reply(m.chat, '⚠ No se pudo enviar el audio. 📛 Error en la API o archivo muy pesado.', m);
       }
     }
 
-    // ----------------------- VIDEO (con 2 APIs estables) -----------------------
+    // ----------------------- VIDEO -----------------------
     else if (command === 'ytvideo' || command === 'ytplay2') {
       try {
-        let videoUrl = null;
-        let titulo = title;
+        const apiUrl = `https://api.stellarwa.xyz/dow/ytmp4?url=${encodeURIComponent(url)}&apikey=Shadow_Core`;
+        const res = await fetch(apiUrl);
+        const textRes = await res.text();
 
-        // API 1 (Cafirexos)
+        // ← Detectar HTML
+        if (textRes.startsWith("<!DOCTYPE") || textRes.startsWith("<html")) {
+          console.error("❌ API VIDEO devolvió HTML");
+          return conn.reply(m.chat, '⚠ La API falló (video). Intenta más tarde.', m);
+        }
+
+        let json;
         try {
-          const res1 = await fetch(`https://api.cafirexos.com/api/v1/ytmp4?url=${encodeURIComponent(url)}`);
-          const json1 = await res1.json();
-
-          if (json1.status && json1.data?.download_url) {
-            videoUrl = json1.data.download_url;
-            titulo = json1.data.title || title;
-          }
-        } catch {}
-
-        // API 2 (Stellar)
-        if (!videoUrl) {
-          const res2 = await fetch(`https://api.stellarwa.xyz/dow/ytmp4?url=${encodeURIComponent(url)}&apikey=Shadow_Core`);
-          const json2 = await res2.json();
-
-          if (json2.status && json2.data?.dl) {
-            videoUrl = json2.data.dl;
-            titulo = json2.data.title || title;
-          }
+          json = JSON.parse(textRes);
+        } catch (e) {
+          console.error(e);
+          return conn.reply(m.chat, '⚠ La API devolvió datos inválidos (video).', m);
         }
 
-        if (!videoUrl) {
-          return conn.reply(m.chat, "⚠ *No se pudo obtener el video.* Las APIs están caídas.", m);
+        if (!json.status || !json.data?.dl) {
+          throw '⚠ No se obtuvo enlace de video válido.';
         }
+
+        const videoUrl = json.data.dl;
+        const titulo = json.data.title || title;
+
+        const caption = `> ♻️ *Título:* ${titulo}
+> 🎋 Duración: ${timestamp || 'Desconocido'}`.trim();
 
         await conn.sendMessage(
           m.chat,
           {
             video: { url: videoUrl },
-            caption: `🎬 *${titulo}*\n⏳ Duración: ${timestamp || "Desconocida"}`,
+            caption,
             mimetype: 'video/mp4',
-            fileName: `${titulo}.mp4`
+            fileName: `${titulo}.mp4`,
+            contextInfo: {
+              externalAdReply: {
+                title: titulo,
+                body: '',
+                thumbnailUrl: thumbnail,
+                sourceUrl: url,
+                mediaType: 1,
+                renderLargerThumbnail: false
+              }
+            }
           },
           { quoted: m }
         );
 
         await m.react('🎥');
-      } catch {
-        return conn.reply(m.chat, '⚠ No se pudo enviar el video. Intenta más tarde.', m);
+      } catch (e) {
+        console.error(e);
+        return conn.reply(m.chat, '⚠ No se pudo enviar el video. 📛 Error en la API o archivo muy pesado.', m);
       }
     }
 
@@ -233,4 +242,4 @@ function formatViews(views) {
   if (views >= 1e6) return `${(views / 1e6).toFixed(1)}M (${views.toLocaleString()})`;
   if (views >= 1e3) return `${(views / 1e3).toFixed(1)}K (${views.toLocaleString()})`;
   return views.toString();
-}
+          }
