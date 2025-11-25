@@ -7,18 +7,28 @@ const handler = async (m, { conn, text, participants }) => {
 
     if (!text) text = "⚠️ Aviso importante para todos"
 
-    // Crear lista de menciones
+    // Crear lista de menciones ocultas
     const miembros = participants.map(u => u.id)
 
-    // Primero envía el texto
+    // Enviar mensaje de texto al grupo
     await conn.sendMessage(destino, {
       text,
       mentions: miembros
     })
 
-    // Si el usuario citó un audio, reenviarlo
-    if (m.quoted && m.quoted.mtype === "audioMessage") {
-      await conn.forwardMessage(destino, m.quoted)
+    // ─── ★ Audio citado ★ ───
+    if (m.quoted) {
+      const q = m.quoted
+      const mime = q?.mimetype || q.msg?.mimetype || ""
+
+      if (/audio/.test(mime)) {
+        const audio = await q.download() // descarga el audio
+        await conn.sendMessage(destino, {
+          audio,
+          mimetype: mime,
+          ptt: mime.includes("opus") // si es nota de voz se mantiene como PTT
+        })
+      }
     }
 
     await m.reply("📩 *Mensaje enviado al grupo vinculado.*")
