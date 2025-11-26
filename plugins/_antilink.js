@@ -84,8 +84,18 @@ export async function before(m, { conn, isAdmin, isBotAdmin }) {
     return true;
   }
 
+  // 🔹 Channel links → NO permitidos, solo borrar
+  if (isChannelLink) {
+    await deleteMessageSafe();
+    await conn.sendMessage(m.chat, {
+      text: `🚫 @${who.split('@')[0]}, los *links de canales de WhatsApp* no están permitidos.`,
+      mentions: [who],
+    });
+    return false;
+  }
+
   // 🔹 Links permitidos
-  if (isIG || isChannelLink || isClash || isAllowedLink) return true;
+  if (isIG || isClash || isAllowedLink) return true;
 
   // 🔹 Link del mismo grupo permitido
   let currentInvite = global.groupInviteCodes[m.chat];
