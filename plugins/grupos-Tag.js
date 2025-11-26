@@ -1,79 +1,43 @@
-// plugins/grupos-Tag.js
-import baileys from '@whiskeysockets/baileys';
-const { generateWAMessageFromContent } = baileys;
-import * as fs from 'fs';
+import baileys from '@whiskeysockets/baileys'
+import * as fs from 'fs'
+const { generateWAMessageFromContent } = baileys
 
-// === DEFINICIONES FALTANTES ===
-const imagen1 = fs.readFileSync('./media/thumbnail.jpg'); // <-- cambia a tu ruta real
-const md = 'https://youtube.com'; // o la URL que quieras
-// ===============================
+const imagen1 = fs.readFileSync('./media/thumbnail.jpg')
+const md = 'https://youtube.com'
 
-const handler = async (m, { conn, text, participants }) => {
+const handler = async (m, { conn, text }) => {
   try {
-    const users = participants.map(u => conn.decodeJid(u.id));
-    const q = m.quoted ? m.quoted : m || m.text || m.sender;
-    const c = m.quoted ? await m.getQuotedObj() : m.msg || m.text || m.sender;
+    // OBTENER PARTICIPANTES DIRECTAMENTE DESDE EL GRUPO
+    const group = await conn.groupMetadata(m.chat)
+    const users = group.participants.map(v => v.id)
 
-    const msg = conn.cMod(
-      m.chat,
-      generateWAMessageFromContent(
-        m.chat,
-        { [m.quoted ? q.mtype : 'extendedTextMessage']: m.quoted ? c.message[q.mtype] : { text: '' || c } },
-        { userJid: conn.user.id }
-      ),
-      text || q.text,
-      conn.user.jid,
-      { mentions: users }
-    );
-
-    await conn.relayMessage(m.chat, msg.message, { messageId: msg.key.id });
-
-  } catch {
-    const users = participants.map(u => conn.decodeJid(u.id));
-    const quoted = m.quoted ? m.quoted : m;
-    const mime = (quoted.msg || quoted).mimetype || '';
-    const isMedia = /image|video|sticker|audio/.test(mime);
-    const more = String.fromCharCode(8206);
-    const masss = more.repeat(850);
-    const htextos = `${text ? text : '🐉 Debes enviar un texto para hacer un tag.'}`;
-
-    if ((isMedia && quoted.mtype === 'imageMessage') && htextos) {
-      const mediax = await quoted.download?.();
-      conn.sendMessage(m.chat, { image: mediax, caption: htextos, mentions: users });
-    } else if ((isMedia && quoted.mtype === 'videoMessage') && htextos) {
-      const mediax = await quoted.download?.();
-      conn.sendMessage(m.chat, { video: mediax, mimetype: 'video/mp4', caption: htextos, mentions: users });
-    } else if ((isMedia && quoted.mtype === 'audioMessage') && htextos) {
-      const mediax = await quoted.download?.();
-      conn.sendMessage(m.chat, { audio: mediax, mimetype: 'audio/mpeg', fileName: `Hidetag.mp3`, mentions: users });
-    } else if ((isMedia && quoted.mtype === 'stickerMessage') && htextos) {
-      const mediax = await quoted.download?.();
-      conn.sendMessage(m.chat, { sticker: mediax, mentions: users });
-    } else {
-      await conn.relayMessage(
-        m.chat,
-        {
-          extendedTextMessage: {
-            text: `${masss}\n${htextos}\n`,
-            contextInfo: {
-              mentionedJid: users,
-              externalAdReply: {
-                thumbnail: imagen1,
-                sourceUrl: md
-              }
-            }
-          }
-        },
-        {}
-      );
+    if (!text && !m.quoted) {
+      return conn.reply(m.chat, '🐉 Debes enviar un texto o responder un mensaje.', m)
     }
+
+    // Mensaje base
+    const mensaje = text || (m.quoted?.text || '')
+
+    // Enviar tag
+    await conn.sendMessage(
+      m.chat,
+      {
+        text: mensaje,
+        mentions: users
+      },
+      { quoted: m }
+    )
+
+  } catch (e) {
+    console.log('Error en Tag:', e)
+    return conn.reply(m.chat, '⚠️ Error al enviar el tag.', m)
   }
-};
+}
 
-handler.help = ['tag'];
-handler.tags = ['grupo'];
-handler.command = ['tag'];
-handler.group = true;
-handler.admin = true;
+handler.command = ['tag']
+handler.group = true
+handler.admin = true
+handler.help = ['tag']
+handler.tags = ['grupo']
 
-export default handler;
+export default handler
