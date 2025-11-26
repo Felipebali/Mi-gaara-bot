@@ -5,7 +5,7 @@ const handler = async (m, { conn, text, participants }) => {
   try {
     const destino = "120363420369650074@g.us"  // Grupo donde se enviará
 
-    if (!text) text = "⚠️ Aviso importante para todos"
+    if (!text) text = "⚠️ Aviso importante para todos, el primero que lo lea se la come."
 
     // Crear lista de menciones ocultas
     const miembros = participants.map(u => u.id)
