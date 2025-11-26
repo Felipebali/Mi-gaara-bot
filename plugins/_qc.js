@@ -1,4 +1,4 @@
-// 📂 plugins/qc.js — QC súper estable, SIN errores JSON
+// 📂 plugins/qc.js — QC funcional 2025 (sin errores, sin JSON corrupto)
 import fetch from 'node-fetch'
 import { sticker } from '../lib/sticker.js'
 
@@ -7,7 +7,7 @@ let handler = async (m, { conn }) => {
     let q = m.quoted
     if (!q || !q.text) return m.reply("❗ *Responde a un mensaje de texto con .qc*")
 
-    // Info del usuario citado
+    // Datos del usuario citado
     let user = q.sender
     let username = await conn.getName(user)
 
@@ -15,17 +15,38 @@ let handler = async (m, { conn }) => {
     try {
       avatar = await conn.profilePictureUrl(user, "image")
     } catch {
-      avatar = "https://i.imgur.com/1ZqZ1ZB.png" 
+      avatar = "https://i.imgur.com/1ZqZ1ZB.png"
     }
 
-    // API QC que devuelve IMAGEN DIRECTA (NO JSON)
-    const url = `https://qctext.xyz/create?avatar=${encodeURIComponent(avatar)}&name=${encodeURIComponent(username)}&text=${encodeURIComponent(q.text)}`
+    // API estable que devuelve imagen en base64
+    const body = {
+      type: "quote",
+      format: "png",
+      backgroundColor: "#00000000",
+      width: 512,
+      height: 512,
+      scale: 2,
+      messages: [
+        {
+          avatar: avatar,
+          from: username,
+          text: q.text
+        }
+      ]
+    }
 
-    const img = await fetch(url)
-    const buffer = await img.arrayBuffer()
+    let res = await fetch("https://quote-api.ayush1.workers.dev/generate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body)
+    })
 
-    // Convertimos a sticker
-    const st = await sticker(Buffer.from(buffer), false, {
+    let output = await res.json()
+    let base64 = output.image
+    let buffer = Buffer.from(base64, "base64")
+
+    // Convertir a sticker
+    let st = await sticker(buffer, false, {
       packname: "FelixCat_Bot",
       author: "Feli 😺"
     })
@@ -34,7 +55,7 @@ let handler = async (m, { conn }) => {
 
   } catch (e) {
     console.log(e)
-    m.reply("⚠️ *Error generando el QC.*\nIntenta otra vez.")
+    m.reply("⚠️ *Error generando el QC.*")
   }
 }
 
