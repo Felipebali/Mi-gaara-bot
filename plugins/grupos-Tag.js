@@ -3,6 +3,11 @@ import baileys from '@whiskeysockets/baileys';
 const { generateWAMessageFromContent } = baileys;
 import * as fs from 'fs';
 
+// === DEFINICIONES FALTANTES ===
+const imagen1 = fs.readFileSync('./media/thumbnail.jpg'); // <-- cambia a tu ruta real
+const md = 'https://youtube.com'; // o la URL que quieras
+// ===============================
+
 const handler = async (m, { conn, text, participants }) => {
   try {
     const users = participants.map(u => conn.decodeJid(u.id));
@@ -14,7 +19,7 @@ const handler = async (m, { conn, text, participants }) => {
       generateWAMessageFromContent(
         m.chat,
         { [m.quoted ? q.mtype : 'extendedTextMessage']: m.quoted ? c.message[q.mtype] : { text: '' || c } },
-        { userJid: conn.user.id } // no citado
+        { userJid: conn.user.id }
       ),
       text || q.text,
       conn.user.jid,
