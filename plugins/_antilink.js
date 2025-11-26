@@ -24,7 +24,6 @@ export async function before(m, { conn, isAdmin, isBotAdmin }) {
   const chat = global.db.data.chats[m.chat];
   if (!chat?.antiLink) return true;
 
-  // 🔸 Extraer texto desde cualquier tipo de mensaje
   const text =
     m.text ||
     m.message.conversation ||
@@ -45,7 +44,6 @@ export async function before(m, { conn, isAdmin, isBotAdmin }) {
   const isIG = igLinkRegex.test(text);
   const isClash = clashLinkRegex.test(text);
 
-  // 🔹 Función segura para eliminar mensaje (mejorada)
   async function deleteMessageSafe() {
     try {
       const deleteKey = {
@@ -55,10 +53,7 @@ export async function before(m, { conn, isAdmin, isBotAdmin }) {
         participant: m.key.participant || m.participant || m.sender,
       };
       await conn.sendMessage(m.chat, { delete: deleteKey });
-      console.log(`🗑️ Mensaje borrado correctamente de ${who}`);
-    } catch (err) {
-      console.log(`⚠️ No se pudo eliminar el mensaje (${who}):`, err.message);
-    }
+    } catch { }
   }
 
   // 🔹 Tagall → eliminar siempre
@@ -71,8 +66,19 @@ export async function before(m, { conn, isAdmin, isBotAdmin }) {
     return false;
   }
 
-  // 🔹 Dueños exentos de expulsión (pero igual borra el mensaje)
   const isOwner = owners.includes(number);
+
+  // 🔹 Channel links → NO permitidos para nadie (dueños y admins incluidos)
+  if (isChannelLink) {
+    await deleteMessageSafe();
+    await conn.sendMessage(m.chat, {
+      text: `🚫 @${who.split('@')[0]}, los *links de canales de WhatsApp* no están permitidos.`,
+      mentions: [who],
+    });
+    return false;
+  }
+
+  // 🔹 Dueños exentos solo del antilink de grupo
   if (isOwner) {
     if (isGroupLink) {
       await deleteMessageSafe();
@@ -82,16 +88,6 @@ export async function before(m, { conn, isAdmin, isBotAdmin }) {
       });
     }
     return true;
-  }
-
-  // 🔹 Channel links → NO permitidos, solo borrar
-  if (isChannelLink) {
-    await deleteMessageSafe();
-    await conn.sendMessage(m.chat, {
-      text: `🚫 @${who.split('@')[0]}, los *links de canales de WhatsApp* no están permitidos.`,
-      mentions: [who],
-    });
-    return false;
   }
 
   // 🔹 Links permitidos
