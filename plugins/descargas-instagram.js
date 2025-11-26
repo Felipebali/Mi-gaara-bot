@@ -20,10 +20,9 @@ const handler = async (m, { args, conn }) => {
   }
 };
 
-handler.command = ['instagram', 'ig'];
+handler.command = ['instagramdl', 'igdl'];
 handler.tags = ['descargas'];
-handler.help = ['instagram', 'ig'];
+handler.help = ['instagramdl', 'igdl'];
 handler.register = true;
-handler.coin = 2;
 
 export default handler;
