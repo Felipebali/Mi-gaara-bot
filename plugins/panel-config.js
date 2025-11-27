@@ -12,13 +12,13 @@ const aliasMap = {
     nsfw: ["nsfw"],
     juegos: ["juegos", "games"],
     public: ["public", "modoPublico"],
-    onlyadmin: ["onlyadmin", "onlyAdmin", "soloAdmins", "soloAdmin"],
+    onlyadmin: ["onlyadmin", "onlyAdmin", "soloAdmins", "soloAdmin", "modoadmin"],
     antillamada: ["antillamada", "antiLlamada"],
     antibot: ["antibot"],
     antilink: ["antilink", "antiLink"]
 };
 
-// 🟣 Función que encuentra el valor verdadero aunque esté guardado con otro nombre
+// 🟣 Función que encuentra la propiedad correcta
 function getChatValue(chat, key) {
     const keys = aliasMap[key];
     for (const k of keys) {
@@ -55,9 +55,14 @@ Escribe *.panel info* para ver cómo activar o configurar cada función.`;
     m.reply(panel);
 };
 
+// 🔥 COMPATIBLE CON CUALQUIER LOADER (misma estructura que tus otros comandos)
 handler.help = ['panel'];
 handler.tags = ['group'];
-handler.command = /^panel$/i;
-handler.group = true;
+
+handler.command = ['panel'];                // formato estándar
+handler.command = handler.command || /^panel$/i; // regex fallback
+
+handler.register = true;   // mejora compatibilidad con loaders strict
+handler.customPrefix = null;
 
 export default handler;
