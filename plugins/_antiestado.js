@@ -1,7 +1,7 @@
 // 📂 plugins/antiestado.js — FelixCat_Bot 🐾
-// Anti-Estado: bloquea notificaciones de estados y menciones de grupo desde estados
+// Anti-Estado con expulsión para usuarios que mencionan al grupo en estados
 
-// 🔹 Dueños (NO exentos en este antiestado, borra también a owners)
+// 🔹 Dueños (exentos de expulsión)
 const owners = ['59896026646', '59898719147', '59892363485'];
 
 export async function before(m, { conn }) {
@@ -15,11 +15,19 @@ export async function before(m, { conn }) {
 
   const who = m.sender;
   const number = who.replace(/\D/g, '');
-
   const msg = m.msg || m.message || {};
   const type = Object.keys(msg)[0] || "";
 
-  // Función segura para eliminar mensaje
+  // --- Obtener admins ---
+  const groupMetadata = await conn.groupMetadata(m.chat);
+  const admins = groupMetadata.admins
+    ? groupMetadata.admins.map(v => v.id)
+    : groupMetadata.participants.filter(p => p.admin).map(v => v.id);
+
+  const isAdmin = admins.includes(who);
+  const isOwner = owners.includes(number);
+
+  // 🧹 Función para borrar mensaje
   async function deleteMessageSafe() {
     try {
       const deleteKey = {
@@ -32,45 +40,47 @@ export async function before(m, { conn }) {
     } catch {}
   }
 
-  // 1) status@broadcast => cuando mencionan al grupo en Estado
-  if (m.chat === "status@broadcast") {
+  // 🦶 Función para expulsar
+  async function expelUser() {
+    try {
+      await conn.groupParticipantsUpdate(m.chat, [who], "remove");
+    } catch (e) {
+      console.error('Error expulsando usuario:', e);
+    }
+  }
+
+  // --- FUNCIÓN GENERAL DE SANCIÓN ---
+  async function handleStateViolation() {
+
     await deleteMessageSafe();
+
+    if (isAdmin || isOwner) {
+      // ❕ Administradores y owners NO se expulsan
+      await conn.sendMessage(m.chat, {
+        text: `⚠️ @${who.split('@')[0]}, *no se permite mencionar al grupo desde un estado.*\n(Estás exento por ser admin/owner)`,
+        mentions: [who],
+      });
+      return false;
+    }
+
+    // ❌ Usuario normal → expulsión
     await conn.sendMessage(m.chat, {
-      text: `⚠️ @${who.split('@')[0]}, *no se permiten estados mencionando al grupo.*`,
+      text: `🚫 @${who.split('@')[0]}, *no está permitido mencionar al grupo desde un estado.*\nSerás expulsado.`,
       mentions: [who],
     });
+
+    await expelUser();
     return false;
   }
 
-  // 2) protocolMessage → muchas notificaciones de Estado usan este tipo
-  if (type === "protocolMessage") {
-    await deleteMessageSafe();
-    await conn.sendMessage(m.chat, {
-      text: `⚠️ @${who.split('@')[0]}, *está prohibido mencionar al grupo desde un estado.*`,
-      mentions: [who],
-    });
-    return false;
-  }
+  // ---------------------------
+  // Detectores de mensajes tipo estado
+  // ---------------------------
 
-  // 3) eventMessage o status → otras formas de estados
-  if (type === "eventMessage" || type === "status") {
-    await deleteMessageSafe();
-    await conn.sendMessage(m.chat, {
-      text: `⚠️ @${who.split('@')[0]}, *las notificaciones de estado no están permitidas.*`,
-      mentions: [who],
-    });
-    return false;
-  }
-
-  // 4) statusMessage oculto dentro de ephemeralMessage
-  if (msg?.statusMessage || msg?.ephemeralMessage?.message?.statusMessage) {
-    await deleteMessageSafe();
-    await conn.sendMessage(m.chat, {
-      text: `⚠️ @${who.split('@')[0]}, *los estados no están permitidos dentro del grupo.*`,
-      mentions: [who],
-    });
-    return false;
-  }
+  if (m.chat === "status@broadcast") return handleStateViolation();
+  if (type === "protocolMessage") return handleStateViolation();
+  if (type === "eventMessage" || type === "status") return handleStateViolation();
+  if (msg?.statusMessage || msg?.ephemeralMessage?.message?.statusMessage) return handleStateViolation();
 
   return true;
 }
@@ -78,21 +88,21 @@ export async function before(m, { conn }) {
 // 🔘 Comando para activar/desactivar
 let handler = async (m, { conn }) => {
   if (!m.isGroup) return m.reply("❌ Este comando solo funciona en grupos.");
-  
+
   const chat = global.db.data.chats[m.chat] || (global.db.data.chats[m.chat] = {});
-  
+
   chat.antiestado = !chat.antiestado;
 
   m.reply(
     chat.antiestado
-      ? "🛡️ *Anti-Estado ACTIVADO*.\nSe eliminarán notificaciones de estados."
+      ? "🛡️ *Anti-Estado ACTIVADO*.\nSe eliminarán estados y se expulsará a quien mencione al grupo."
       : "🔕 *Anti-Estado DESACTIVADO*."
   );
 };
 
 handler.command = /^antiestado$/i;
 handler.group = true;
-handler.admin = false; 
+handler.admin = false;
 handler.owner = false;
 
 export default handler;
