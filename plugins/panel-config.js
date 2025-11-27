@@ -1,4 +1,31 @@
-// plugins/grupo-configuracion.js - Panel de configuración del grupo
+// plugins/grupo-configuracion.js - Panel con soporte de alias
+
+// 🔥 Mapa de alias compatibles con tus plugins
+const aliasMap = {
+    welcome: ["welcome"],
+    despedida: ["despedida"],
+    antifake: ["antifake", "antiFake"],
+    antispam: ["antispam", "antiSpam"],
+    antitoxic: ["antitoxic", "antiToxic"],
+    detect: ["detect"],
+    autosticker: ["autosticker", "autoSticker"],
+    nsfw: ["nsfw"],
+    juegos: ["juegos", "games"],
+    public: ["public", "modoPublico"],
+    onlyadmin: ["onlyadmin", "onlyAdmin", "soloAdmins", "soloAdmin"],
+    antillamada: ["antillamada", "antiLlamada"],
+    antibot: ["antibot"],
+    antilink: ["antilink", "antiLink"]
+};
+
+// 🟣 Función que encuentra el valor verdadero aunque esté guardado con otro nombre
+function getChatValue(chat, key) {
+    const keys = aliasMap[key];
+    for (const k of keys) {
+        if (chat[k] !== undefined) return chat[k];
+    }
+    return false;
+}
 
 let handler = async (m, { conn, isOwner, isAdmin }) => {
     if (!m.isGroup) return m.reply('⚠️ Este comando solo funciona en grupos');
@@ -7,20 +34,20 @@ let handler = async (m, { conn, isOwner, isAdmin }) => {
     let chat = global.db.data.chats[m.chat] || {};
 
     let panel = `╭━━━[ PANEL DE CONFIGURACIÓN ]━━━╮
-┃ 👋 Welcome: ${chat.welcome ? '✅' : '❌'}
-┃ 👋 Despedida: ${chat.despedida ? '✅' : '❌'}
-┃ 🔗 AntiLink: ${chat.antiLink ? '✅' : '❌'}  
-┃ 🚫 AntiFake: ${chat.antifake ? '✅' : '❌'}
-┃ 🚫 AntiSpam: ${chat.antispam ? '✅' : '❌'}
-┃ 🤬 AntiTóxico: ${chat.antitoxic ? '✅' : '❌'}
-┃ 🛰️ Detect: ${chat.detect ? '✅' : '❌'}
-┃ 🖼️ AutoSticker: ${chat.autosticker ? '✅' : '❌'}
-┃ 🔞 NSFW: ${chat.nsfw ? '✅' : '❌'}
-┃ 🎮 Juegos: ${chat.juegos ? '✅' : '❌'}
-┃ 🌐 Modo Público: ${chat.public ? '✅' : '❌'}
-┃ 🛡️ SoloAdmins: ${chat.onlyadmin ? '✅' : '❌'}
-┃ 📵 AntiLlamada: ${chat.antillamada ? '✅' : '❌'}
-┃ 🤖 AntiBots: ${chat.antibot ? '✅' : '❌'}
+┃ 👋 Welcome: ${getChatValue(chat, 'welcome') ? '✅' : '❌'}
+┃ 👋 Despedida: ${getChatValue(chat, 'despedida') ? '✅' : '❌'}
+┃ 🔗 AntiLink: ${getChatValue(chat, 'antilink') ? '✅' : '❌'}
+┃ 🚫 AntiFake: ${getChatValue(chat, 'antifake') ? '✅' : '❌'}
+┃ 🚫 AntiSpam: ${getChatValue(chat, 'antispam') ? '✅' : '❌'}
+┃ 🤬 AntiTóxico: ${getChatValue(chat, 'antitoxic') ? '✅' : '❌'}
+┃ 🛰️ Detect: ${getChatValue(chat, 'detect') ? '✅' : '❌'}
+┃ 🖼️ AutoSticker: ${getChatValue(chat, 'autosticker') ? '✅' : '❌'}
+┃ 🔞 NSFW: ${getChatValue(chat, 'nsfw') ? '✅' : '❌'}
+┃ 🎮 Juegos: ${getChatValue(chat, 'juegos') ? '✅' : '❌'}
+┃ 🌐 Modo Público: ${getChatValue(chat, 'public') ? '✅' : '❌'}
+┃ 🛡️ SoloAdmins: ${getChatValue(chat, 'onlyadmin') ? '✅' : '❌'}
+┃ 📵 AntiLlamada: ${getChatValue(chat, 'antillamada') ? '✅' : '❌'}
+┃ 🤖 AntiBots: ${getChatValue(chat, 'antibot') ? '✅' : '❌'}
 ╰━━━━━━━━━━━━━━━━━━━━━━╯
 
 Escribe *.panel info* para ver cómo activar o configurar cada función.`;
