@@ -21,27 +21,33 @@ const traducciones = {
   "Heavy snow": "Nieve fuerte"
 }
 
-// ⏳ Cooldown (3 horas en milisegundos)
+// ⏳ Cooldown (3 horas)
 const COOLDOWN = 3 * 60 * 60 * 1000
 const userCooldowns = {}
 
 let handler = async (m, { conn, text, usedPrefix, command }) => {
   const sender = m.sender
 
-  // 🕓 Verificar cooldown
-  const lastUsed = userCooldowns[sender] || 0
-  const now = Date.now()
-  const remaining = COOLDOWN - (now - lastUsed)
+  // 📌 Detectar si es owner
+  const isOwner = global.owner?.includes(sender.split('@')[0]) 
+    || global.owner?.includes(sender)
 
-  if (remaining > 0) {
-    const horas = Math.floor(remaining / 3600000)
-    const minutos = Math.floor((remaining % 3600000) / 60000)
-    return conn.reply(
-      m.chat,
-      `😒 Tranquilo @${sender.split('@')[0]}, ya pediste el clima.\n\n⏳ Podés volver a usarlo en *${horas}h ${minutos}m*.\n\n🫠 No atomices al bot, que se recalienta.`,
-      m,
-      { mentions: [sender] }
-    )
+  // 🕓 Verificar cooldown solo si NO es owner
+  if (!isOwner) {
+    const lastUsed = userCooldowns[sender] || 0
+    const now = Date.now()
+    const remaining = COOLDOWN - (now - lastUsed)
+
+    if (remaining > 0) {
+      const horas = Math.floor(remaining / 3600000)
+      const minutos = Math.floor((remaining % 3600000) / 60000)
+      return conn.reply(
+        m.chat,
+        `😒 Tranquilo @${sender.split('@')[0]}, ya pediste el clima.\n\n⏳ Podés volver a usarlo en *${horas}h ${minutos}m*.\n\n🫠 No atomices al bot, que se recalienta.`,
+        m,
+        { mentions: [sender] }
+      )
+    }
   }
 
   if (!text)
@@ -89,8 +95,8 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
 💨 Viento: *${viento} km/h*
     `.trim()
 
-    // Guardar cooldown del usuario
-    userCooldowns[sender] = now
+    // Guardar cooldown solo si NO es owner
+    if (!isOwner) userCooldowns[sender] = Date.now()
 
     // 💬 Enviar con o sin ícono
     if (icono) {
