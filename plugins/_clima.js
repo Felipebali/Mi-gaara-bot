@@ -21,36 +21,33 @@ const traducciones = {
   "Heavy snow": "Nieve fuerte"
 }
 
-// ⏳ Cooldown (3 horas)
+// ⏳ Cooldown (3 horas en milisegundos)
 const COOLDOWN = 3 * 60 * 60 * 1000
 const userCooldowns = {}
 
-let handler = async (m, { conn, text, usedPrefix, command, isOwner }) => {
+let handler = async (m, { conn, text, usedPrefix, command }) => {
   const sender = m.sender
 
-  // 🛡️ Owner sin límite
-  if (!isOwner) {
-    const lastUsed = userCooldowns[sender] || 0
-    const now = Date.now()
-    const remaining = COOLDOWN - (now - lastUsed)
+  // 🕓 Verificar cooldown
+  const lastUsed = userCooldowns[sender] || 0
+  const now = Date.now()
+  const remaining = COOLDOWN - (now - lastUsed)
 
-    if (remaining > 0) {
-      const horas = Math.floor(remaining / 3600000)
-      const minutos = Math.floor((remaining % 3600000) / 60000)
-
-      return conn.reply(
-        m.chat,
-        `😒 Tranquilo @${sender.split('@')[0]}, ya pediste el clima.\n\n⏳ Podés volver a usarlo en *${horas}h ${minutos}m*.\n\n🫠 No atomices al bot, que se recalienta.`,
-        m,
-        { mentions: [sender] }
-      )
-    }
+  if (remaining > 0) {
+    const horas = Math.floor(remaining / 3600000)
+    const minutos = Math.floor((remaining % 3600000) / 60000)
+    return conn.reply(
+      m.chat,
+      `😒 Tranquilo @${sender.split('@')[0]}, ya pediste el clima.\n\n⏳ Podés volver a usarlo en *${horas}h ${minutos}m*.\n\n🫠 No atomices al bot, que se recalienta.`,
+      m,
+      { mentions: [sender] }
+    )
   }
 
   if (!text)
     return conn.reply(
       m.chat,
-      `🌦️ *Uso correcto:*\n\n${usedPrefix + command} <ciudad>\n\n🧭 *Ejemplo:*\n${usedPrefix + command} Mercedes`,
+      `🌦️ *Uso correcto:*\n\n${usedPrefix + command} <ciudad>\n\n🧭 Ejemplo:\n${usedPrefix + command} Mercedes`,
       m
     )
 
@@ -66,7 +63,6 @@ let handler = async (m, { conn, text, usedPrefix, command, isOwner }) => {
     const lugar = data.nearest_area?.[0]?.areaName?.[0]?.value || text
     const region = data.nearest_area?.[0]?.region?.[0]?.value || ''
     const pais = data.nearest_area?.[0]?.country?.[0]?.value || ''
-
     const clima = data.current_condition?.[0]
     const temperatura = clima?.temp_C
     const sensacion = clima?.FeelsLikeC
@@ -75,7 +71,7 @@ let handler = async (m, { conn, text, usedPrefix, command, isOwner }) => {
     const viento = clima?.windspeedKmph
     const icono = clima?.weatherIconUrl?.[0]?.value || null
 
-    // 🌈 Traducción
+    // 🌈 Traducción al español
     if (estado && traducciones[estado]) estado = traducciones[estado]
 
     const horaLocal = new Date().toLocaleString('es-UY', {
@@ -83,20 +79,20 @@ let handler = async (m, { conn, text, usedPrefix, command, isOwner }) => {
     })
 
     const info = `
-🌍 *Clima actual en* ${lugar}, ${region}, ${pais}:
+🌍 *Clima actual en ${lugar}, ${region}, ${pais}:*
 
-🕒 *Hora local:* ${horaLocal}
-🌡️ *Temperatura:* ${temperatura}°C
-🥵 *Sensación térmica:* ${sensacion}°C
-🌤️ *Estado del cielo:* ${estado}
-💧 *Humedad:* ${humedad}%
-💨 *Viento:* ${viento} km/h
-`.trim()
+🕒 Hora local: *${horaLocal}*
+🌡️ Temperatura: *${temperatura}°C*
+🥵 Sensación térmica: *${sensacion}°C*
+🌤️ Estado del cielo: *${estado}*
+💧 Humedad: *${humedad}%*
+💨 Viento: *${viento} km/h*
+    `.trim()
 
-    // Registrar cooldown sólo si NO es owner
-    if (!isOwner) userCooldowns[sender] = Date.now()
+    // Guardar cooldown del usuario
+    userCooldowns[sender] = now
 
-    // Enviar con o sin ícono
+    // 💬 Enviar con o sin ícono
     if (icono) {
       await conn.sendMessage(m.chat, { image: { url: icono }, caption: info })
     } else {
@@ -104,7 +100,6 @@ let handler = async (m, { conn, text, usedPrefix, command, isOwner }) => {
     }
 
     await conn.sendMessage(m.chat, { react: { text: '✅', key: m.key } })
-
   } catch (err) {
     console.error('❌ Error en el comando .clima:', err)
     await conn.sendMessage(m.chat, { react: { text: '⚠️', key: m.key } })
