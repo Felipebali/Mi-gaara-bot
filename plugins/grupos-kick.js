@@ -43,20 +43,16 @@ const handler = async (m, { conn, isAdmin }) => {
   // ---------- PROTEGIDOS ----------
   if (protectedList.includes(userNorm)) {
     return conn.reply(m.chat, '😎 Es imposible eliminar a alguien protegido.', m);
-  }
+    }
 
   // ---------- EXPULSAR ----------
   try {
     await conn.groupParticipantsUpdate(m.chat, [user], 'remove');
 
-    // Reacción
+    // Reacción (se mantiene)
     try { await m.react(emoji); } catch {}
 
-    // Mensaje de aviso
-    await conn.sendMessage(m.chat, {
-      text: `🚫 @${user.split('@')[0]} fue expulsado del grupo.`,
-      mentions: [user]
-    });
+    // ❌ No se envía mensaje de aviso aquí
 
   } catch (err) {
     console.log('Error expulsando:', err);
