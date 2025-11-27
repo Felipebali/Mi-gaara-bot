@@ -25,15 +25,22 @@ const traducciones = {
 const COOLDOWN = 3 * 60 * 60 * 1000
 const userCooldowns = {}
 
+function isOwner(jid) {
+  let number = jid.split('@')[0]
+  if (Array.isArray(global.owner)) {
+    return global.owner.some(o =>
+      Array.isArray(o) ? o[0] == number : o == number
+    )
+  }
+  return false
+}
+
 let handler = async (m, { conn, text, usedPrefix, command }) => {
   const sender = m.sender
+  const owner = isOwner(sender)
 
-  // 📌 Detectar si es owner
-  const isOwner = global.owner?.includes(sender.split('@')[0]) 
-    || global.owner?.includes(sender)
-
-  // 🕓 Verificar cooldown solo si NO es owner
-  if (!isOwner) {
+  // 🕓 Cooldown SOLO para no-owners
+  if (!owner) {
     const lastUsed = userCooldowns[sender] || 0
     const now = Date.now()
     const remaining = COOLDOWN - (now - lastUsed)
@@ -77,7 +84,6 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
     const viento = clima?.windspeedKmph
     const icono = clima?.weatherIconUrl?.[0]?.value || null
 
-    // 🌈 Traducción al español
     if (estado && traducciones[estado]) estado = traducciones[estado]
 
     const horaLocal = new Date().toLocaleString('es-UY', {
@@ -95,10 +101,8 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
 💨 Viento: *${viento} km/h*
     `.trim()
 
-    // Guardar cooldown solo si NO es owner
-    if (!isOwner) userCooldowns[sender] = Date.now()
+    if (!owner) userCooldowns[sender] = Date.now()
 
-    // 💬 Enviar con o sin ícono
     if (icono) {
       await conn.sendMessage(m.chat, { image: { url: icono }, caption: info })
     } else {
