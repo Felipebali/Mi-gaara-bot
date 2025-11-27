@@ -21,28 +21,8 @@ const traducciones = {
   "Heavy snow": "Nieve fuerte"
 }
 
-// ⏳ Cooldown (3 horas en milisegundos)
-const COOLDOWN = 3 * 60 * 60 * 1000
-const userCooldowns = {}
-
 let handler = async (m, { conn, text, usedPrefix, command }) => {
   const sender = m.sender
-
-  // 🕓 Verificar cooldown
-  const lastUsed = userCooldowns[sender] || 0
-  const now = Date.now()
-  const remaining = COOLDOWN - (now - lastUsed)
-
-  if (remaining > 0) {
-    const horas = Math.floor(remaining / 3600000)
-    const minutos = Math.floor((remaining % 3600000) / 60000)
-    return conn.reply(
-      m.chat,
-      `😒 Tranquilo @${sender.split('@')[0]}, ya pediste el clima.\n\n⏳ Podés volver a usarlo en *${horas}h ${minutos}m*.\n\n🫠 No atomices al bot, que se recalienta.`,
-      m,
-      { mentions: [sender] }
-    )
-  }
 
   if (!text)
     return conn.reply(
@@ -88,9 +68,6 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
 💧 Humedad: *${humedad}%*
 💨 Viento: *${viento} km/h*
     `.trim()
-
-    // Guardar cooldown del usuario
-    userCooldowns[sender] = now
 
     // 💬 Enviar con o sin ícono
     if (icono) {
