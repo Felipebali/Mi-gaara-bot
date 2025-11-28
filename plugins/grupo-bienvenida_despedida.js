@@ -1,26 +1,36 @@
-// plugins/grupo-bienvenida_despedida.js
 export function setupWelcomeBye(conn) {
-  // Escucha los cambios de participantes en grupos
   conn.ev.on('group-participants.update', async (update) => {
     try {
-      const groupMetadata = await conn.groupMetadata(update.id);
+      console.log('Update recibido:', update);
+
+      const { id, participants, action } = update;
+
+      if (!participants || participants.length === 0) return;
+
+      const groupMetadata = await conn.groupMetadata(id);
       const groupName = groupMetadata.subject;
 
-      for (const participant of update.participants) {
-        // Bienvenida
-        if (update.action === 'add') {
-          const welcomeMessage = `🎉 ¡Bienvenido/a @${participant.split('@')[0]} al grupo *${groupName}*! Disfruta tu estadía.`;
-          await conn.sendMessage(update.id, { text: welcomeMessage, mentions: [participant] });
+      for (const participant of participants) {
+        const username = participant.split('@')[0];
+
+        if (action === 'add') {
+          const welcomeMessage = `🎉 ¡Bienvenido/a @${username} al grupo *${groupName}*! Disfruta tu estadía.`;
+          await conn.sendMessage(id, { 
+            text: welcomeMessage, 
+            mentions: [participant] 
+          });
         }
 
-        // Despedida
-        if (update.action === 'remove') {
-          const byeMessage = `😢 @${participant.split('@')[0]} ha salido del grupo *${groupName}*.`;
-          await conn.sendMessage(update.id, { text: byeMessage, mentions: [participant] });
+        if (action === 'remove') {
+          const byeMessage = `😢 @${username} ha salido del grupo *${groupName}*.`;
+          await conn.sendMessage(id, { 
+            text: byeMessage, 
+            mentions: [participant] 
+          });
         }
       }
     } catch (err) {
-      console.error('Error en plugin de bienvenida/despedida:', err);
+      console.error('Error en plugin bienvenida/despedida:', err);
     }
   });
 }
