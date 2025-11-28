@@ -39,7 +39,7 @@ let handler = async (m, { conn }) => {
       buffer = Buffer.concat([buffer, chunk]);
     }
 
-    // 🖼️ Establecer foto del GRUPO (método nuevo y funcional)
+    // 🖼️ Establecer foto del GRUPO (método actual funcional)
     await conn.updateProfilePicture(m.chat, buffer);
 
     await m.reply("✅ *Foto del grupo actualizada correctamente!*");
