@@ -23,6 +23,8 @@ let handler = async (m, { conn }) => {
 • .dsowner — Quita dueño ❌
 • .join <link> — Unirse a grupo 🔗
 • .resetlink — Resetear link del grupo ♻️
+• .setpp — Cambiar foto del bot 🤖🖼️
+• .setpg — Cambiar foto del grupo 👥🖼️
 
 🛡️ *Administradores*
 • .autoadmin — Dar admin al bot 🧩
