@@ -40,7 +40,7 @@ let handler = async (m, { conn }) => {
     await m.reply("✅ *Foto de perfil del bot actualizada correctamente!*");
 
   } catch (e) {
-    console.error(e);
+    console.error('Error en propietario-setpp:', e);
     m.reply("⚠️ Error al intentar cambiar la foto del bot.");
   }
 };
@@ -48,7 +48,10 @@ let handler = async (m, { conn }) => {
 // Datos del comando
 handler.help = ["setpp"];
 handler.tags = ["owner"];
-handler.command = /^setpp$/i;
+
+// ✅ ARRAY DE COMANDOS (incluye alias)
+handler.command = ['setpp', 'cambiarpp', 'botpp'];
+
 handler.owner = true;
 
 export default handler;
