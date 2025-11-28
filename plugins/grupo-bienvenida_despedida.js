@@ -1,39 +1,41 @@
-// 📂 plugins/bienvenida.js
-
 let handler = {};
 
 handler.before = async function (m, { conn }) {
-    if (!m.messageStubType) return; // Si no hay stub, no hay evento
+    // Si no es evento de grupo → ignorar
+    if (!m.messageStubType) return;
 
-    // Tipos de eventos de grupo
-    const ADD = 29;    // alguien se une o lo agregan
-    const REMOVE = 30; // alguien sale o lo sacan
+    // Tipos reales (actuales) de eventos
+    const ADD = [27, 28];  // alguien se une / lo agregan
+    const REMOVE = [32];   // alguien se va / lo expulsan
+
+    // Si no es entrada ni salida → no hacer nada
+    if (![...ADD, ...REMOVE].includes(m.messageStubType)) return;
 
     const groupId = m.chat;
-    const groupMetadata = await conn.groupMetadata(groupId).catch(() => null);
-    if (!groupMetadata) return;
 
-    const groupName = groupMetadata.subject;
+    // Obtiene info del grupo
+    const metadata = await conn.groupMetadata(groupId).catch(() => null);
+    if (!metadata) return;
+
+    const groupName = metadata.subject;
     const participants = m.messageStubParameters || [];
 
     for (let participant of participants) {
         const username = participant.split('@')[0];
 
-        // 🔹 Bienvenida
-        if (m.messageStubType === ADD) {
-            const msg = `🎉 ¡Bienvenido/a @${username} al grupo *${groupName}*! Disfruta tu estadía.`;
-            await conn.sendMessage(groupId, { 
-                text: msg, 
-                mentions: [participant] 
+        // 🎉 BIENVENIDA
+        if (ADD.includes(m.messageStubType)) {
+            await conn.sendMessage(groupId, {
+                text: `🎉 ¡Bienvenido/a @${username} al grupo *${groupName}*! Disfruta tu estadía.`,
+                mentions: [participant]
             });
         }
 
-        // 🔹 Despedida
-        if (m.messageStubType === REMOVE) {
-            const msg = `😢 @${username} ha salido del grupo *${groupName}*.`;
-            await conn.sendMessage(groupId, { 
-                text: msg, 
-                mentions: [participant] 
+        // 👋 DESPEDIDA
+        if (REMOVE.includes(m.messageStubType)) {
+            await conn.sendMessage(groupId, {
+                text: `😢 @${username} ha salido del grupo *${groupName}*.`,
+                mentions: [participant]
             });
         }
     }
