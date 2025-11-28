@@ -1,47 +1,45 @@
 import fetch from 'node-fetch'
 
 let handler = async (m, { conn, args }) => {
-  if (!args[0]) 
-    return m.reply('❗ Ingresa el nombre de usuario de Instagram.\n\nEjemplo:\n.iginfo messi')
+  if (!args[0])
+    return m.reply('❗ Ingresa el nombre de usuario de Instagram.\n\nEjemplo:\n.iguser messi')
 
   let user = args[0]
 
   try {
     m.reply(`⏳ Consultando perfil de *${user}*...`)
 
-    // API de IGTalk para info de usuario
-    let api = `https://api.igtalk.store/instagram/userinfo?username=${encodeURIComponent(user)}`
+    let api = `https://api.ryzendesu.vip/api/instagram/userinfo?username=${encodeURIComponent(user)}`
     let res = await fetch(api)
     let json = await res.json()
 
-    if (!json.status || !json.data) 
-      return m.reply('❌ No pude obtener la información. Puede que el usuario no exista o sea privado.')
+    if (!json.status || !json.result)
+      return m.reply('❌ No pude obtener el perfil.')
 
-    let info = json.data
+    let info = json.result
 
-    let mensaje = `
+    let msg = `
 📸 *Perfil de Instagram*
 ──────────────────
-👤 *Usuario:* @${info.username}
-🪪 *Nombre:* ${info.fullname || "No disponible"}
-🔗 *Link:* https://instagram.com/${info.username}
-👥 *Seguidores:* ${info.followers}
-👤 *Seguidos:* ${info.following}
-📄 *Biografía:* ${info.biography || "Sin biografía"}
-🔐 *Privado:* ${info.is_private ? "Sí" : "No"}
+👤 Usuario: @${info.username}
+🪪 Nombre: ${info.full_name || "No disponible"}
+👥 Seguidores: ${info.follower_count}
+👤 Siguiendo: ${info.following_count}
+🔐 Privado: ${info.is_private ? "Sí" : "No"}
+🔗 Link: https://instagram.com/${info.username}
+📄 Biografía: ${info.biography || "Sin biografía"}
     `.trim()
 
-    // Enviar foto de perfil + texto
     await conn.sendMessage(m.chat, {
-      image: { url: info.profile_pic },
-      caption: mensaje
+      image: { url: info.profile_pic_url_hd },
+      caption: msg
     })
 
   } catch (e) {
     console.error(e)
-    m.reply('❌ Error al consultar el perfil. Es posible que el usuario no exista o la API falló.')
+    m.reply('❌ Error al consultar el perfil.')
   }
 }
 
-handler.command = ['iginfo', 'iguser', 'igperfil']
-export default handler 
+handler.command = ['iguser', 'iginfo', 'igperfil']
+export default handler
