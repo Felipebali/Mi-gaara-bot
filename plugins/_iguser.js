@@ -1,5 +1,3 @@
-import fetch from 'node‑fetch'
-
 let handler = async (m, { conn, args }) => {
   if (!args[0]) return m.reply('❗ Ingresa el nombre de usuario de Instagram.\n\nEjemplo:\n.iguser messi')
 
@@ -8,13 +6,13 @@ let handler = async (m, { conn, args }) => {
   try {
     m.reply(`⏳ Consultando perfil de @${username}...`)
 
-    // API de HasData
-    let apiKey = 'd9dfe7fc-75d4-4eab-bd5a-b166e78da001'  // <-- reemplazá con tu clave real
+    let apiKey = 'd9dfe7fc-75d4-4eab-bd5a-b166e78da001'
     let apiUrl = `https://api.hasdata.com/scrape/instagram/profile?handle=${encodeURIComponent(username)}`
 
+    // fetch nativo
     let res = await fetch(apiUrl, {
       headers: {
-        'x‑api-key': apiKey,
+        'x-api-key': apiKey,
         'Accept': 'application/json'
       }
     })
@@ -23,9 +21,7 @@ let handler = async (m, { conn, args }) => {
 
     let json = await res.json()
 
-    if (!json.data) {
-      return m.reply('❌ No se pudo obtener el perfil. Puede que el usuario no exista o sea privado.')
-    }
+    if (!json.data) return m.reply('❌ No se pudo obtener el perfil. Puede que el usuario no exista o sea privado.')
 
     let info = json.data
 
