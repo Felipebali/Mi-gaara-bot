@@ -1,4 +1,4 @@
-import fetch from 'node-fetch'
+import fetch from 'node‑fetch'
 
 let handler = async (m, { conn, args }) => {
   if (!args[0]) return m.reply('❗ Ingresa el nombre de usuario de Instagram.\n\nEjemplo:\n.iguser messi')
@@ -6,44 +6,49 @@ let handler = async (m, { conn, args }) => {
   let username = args[0]
 
   try {
-    m.reply(`⏳ Consultando perfil de *${username}*...`)
+    m.reply(`⏳ Consultando perfil de @${username}...`)
 
-    // URL pública de Instagram con JSON incrustado
-    let url = `https://www.instagram.com/${username}/?__a=1&__d=dis`
+    // API de HasData
+    let apiKey = 'd9dfe7fc-75d4-4eab-bd5a-b166e78da001'  // <-- reemplazá con tu clave real
+    let apiUrl = `https://api.hasdata.com/scrape/instagram/profile?handle=${encodeURIComponent(username)}`
 
-    let res = await fetch(url, {
+    let res = await fetch(apiUrl, {
       headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'
+        'x‑api-key': apiKey,
+        'Accept': 'application/json'
       }
     })
 
-    if (!res.ok) throw new Error('Usuario no encontrado o perfil privado.')
+    if (!res.ok) throw new Error(`HTTP error ${res.status}`)
 
     let json = await res.json()
 
-    // Acceder al objeto del perfil
-    let user = json.graphql.user
+    if (!json.data) {
+      return m.reply('❌ No se pudo obtener el perfil. Puede que el usuario no exista o sea privado.')
+    }
+
+    let info = json.data
 
     let msg = `
 📸 *Perfil de Instagram*
 ──────────────────
-👤 Usuario: @${user.username}
-🪪 Nombre: ${user.full_name || "No disponible"}
-👥 Seguidores: ${user.edge_followed_by.count}
-👤 Siguiendo: ${user.edge_follow.count}
-🔗 Link: https://instagram.com/${user.username}
-📄 Biografía: ${user.biography || "Sin biografía"}
-🔐 Privado: ${user.is_private ? "Sí" : "No"}
+👤 Usuario: @${info.username || username}
+🪪 Nombre: ${info.full_name || "No disponible"}
+👥 Seguidores: ${info.followers_count ?? "No info"}
+👤 Siguiendo: ${info.following_count ?? "No info"}
+📄 Biografía: ${info.biography || "Sin biografía"}
+🔐 Privado: ${info.is_private ? "Sí" : "No"}
+🔗 Link: https://instagram.com/${info.username || username}
     `.trim()
 
     await conn.sendMessage(m.chat, {
-      image: { url: user.profile_pic_url_hd },
+      image: { url: info.profile_pic_hd_url || info.profile_pic_url || undefined },
       caption: msg
     })
 
   } catch (e) {
     console.error(e)
-    m.reply('❌ Error al consultar el perfil. Es posible que el usuario no exista o sea privado.')
+    m.reply('❌ Error al consultar el perfil. Verifica tu API key y que el usuario exista.')
   }
 }
 
