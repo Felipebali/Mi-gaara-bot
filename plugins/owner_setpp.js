@@ -1,58 +1,54 @@
 // 📂 plugins/propietario-setpp.js
-// Cambiar foto de perfil del BOT — Solo Owners
+// Cambiar la foto de perfil del BOT citando una imagen — Solo Owners
 
-import { downloadContentFromMessage } from '@whiskeysockets/baileys'
+import { downloadContentFromMessage } from "@whiskeysockets/baileys";
 
-// 📌 Owners en formato array (solo números)
-const OWNERS = [
-  '59896026646',
-  '59898719147'
-]
+const owners = ["59896026646", "59898719147"]; // SOLO NÚMEROS LIMPIOS
 
 let handler = async (m, { conn }) => {
   try {
+    // Normaliza número
+    const sender = m.sender.replace(/[^0-9]/g, "");
 
-    // 📌 ID del autor en formato limpio
-    const sender = m.sender.replace(/[^0-9]/g, '')
-
-    // 🔐 Validación de OWNER
-    if (!OWNERS.includes(sender)) {
-      return m.reply('❌ Solo los *owners* pueden cambiar la foto del bot.')
+    // 🔐 SOLO OWNERS
+    if (!owners.includes(sender)) {
+      return m.reply("❌ Solo los *owners* pueden cambiar la foto del bot.");
     }
 
-    // 🖼️ Verificar si el mensaje contiene o cita una imagen
-    const q = m.quoted || m
-    const mime = (q.msg || q).mimetype || ''
-
-    if (!mime.startsWith('image/')) {
-      return m.reply(
-        '📸 *Debes responder a una imagen* para usar:\n\n.setpp'
-      )
+    // 📸 DEBE ser una imagen CITADA
+    if (!m.quoted) {
+      return m.reply("📸 *Debes responder a una imagen* con:\n\n.setpp");
     }
 
-    // 📥 Descargar imagen del mensaje
-    const stream = await downloadContentFromMessage(q.msg || q, 'image')
-    let buffer = Buffer.from([])
+    const q = m.quoted;
+    const mime = (q.msg || q).mimetype || "";
 
+    if (!mime.startsWith("image/")) {
+      return m.reply("📸 *Debes citar una imagen válida*.");
+    }
+
+    // 📥 Descargar imagen citada
+    const stream = await downloadContentFromMessage(q.msg || q, "image");
+    let buffer = Buffer.from([]);
     for await (const chunk of stream) {
-      buffer = Buffer.concat([buffer, chunk])
+      buffer = Buffer.concat([buffer, chunk]);
     }
 
-    // 🔄 Cambiar foto de perfil del BOT
-    await conn.updateProfilePicture(conn.user.jid, buffer)
+    // 🖼️ Establecer foto de perfil del bot
+    await conn.updateProfilePicture(conn.user.jid, buffer);
 
-    // ✔️ Confirmación
-    m.reply('✅ *Foto de perfil del bot actualizada correctamente.*')
+    await m.reply("✅ *Foto de perfil del bot actualizada correctamente!*");
 
-  } catch (err) {
-    console.error(err)
-    m.reply('❌ Error al intentar cambiar la foto de perfil.')
+  } catch (e) {
+    console.error(e);
+    m.reply("⚠️ Error al intentar cambiar la foto del bot.");
   }
-}
+};
 
-handler.help = ['setpp']
-handler.tags = ['owner']
-handler.command = /^(setpp|cambiarpp|botpp)$/i
-handler.owner = true
+// Datos del comando
+handler.help = ["setpp"];
+handler.tags = ["owner"];
+handler.command = /^setpp$/i;
+handler.owner = true;
 
-export default handler
+export default handler;
