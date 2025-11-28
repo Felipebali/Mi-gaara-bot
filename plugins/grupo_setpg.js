@@ -34,24 +34,13 @@ let handler = async (m, { conn }) => {
     // 📥 Descargar imagen citada
     const stream = await downloadContentFromMessage(q.msg || q, "image");
     let buffer = Buffer.from([]);
+
     for await (const chunk of stream) {
       buffer = Buffer.concat([buffer, chunk]);
     }
 
-    // 🖼️ Establecer foto del GRUPO
-    await conn.query({
-      tag: "iq",
-      attrs: {
-        type: "set",
-        xmlns: "w:profile:picture",
-        to: m.chat
-      },
-      content: [{
-        tag: "picture",
-        attrs: { type: "image" },
-        content: buffer
-      }]
-    });
+    // 🖼️ Establecer foto del GRUPO (método nuevo y funcional)
+    await conn.updateProfilePicture(m.chat, buffer);
 
     await m.reply("✅ *Foto del grupo actualizada correctamente!*");
 
@@ -65,7 +54,7 @@ let handler = async (m, { conn }) => {
 handler.help = ["setpg"];
 handler.tags = ["owner"];
 
-// ✅ ARRAY DE COMANDOS (igual que setpp)
+// array de comandos
 handler.command = ["setpg", "cambiarpg", "grouppic"];
 
 handler.owner = true;
