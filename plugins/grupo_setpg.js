@@ -3,11 +3,7 @@
 
 import { downloadContentFromMessage } from "@whiskeysockets/baileys";
 
-// 📌 Owners permitidos (solo números)
-const OWNERS = [
-  "59896026646",
-  "59898719147"
-];
+const owners = ["59896026646", "59898719147"]; // SOLO NÚMEROS LIMPIOS
 
 let handler = async (m, { conn }) => {
   try {
@@ -15,34 +11,34 @@ let handler = async (m, { conn }) => {
       return m.reply("❌ Este comando solo funciona en grupos.");
     }
 
-    // Normalizar número del autor
+    // Normaliza número
     const sender = m.sender.replace(/[^0-9]/g, "");
 
-    // 🔐 Solo owners
-    if (!OWNERS.includes(sender)) {
+    // 🔐 SOLO OWNERS
+    if (!owners.includes(sender)) {
       return m.reply("❌ Solo los *owners* pueden cambiar la foto del grupo.");
     }
 
-    // Debe citar una imagen
-    const q = m.quoted;
-    if (!q) {
+    // 📸 DEBE ser una imagen CITADA
+    if (!m.quoted) {
       return m.reply("📸 *Debes responder a una imagen* con:\n\n.setpg");
     }
 
-    const mime = q.mimetype || (q.msg && q.msg.mimetype) || "";
+    const q = m.quoted;
+    const mime = (q.msg || q).mimetype || "";
+
     if (!mime.startsWith("image/")) {
       return m.reply("📸 *Debes citar una imagen válida*.");
     }
 
-    // Descargar imagen citada
+    // 📥 Descargar imagen citada
     const stream = await downloadContentFromMessage(q.msg || q, "image");
     let buffer = Buffer.from([]);
-
     for await (const chunk of stream) {
       buffer = Buffer.concat([buffer, chunk]);
     }
 
-    // Cambiar foto del grupo
+    // 🖼️ Establecer foto del GRUPO
     await conn.query({
       tag: "iq",
       attrs: {
@@ -57,18 +53,21 @@ let handler = async (m, { conn }) => {
       }]
     });
 
-    await m.reply("✅ *Foto del grupo actualizada correctamente.*");
+    await m.reply("✅ *Foto del grupo actualizada correctamente!*");
 
   } catch (e) {
-    console.error(e);
-    m.reply("❌ Error al intentar cambiar la foto del grupo.");
+    console.error("Error en grupos-setpg:", e);
+    m.reply("⚠️ Error al intentar cambiar la foto del grupo.");
   }
 };
 
 // Datos del comando
 handler.help = ["setpg"];
 handler.tags = ["owner"];
-handler.command = /^setpg$/i;
+
+// ✅ ARRAY DE COMANDOS (igual que setpp)
+handler.command = ["setpg", "cambiarpg", "grouppic"];
+
 handler.owner = true;
 
 export default handler;
