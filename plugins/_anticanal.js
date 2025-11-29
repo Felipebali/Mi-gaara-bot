@@ -1,14 +1,14 @@
-// 📂 plugins/anticanal.js — Anti-Canal WhatsApp ✔
-// Bloquea links de canales como: https://whatsapp.com/channel/XXXX
+// 📂 plugins/anticanal.js — Anti-canal WhatsApp ✔
 
-const owners = ['59896026646', '59898719147', '59892363485']; // dueños EXENTOS
+const owners = ['59896026646', '59898719147', '59892363485'];
 
-// ✔ Regex mejorada que detecta TODOS los canales de WhatsApp
-const canalRegex = /https?:\/\/(?:www\.)?whatsapp\.com\/channel\/[A-Za-z0-9_-]+(?:\?[^\s]+)?/i;
+// Detecta TODOS los canales de WhatsApp
+const canalRegex = /(?:https?:\/\/)?(?:www\.)?whatsapp\.com\/channel\/[0-9A-Za-z]+/i;
 
 let handler = async (m, { conn, isAdmin, isBotAdmin, command }) => {
-
+    // ACTIVAR / DESACTIVAR
     if (command === "anticanal") {
+
         if (!isAdmin) return m.reply("❌ Solo *admins* pueden activar o desactivar Anti-Canal.");
 
         if (!global.db.data.chats[m.chat])
@@ -19,7 +19,6 @@ let handler = async (m, { conn, isAdmin, isBotAdmin, command }) => {
 
         return m.reply(`📢 Anti-Canal *${chat.anticanal ? "ACTIVADO" : "DESACTIVADO"}*`);
     }
-
 };
 
 export async function before(m, { conn, isAdmin, isBotAdmin }) {
@@ -28,29 +27,31 @@ export async function before(m, { conn, isAdmin, isBotAdmin }) {
 
     const chat = global.db.data.chats[m.chat];
 
+    // Si está desactivado → no hacer nada
     if (!chat.anticanal) return true;
 
     const text = m.text || "";
 
-    // ❌ Si no es un canal → ignorar
+    // Si NO es un link de canal → ignorar
     if (!canalRegex.test(text)) return true;
 
     const sender = m.sender.replace(/[^0-9]/g, '');
-    const itsOwner = owners.includes(sender);
+    const isOwner = owners.includes(sender);
 
-    // ✔ Exento si es owner
-    if (itsOwner) return true;
+    // Owners exentos
+    if (isOwner) return true;
 
+    // Si bot NO es admin → solo avisa
     if (!isBotAdmin) {
         return m.reply("⚠️ Hay un link de *canal*, pero no soy admin para borrarlo.");
     }
 
-    // 🗑️ BORRAR MENSAJE
+    // BORRAR MENSAJE
     try {
         await conn.sendMessage(m.chat, { delete: m.key });
     } catch {}
 
-    // 🚫 Expulsar si NO es admin
+    // Expulsar al usuario si NO es admin
     if (!isAdmin) {
         try {
             await conn.groupParticipantsUpdate(m.chat, [m.sender], "remove");
