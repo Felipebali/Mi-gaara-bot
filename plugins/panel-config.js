@@ -20,15 +20,13 @@ const aliasMap = {
     anticanal: ["anticanal", "antiCanal", "antichannel", "antiChannel"]
 };
 
-// 🟣 Función segura para obtener valores
+// 🟣 Obtener valores seguros
 function getChatValue(chat, key) {
     const keys = aliasMap[key];
     if (!keys) return false;
-
     for (const k of keys) {
         if (chat[k] !== undefined) {
-            const val = chat[k];
-            return val === true || val === 1 || val === "on";
+            return chat[k] === true || chat[k] === 1 || chat[k] === "on";
         }
     }
     return false;
@@ -42,54 +40,86 @@ let handler = async (m, { conn, isOwner, isAdmin }) => {
 
     let panel = `
 ╭━━━[ 📌 CONFIGURACIÓN DEL GRUPO ]━━━╮
+Cada opción se activa/desactiva usando:
+➡️  *.<comando>*  (ej: *.antilink*)
 
 🔰 *SEGURIDAD*
 ┃ 🔗 AntiLink: ${getChatValue(chat, 'antilink') ? '✅' : '❌'}
-┃    • Bloquea enlaces externos (grupos, webs, invitaciones).
+┃    • Bloquea enlaces comunes.
+┃    • Cmd: *.antilink*
+
 ┃ 🔗 AntiLink2: ${getChatValue(chat, 'antilink2') ? '✅' : '❌'}
-┃    • Modo agresivo: elimina enlaces aunque estén ocultos.
+┃    • Detector avanzado de enlaces.
+┃    • Cmd: *.antilink2*
+
 ┃ 📡 AntiCanal: ${getChatValue(chat, 'anticanal') ? '✅' : '❌'}
 ┃    • Bloquea enlaces de canales de WhatsApp.
+┃    • Cmd: *.anticanal*
+
 ┃ 🚫 AntiFake: ${getChatValue(chat, 'antifake') ? '✅' : '❌'}
-┃    • Expulsa números falsos o con prefijos sospechosos.
+┃    • Expulsa números falsos.
+┃    • Cmd: *.antifake*
+
 ┃ 🚫 AntiSpam: ${getChatValue(chat, 'antispam') ? '✅' : '❌'}
-┃    • Detecta mensajes repetidos o spam masivo.
+┃    • Evita spam y mensajes repetidos.
+┃    • Cmd: *.antispam*
+
 ┃ 🤬 AntiTóxico: ${getChatValue(chat, 'antitoxic') ? '✅' : '❌'}
-┃    • Filtra insultos, hateo y lenguaje inapropiado.
+┃    • Filtra insultos.
+┃    • Cmd: *.antitoxic*
+
 ┃ 📵 AntiLlamada: ${getChatValue(chat, 'antillamada') ? '✅' : '❌'}
-┃    • Expulsa usuarios que realizan llamadas al bot.
+┃    • Bloquea y expulsa por llamar al bot.
+┃    • Cmd: *.antillamada*
+
 ┃ 🤖 AntiBots: ${getChatValue(chat, 'antibot') ? '✅' : '❌'}
-┃    • Bloquea otros bots que entran al grupo.
+┃    • Evita que entren otros bots.
+┃    • Cmd: *.antibot*
+
 
 🛠️ *ADMINISTRACIÓN*
 ┃ 🛰️ Detect: ${getChatValue(chat, 'detect') ? '✅' : '❌'}
-┃    • Notifica cuando alguien entra, sale o cambia info.
+┃    • Avisos de entradas/salidas/cambios.
+┃    • Cmd: *.detect*
+
 ┃ 🛡️ SoloAdmins: ${getChatValue(chat, 'onlyadmin') ? '✅' : '❌'}
-┃    • Solo admins pueden usar comandos en el grupo.
-┃ 🌐 Modo Público: ${getChatValue(chat, 'public') ? '✅' : '❌'}
-┃    • El bot responde a cualquiera (modo público activo).
+┃    • Solo admins pueden usar comandos.
+┃    • Cmd: *.onlyadmin*
+
+┃ 🌐 Público: ${getChatValue(chat, 'public') ? '✅' : '❌'}
+┃    • Bot accesible para todos.
+┃    • Cmd: *.public*
+
 
 🎭 *MISCELÁNEOS*
 ┃ 👋 Welcome: ${getChatValue(chat, 'welcome') ? '✅' : '❌'}
-┃    • Mensaje de bienvenida para nuevos miembros.
+┃    • Mensaje de bienvenida.
+┃    • Cmd: *.welcome*
+
 ┃ 👋 Despedida: ${getChatValue(chat, 'despedida') ? '✅' : '❌'}
-┃    • Mensaje automático cuando alguien se va.
+┃    • Mensaje de salida.
+┃    • Cmd: *.despedida*
+
 ┃ 🖼️ AutoSticker: ${getChatValue(chat, 'autosticker') ? '✅' : '❌'}
-┃    • Convierte imágenes enviadas en stickers.
+┃    • Convierte imágenes en sticker.
+┃    • Cmd: *.autosticker*
+
 ┃ 🔞 NSFW: ${getChatValue(chat, 'nsfw') ? '✅' : '❌'}
-┃    • Activa comandos de contenido +18.
+┃    • Contenido +18.
+┃    • Cmd: *.nsfw*
+
 ┃ 🎮 Juegos: ${getChatValue(chat, 'juegos') ? '✅' : '❌'}
-┃    • Habilita juegos y comandos de diversión.
+┃    • Juegos y diversión.
+┃    • Cmd: *.juegos*
 
 ╰━━━━━━━━━━━━━━━━━━━━━━━━━━╯
 
-📌 Escribe *.panel info* para saber cómo activar o configurar cada opción.
+📘 Usa *.panel info* para ver detalles de cada módulo.
 `.trim();
 
     m.reply(panel);
 };
 
-// 🔥 COMPATIBLE CON CUALQUIER LOADER
 handler.help = ['panel'];
 handler.tags = ['group'];
 handler.command = ['panel'];
