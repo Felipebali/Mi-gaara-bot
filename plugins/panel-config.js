@@ -15,7 +15,11 @@ const aliasMap = {
     onlyadmin: ["onlyadmin", "onlyAdmin", "soloAdmins", "soloAdmin", "modoadmin"],
     antillamada: ["antillamada", "antiLlamada"],
     antibot: ["antibot"],
-    antilink: ["antilink", "antiLink"]
+    antilink: ["antilink", "antiLink"],
+
+    // 🆕 Nuevos agregados
+    antilink2: ["antilink2", "antiLink2", "antilinks2"],
+    anticanal: ["anticanal", "antiCanal", "antichannel", "antiChannel"]
 };
 
 // 🟣 Función que encuentra la propiedad correcta
@@ -37,6 +41,8 @@ let handler = async (m, { conn, isOwner, isAdmin }) => {
 ┃ 👋 Welcome: ${getChatValue(chat, 'welcome') ? '✅' : '❌'}
 ┃ 👋 Despedida: ${getChatValue(chat, 'despedida') ? '✅' : '❌'}
 ┃ 🔗 AntiLink: ${getChatValue(chat, 'antilink') ? '✅' : '❌'}
+┃ 🔗 AntiLink2: ${getChatValue(chat, 'antilink2') ? '✅' : '❌'}
+┃ 📡 AntiCanal: ${getChatValue(chat, 'anticanal') ? '✅' : '❌'}
 ┃ 🚫 AntiFake: ${getChatValue(chat, 'antifake') ? '✅' : '❌'}
 ┃ 🚫 AntiSpam: ${getChatValue(chat, 'antispam') ? '✅' : '❌'}
 ┃ 🤬 AntiTóxico: ${getChatValue(chat, 'antitoxic') ? '✅' : '❌'}
@@ -55,14 +61,14 @@ Escribe *.panel info* para ver cómo activar o configurar cada función.`;
     m.reply(panel);
 };
 
-// 🔥 COMPATIBLE CON CUALQUIER LOADER (misma estructura que tus otros comandos)
+// 🔥 COMPATIBLE CON CUALQUIER LOADER
 handler.help = ['panel'];
 handler.tags = ['group'];
 
-handler.command = ['panel'];                // formato estándar
-handler.command = handler.command || /^panel$/i; // regex fallback
+handler.command = ['panel'];
+handler.command = handler.command || /^panel$/i;
 
-handler.register = true;   // mejora compatibilidad con loaders strict
+handler.register = true;
 handler.customPrefix = null;
 
 export default handler;
