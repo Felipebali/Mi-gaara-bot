@@ -120,9 +120,9 @@ Cada opción se activa/desactiva usando:
     m.reply(panel);
 };
 
-handler.help = ['panel'];
+handler.help = ['panel', 'config'];
 handler.tags = ['group'];
-handler.command = ['panel'];
+handler.command = ['panel', 'config'];
 handler.register = true;
 
 export default handler;
