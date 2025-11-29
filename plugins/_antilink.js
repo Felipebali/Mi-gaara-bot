@@ -1,14 +1,19 @@
-const groupLinkRegex = /chat\.whatsapp\.com\/(?:invite\/)?([0-9A-Za-z]{20,24})/i;
+// 📂 plugins/antilink.js
+
+const groupLinkRegex = /chat.whatsapp.com\/(invite\/)?([0-9A-Za-z]{20,24})/i;
+const channelRegex = /whatsapp\.com\/channel\/[0-9A-Za-z]{15,50}/i;
 const anyLinkRegex = /https?:\/\/[^\s]+/i;
 
-const allowedLinks = /(tiktok\.com|youtube\.com|youtu\.be|link\.clashroyale\.com)/i;
-const tagallLink = 'https://miunicolink.local/tagall-FelixCat';
-const igLinkRegex = /(https?:\/\/)?(www\.)?instagram\.com\/[^\s]+/i;
-const clashLinkRegex = /(https?:\/\/)?(link\.clashroyale\.com)\/[^\s]+/i;
+// Enlaces permitidos
+const allowedLinks = /(tiktok.com|youtube.com|youtu.be|link.clashroyale.com)/i;
+const tagallLink = "https://miunicolink.local/tagall-FelixCat";
+const igLinkRegex = /(https?:\/\/)?(www.)?instagram.com\/[^\s]+/i;
+const clashLinkRegex = /(https?:\/\/)?(link.clashroyale.com)\/[^\s]+/i;
+
+// Dueños exentos total
+const owners = ["59896026646", "59898719147", "59892363485"];
 
 if (!global.groupInviteCodes) global.groupInviteCodes = {};
-
-const owners = ['59896026646', '59898719147', '59892363485'];
 
 export async function before(m, { conn, isAdmin, isBotAdmin }) {
   if (!m.isGroup) return true;
@@ -23,58 +28,76 @@ export async function before(m, { conn, isAdmin, isBotAdmin }) {
     m.message.conversation ||
     m.message.extendedTextMessage?.text ||
     m.message.caption ||
-    '';
+    "";
 
   if (!text) return true;
 
   const who = m.sender;
-  const number = who.replace(/\D/g, '');
+  const number = who.replace(/\D/g, "");
+
+  const isOwner = owners.includes(number);
 
   const isGroupLink = groupLinkRegex.test(text);
+  const isChannel = channelRegex.test(text);
   const isAnyLink = anyLinkRegex.test(text);
   const isAllowedLink = allowedLinks.test(text);
   const isTagall = text.includes(tagallLink);
   const isIG = igLinkRegex.test(text);
   const isClash = clashLinkRegex.test(text);
-  const isCanal = /whatsapp\.com\/channel\//i.test(text); // Detecta canal
 
   async function deleteMessageSafe() {
     try {
-      const deleteKey = {
-        remoteJid: m.chat,
-        fromMe: m.key.fromMe,
-        id: m.key.id,
-        participant: m.key.participant || m.participant || m.sender,
-      };
-      await conn.sendMessage(m.chat, { delete: deleteKey });
+      await conn.sendMessage(m.chat, {
+        delete: {
+          remoteJid: m.chat,
+          fromMe: false,
+          id: m.key.id,
+          participant: m.key.participant || m.sender,
+        },
+      });
     } catch {}
   }
 
-  // 🔹 Tagall → eliminar siempre
+  // 🔹 TAGALL → eliminar siempre
   if (isTagall) {
     await deleteMessageSafe();
     await conn.sendMessage(m.chat, {
-      text: `😮‍💨 Qué compartís el tagall inútil @${who.split('@')[0]}...`,
+      text: `😮‍💨 Qué compartís el tagall inútil @${who.split("@")[0]}...`,
       mentions: [who],
     });
     return false;
   }
 
-  const isOwner = owners.includes(number);
+  // ⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐
+  // 🔥 ANTI-CANAL: borrar SIEMPRE EXCEPTO ADMIN u OWNER
+  // ⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐
+  if (isChannel) {
+    if (isAdmin || isOwner) return true; // PERMITIDO para admin/owner
 
+    await deleteMessageSafe();
+    await conn.sendMessage(m.chat, {
+      text: `🚫 Link de *canal* eliminado @${who.split("@")[0]}.`,
+      mentions: [who],
+    });
+    return false;
+  }
+
+  // 🔹 Dueños: solo se les elimina link de otro grupo
   if (isOwner) {
     if (isGroupLink) {
       await deleteMessageSafe();
       await conn.sendMessage(m.chat, {
-        text: `⚠️ Link de grupo eliminado aunque seas owner, @${who.split('@')[0]}.`,
+        text: `⚠️ Link de grupo eliminado aunque seas owner, @${who.split("@")[0]}.`,
         mentions: [who],
       });
     }
     return true;
   }
 
+  // 🔹 PERMITIR links IG / Clash / allowed
   if (isIG || isClash || isAllowedLink) return true;
 
+  // 🔹 Código del grupo
   let currentInvite = global.groupInviteCodes[m.chat];
   if (!currentInvite) {
     try {
@@ -85,32 +108,36 @@ export async function before(m, { conn, isAdmin, isBotAdmin }) {
     }
   }
 
+  // 🔹 Link del mismo grupo → permitido
   if (isGroupLink && text.includes(currentInvite)) return true;
 
-  // ❌ Links de otros grupos
+  // 🔹 Link de OTRO grupo → eliminar + BAN si no es admin
   if (isGroupLink && !text.includes(currentInvite)) {
     await deleteMessageSafe();
     if (!isAdmin) {
       await conn.sendMessage(m.chat, {
-        text: `🚫 @${who.split('@')[0]} fue *expulsado* por compartir un link de *otro grupo*.`,
+        text: `🚫 @${who.split("@")[0]} fue *expulsado* por compartir un link de *otro grupo*.`,
         mentions: [who],
       });
-      await conn.groupParticipantsUpdate(m.chat, [who], 'remove');
+      await conn.groupParticipantsUpdate(m.chat, [who], "remove");
     } else {
       await conn.sendMessage(m.chat, {
-        text: `⚠️ @${who.split('@')[0]}, no compartas links de otros grupos.`,
+        text: `⚠️ @${who.split("@")[0]}, no compartas links de otros grupos.`,
         mentions: [who],
       });
     }
     return false;
   }
 
-  // ❌ **Acá estaba la parte que BORRABA canales con isAnyLink**
-  // ❌ La removí completamente
-  //
-  // if (isAnyLink && !isCanal) { ... }
-  //
-  // Ahora NO toca los canales.
+  // 🔹 Cualquier otro link → eliminar
+  if (isAnyLink) {
+    await deleteMessageSafe();
+    await conn.sendMessage(m.chat, {
+      text: `⚠️ @${who.split("@")[0]}, tu link fue eliminado (no permitido).`,
+      mentions: [who],
+    });
+    return false;
+  }
 
   return true;
 }
