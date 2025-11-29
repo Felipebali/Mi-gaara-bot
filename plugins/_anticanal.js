@@ -1,79 +1,60 @@
 // 📂 plugins/anticanal.js — FelixCat_Bot 🐾
+// Anti-Canal: elimina mensajes que tengan links de canales de WhatsApp
+// On/Off con:  anticanal
 
-// 🔹 Detecta enlaces de canales (todos los formatos reales)
-const channelLinkRegex = /https?:\/\/(www\.)?whatsapp\.com\/channel\/[0-9A-Za-z]{20,32}/i;
+const canalRegex = /(?:https?:\/\/)?(?:www\.)?whatsapp\.com\/channel\/[a-zA-Z0-9]+/i;
+const owners = ['59896026646', '59898719147', '59892363485']; // DUEÑOS
 
-// 🔹 Dueños (exentos del filtro)
-const owners = ['59896026646', '59898719147', '59892363485'];
+let handler = async (m, { conn, isAdmin, isBotAdmin, command }) => {
 
-export async function before(m, { conn, isAdmin, isBotAdmin }) {
+    // ≡ ACTIVAR / DESACTIVAR
+    if (command === "anticanal") {
 
-  if (!m.isGroup) return;
-  if (!m.message) return;
+        if (!m.isGroup) return m.reply("❗ Solo funciona en grupos.");
+        if (!isAdmin) return m.reply("❌ Solo admins pueden activar/desactivar el Anti-Canal.");
 
-  const chat = global.db.data.chats[m.chat] || (global.db.data.chats[m.chat] = {});
-  if (!chat.anticanal) return;
+        if (!global.db.data.chats[m.chat])
+            global.db.data.chats[m.chat] = {};
 
-  const text = m.text || '';
-  const sender = m.sender.replace(/[^0-9]/g, '');
+        let chat = global.db.data.chats[m.chat];
 
-  const botNumber = conn.user?.id.split(':')[0];
-  if (owners.includes(sender) || sender === botNumber) return;
+        chat.anticanal = !chat.anticanal;
 
-  // 🔹 Detecta canal ✔
-  const isChannel = channelLinkRegex.test(text);
-
-  if (isChannel) {
-
-    // ✔ No bot admin → solo avisa
-    if (!isBotAdmin) {
-      return conn.reply(m.chat, "⚠️ Detecté un enlace de *canal*, pero no soy admin para borrarlo.");
+        return m.reply(`📡 Anti-Canal *${chat.anticanal ? "ACTIVADO" : "DESACTIVADO"}*`);
     }
 
-    // ✔ Borra el mensaje del canal
-    await conn.sendMessage(m.chat, { delete: m.key });
-
-    // ✔ Aviso en chat (sin expulsión)
-    await conn.sendMessage(
-      m.chat,
-      {
-        text: `🚫 *Enlace de canal detectado*\n@${sender} no se permite compartir canales de WhatsApp.`,
-        mentions: [m.sender]
-      }
-    );
-
-    // ❌ YA NO EXPULSA  
-    return false;
-  }
-
-  return;
-}
-
-// ------------------------------
-// Comando activación/desactivación SIN RESPUESTA CITADA
-// ------------------------------
-
-let handler = async (m, { conn, isAdmin }) => {
-
-  if (!m.isGroup)
-    return conn.sendMessage(m.chat, { text: "❌ Solo en grupos." });
-
-  if (!isAdmin)
-    return conn.sendMessage(m.chat, { text: "❌ Solo admins pueden activar o desactivar el Anti-Canal." });
-
-  const chat = global.db.data.chats[m.chat] || (global.db.data.chats[m.chat] = {});
-  chat.anticanal = !chat.anticanal;
-
-  await conn.sendMessage(m.chat, {
-    text:
-      `📡 Anti-Canal *${chat.anticanal ? "ACTIVADO" : "DESACTIVADO"}*\n` +
-      `Los enlaces de canales ahora ` +
-      `${chat.anticanal ? "serán bloqueados (solo borrado, sin expulsar)." : "ya no serán filtrados."}`
-  });
 };
 
-handler.help = ['anticanal'];
-handler.tags = ['grupo'];
-handler.command = ['anticanal'];
-
 export default handler;
+
+
+// =======================
+// 🔥 FILTRO AUTOMÁTICO
+// =======================
+export async function before(m, { conn, isAdmin, isBotAdmin }) {
+    if (!m.isGroup) return;
+
+    const chat = global.db.data.chats[m.chat] || {};
+    if (!chat.anticanal) return; // No activado → no hace nada
+
+    if (!m.text) return;
+    if (!canalRegex.test(m.text)) return; // No es canal → ignorar
+
+    const sender = m.sender.replace(/\D/g, '');
+
+    // Dueños EXENTOS (no se elimina)
+    if (owners.includes(sender)) return;
+
+    // Admins del grupo EXENTOS
+    if (isAdmin) return;
+
+    // No bot admin → no puede borrar
+    if (!isBotAdmin) {
+        return m.reply("⚠️ Tengo Anti-Canal activado, pero necesito ser *admin* para borrar mensajes.");
+    }
+
+    try {
+        await conn.sendMessage(m.chat, { delete: m.key });
+        await conn.sendMessage(m.chat, { text: `🚫 Se prohiben los links de canal en este grupo.` });
+    } catch {}
+}
