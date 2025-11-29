@@ -1,14 +1,13 @@
-// 📂 plugins/anticanal.js — Anti canales WhatsApp ✔
-// Totalmente compatible con tu antilink.js
+// 📂 plugins/anticanal.js — Anti Canales WhatsApp ✔
 
 const owners = ['59896026646', '59898719147', '59892363485'];
 
-// Regex completo y seguro para links de canal
-const canalRegex = /(?:https?:\/\/)?(?:www\.)?whatsapp\.com\/channel\/[0-9A-Za-z_-]+/i;
+// Regex REAL que detecta TODOS los canales
+const canalRegex = /https?:\/\/(?:www\.)?whatsapp\.com\/channel\/[0-9A-Za-z]+/i;
 
 let handler = async (m, { conn, isAdmin, command }) => {
   if (command === "anticanal") {
-    if (!isAdmin) return m.reply("❌ Solo admins pueden activar o desactivar Anti-Canal.");
+    if (!isAdmin) return m.reply("❌ Solo admins pueden activar/desactivar Anti-Canal.");
 
     if (!global.db.data.chats[m.chat]) global.db.data.chats[m.chat] = {};
 
@@ -21,39 +20,38 @@ let handler = async (m, { conn, isAdmin, command }) => {
 
 export async function before(m, { conn, isAdmin, isBotAdmin }) {
   if (!m.isGroup) return true;
+
   if (!global.db?.data?.chats[m.chat]) global.db.data.chats[m.chat] = {};
-
   const chat = global.db.data.chats[m.chat];
-  if (!chat.anticanal) return true;
 
+  if (!chat.anticanal) return true;
   if (!m.message) return true;
 
-  // Extrae texto igual que tu antilink.js
+  // Extrae el texto de forma segura
   const text =
-    m.text ||
-    m.message.conversation ||
-    m.message.extendedTextMessage?.text ||
-    m.message.caption ||
+    m?.text ||
+    m?.message?.conversation ||
+    m?.message?.extendedTextMessage?.text ||
+    m?.message?.caption ||
     '';
 
   if (!text) return true;
 
-  // ❌ Si NO es link de canal → ignorar
+  // 📌 SI NO es canal → ignorar
   if (!canalRegex.test(text)) return true;
 
   const who = m.sender;
   const number = who.replace(/\D/g, '');
 
-  // ✔ Owners exentos
+  // Exentos
   if (owners.includes(number)) return true;
 
-  // ❌ Si el bot no es admin → avisar
   if (!isBotAdmin) {
     await conn.sendMessage(m.chat, { text: "⚠️ Hay un link de canal, pero no soy admin para borrarlo." });
     return false;
   }
 
-  // ---- BORRAR MENSAJE ----
+  // 🗑 BORRAR MENSAJE
   try {
     await conn.sendMessage(m.chat, {
       delete: {
@@ -61,17 +59,17 @@ export async function before(m, { conn, isAdmin, isBotAdmin }) {
         fromMe: m.key.fromMe,
         id: m.key.id,
         participant: m.key.participant || m.sender,
-      },
+      }
     });
   } catch {}
 
   // Aviso
   await conn.sendMessage(m.chat, {
-    text: `🚫 Enlace de *canal* eliminado.\n@${who.split("@")[0]}`,
-    mentions: [who],
+    text: `🚫 *Canal eliminado*\n@${who.split("@")[0]}`,
+    mentions: [who]
   });
 
-  // ❌ Expulsar si NO es admin
+  // Expulsar si no es admin
   if (!isAdmin) {
     try {
       await conn.groupParticipantsUpdate(m.chat, [m.sender], "remove");
