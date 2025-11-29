@@ -1,10 +1,10 @@
 // 📂 plugins/anticanal.js — Anti canales WhatsApp ✔
-// Compatible con la estructura de tu antilink.js
+// Totalmente compatible con tu antilink.js
 
 const owners = ['59896026646', '59898719147', '59892363485'];
 
-// Detecta TODOS los links de canal WhatsApp
-const canalRegex = /whatsapp\.com\/channel\/[0-9A-Za-z_-]+/i;
+// Regex completo y seguro para links de canal
+const canalRegex = /(?:https?:\/\/)?(?:www\.)?whatsapp\.com\/channel\/[0-9A-Za-z_-]+/i;
 
 let handler = async (m, { conn, isAdmin, command }) => {
   if (command === "anticanal") {
@@ -38,35 +38,32 @@ export async function before(m, { conn, isAdmin, isBotAdmin }) {
 
   if (!text) return true;
 
-  // Si NO es canal → ignorar
+  // ❌ Si NO es link de canal → ignorar
   if (!canalRegex.test(text)) return true;
 
   const who = m.sender;
   const number = who.replace(/\D/g, '');
 
-  // Dueños exentos
+  // ✔ Owners exentos
   if (owners.includes(number)) return true;
 
-  // Si bot no es admin no puede borrar
+  // ❌ Si el bot no es admin → avisar
   if (!isBotAdmin) {
     await conn.sendMessage(m.chat, { text: "⚠️ Hay un link de canal, pero no soy admin para borrarlo." });
     return false;
   }
 
-  // ---- BORRAR MENSAJE igual que tu ANTI-LINK ----
-  async function deleteMessageSafe() {
-    try {
-      const deleteKey = {
+  // ---- BORRAR MENSAJE ----
+  try {
+    await conn.sendMessage(m.chat, {
+      delete: {
         remoteJid: m.chat,
         fromMe: m.key.fromMe,
         id: m.key.id,
-        participant: m.key.participant || m.participant || m.sender,
-      };
-      await conn.sendMessage(m.chat, { delete: deleteKey });
-    } catch (e) {}
-  }
-
-  await deleteMessageSafe();
+        participant: m.key.participant || m.sender,
+      },
+    });
+  } catch {}
 
   // Aviso
   await conn.sendMessage(m.chat, {
@@ -74,7 +71,7 @@ export async function before(m, { conn, isAdmin, isBotAdmin }) {
     mentions: [who],
   });
 
-  // Expulsar si no es admin
+  // ❌ Expulsar si NO es admin
   if (!isAdmin) {
     try {
       await conn.groupParticipantsUpdate(m.chat, [m.sender], "remove");
