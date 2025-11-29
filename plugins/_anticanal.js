@@ -1,9 +1,9 @@
 // 📂 plugins/anticanal.js — FelixCat_Bot 🐾
 
-// 🔹 Detecta enlaces de canales de WhatsApp
-const channelRegex = /(?:https?:\/\/)?(?:www\.)?whatsapp\.com\/channel\/[0-9A-Za-z]{20,32}/i;
+// Detecta enlaces de canal + caracteres invisibles
+const channelRegex =
+  /https?:\/\/(?:www\.)?whatsapp\.com\/channel\/[\u200B-\u200D\uFEFF]*([0-9A-Za-z]{10,64})/i;
 
-// 🔹 Owners exentos (igual que en antilink)
 const owners = ['59896026646', '59898719147', '59892363485'];
 
 export async function before(m, { conn, isAdmin, isBotAdmin }) {
@@ -29,31 +29,28 @@ export async function before(m, { conn, isAdmin, isBotAdmin }) {
 
   async function deleteMessageSafe() {
     try {
-      const deleteKey = {
-        remoteJid: m.chat,
-        fromMe: m.key.fromMe,
-        id: m.key.id,
-        participant: m.key.participant || m.participant || m.sender,
-      };
-      await conn.sendMessage(m.chat, { delete: deleteKey });
-    } catch { }
+      await conn.sendMessage(m.chat, {
+        delete: {
+          remoteJid: m.chat,
+          fromMe: m.key.fromMe,
+          id: m.key.id,
+          participant: m.key.participant || m.participant || m.sender,
+        },
+      });
+    } catch {}
   }
 
-  // 🔹 Owners exentos, igual que en antilink
   if (owners.includes(number)) return true;
 
-  // 🔹 Admins no son expulsados ni bloqueados
   if (isChannel) {
-
-    // Si bot NO es admin → no puede borrar
     if (!isBotAdmin) {
       await conn.sendMessage(m.chat, {
-        text: `⚠️ Detecté un *link de canal*, pero no soy admin para borrarlo.`,
+        text: "⚠️ Detecté un *link de canal*, pero no soy admin para borrarlo.",
       });
       return false;
     }
 
-    // ✔ Borrar link del canal
+    // ✔ Borrar
     await deleteMessageSafe();
 
     // ✔ Aviso
@@ -68,12 +65,8 @@ export async function before(m, { conn, isAdmin, isBotAdmin }) {
   return true;
 }
 
-// ------------------------------
-// Comando ON / OFF igual que en antilink
-// ------------------------------
-
+// Comando ON/OFF
 let handler = async (m, { conn, isAdmin }) => {
-
   if (!m.isGroup)
     return conn.sendMessage(m.chat, { text: "❌ Solo en grupos." });
 
@@ -81,14 +74,13 @@ let handler = async (m, { conn, isAdmin }) => {
     return conn.sendMessage(m.chat, { text: "❌ Solo admins pueden usar este comando." });
 
   const chat = global.db.data.chats[m.chat] || (global.db.data.chats[m.chat] = {});
-
   chat.antiCanal = !chat.antiCanal;
 
   await conn.sendMessage(m.chat, {
     text:
       `📡 Anti-Canal *${chat.antiCanal ? "ACTIVADO" : "DESACTIVADO"}*\n` +
       `Los enlaces de canales ahora ` +
-      `${chat.antiCanal ? "serán eliminados." : "ya no serán filtrados."}`
+      `${chat.antiCanal ? "serán eliminados." : "ya no serán filtrados."}`,
   });
 };
 
