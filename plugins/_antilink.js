@@ -1,7 +1,6 @@
 // 📂 plugins/antilink.js
 
 const groupLinkRegex = /chat\.whatsapp\.com\/(?:invite\/)?([0-9A-Za-z]{20,24})/i;
-const channelLinkRegex = /whatsapp\.com\/channel\/([0-9A-Za-z]+)/i;
 const anyLinkRegex = /https?:\/\/[^\s]+/i;
 
 // 🔹 Enlaces permitidos
@@ -37,7 +36,6 @@ export async function before(m, { conn, isAdmin, isBotAdmin }) {
   const number = who.replace(/\D/g, '');
 
   const isGroupLink = groupLinkRegex.test(text);
-  const isChannelLink = channelLinkRegex.test(text);
   const isAnyLink = anyLinkRegex.test(text);
   const isAllowedLink = allowedLinks.test(text);
   const isTagall = text.includes(tagallLink);
@@ -67,16 +65,6 @@ export async function before(m, { conn, isAdmin, isBotAdmin }) {
   }
 
   const isOwner = owners.includes(number);
-
-  // 🔹 Channel links → NO permitidos para nadie (dueños y admins incluidos)
-  if (isChannelLink) {
-    await deleteMessageSafe();
-    await conn.sendMessage(m.chat, {
-      text: `🚫 @${who.split('@')[0]}, los *links de canales de WhatsApp* no están permitidos.`,
-      mentions: [who],
-    });
-    return false;
-  }
 
   // 🔹 Dueños exentos solo del antilink de grupo
   if (isOwner) {
