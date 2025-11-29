@@ -2,13 +2,12 @@
 // Bloquea links de canales como: https://whatsapp.com/channel/XXXX
 
 const owners = ['59896026646', '59898719147', '59892363485']; // dueños EXENTOS
-const canalRegex = /https?:\/\/(www\.)?whatsapp\.com\/channel\/[0-9A-Za-z]+/i;
+
+// ✔ Regex mejorada que detecta TODOS los canales de WhatsApp
+const canalRegex = /https?:\/\/(?:www\.)?whatsapp\.com\/channel\/[A-Za-z0-9_-]+(?:\?[^\s]+)?/i;
 
 let handler = async (m, { conn, isAdmin, isBotAdmin, command }) => {
 
-    // -----------------------
-    // 🔘 ACTIVAR / DESACTIVAR
-    // -----------------------
     if (command === "anticanal") {
         if (!isAdmin) return m.reply("❌ Solo *admins* pueden activar o desactivar Anti-Canal.");
 
@@ -29,12 +28,11 @@ export async function before(m, { conn, isAdmin, isBotAdmin }) {
 
     const chat = global.db.data.chats[m.chat];
 
-    // ❌ Si está desactivado → no hacer nada
     if (!chat.anticanal) return true;
 
     const text = m.text || "";
 
-    // ❌ Si no contiene link de canal → ignorar
+    // ❌ Si no es un canal → ignorar
     if (!canalRegex.test(text)) return true;
 
     const sender = m.sender.replace(/[^0-9]/g, '');
@@ -43,7 +41,6 @@ export async function before(m, { conn, isAdmin, isBotAdmin }) {
     // ✔ Exento si es owner
     if (itsOwner) return true;
 
-    // ❌ Si el bot no es admin → solo avisa
     if (!isBotAdmin) {
         return m.reply("⚠️ Hay un link de *canal*, pero no soy admin para borrarlo.");
     }
