@@ -12,35 +12,30 @@ export async function before(m, { conn, isAdmin, isBotAdmin }) {
   if (!m.message) return;
 
   const chat = global.db.data.chats[m.chat] || (global.db.data.chats[m.chat] = {});
-  if (!chat.anticanal) return; // Si no está activado, no hace nada
+  if (!chat.anticanal) return;
 
   const text = m.text || '';
   const sender = m.sender.replace(/[^0-9]/g, '');
 
-  // Exentos → owners y el propio bot
   const botNumber = conn.user?.id.split(':')[0];
   if (owners.includes(sender) || sender === botNumber) return;
 
-  // ❌ Si detecta enlace de canal
   if (channelLinkRegex.test(text)) {
 
-    // Si el bot no es admin → solo avisa
     if (!isBotAdmin) {
-      return conn.reply(m.chat, "⚠️ Detecté un enlace de *canal*, pero no soy admin para borrarlo.", m);
+      return conn.reply(m.chat, "⚠️ Detecté un enlace de *canal*, pero no soy admin para borrarlo.");
     }
 
-    // 🧹 Borra el mensaje
     await conn.sendMessage(m.chat, { delete: m.key });
 
-    // ⚠️ Advierte
-    await conn.reply(
+    await conn.sendMessage(
       m.chat,
-      `🚫 *Enlace de canal detectado*\n@${sender} no se permite compartir canales de WhatsApp.`,
-      m,
-      { mentions: [m.sender] }
+      {
+        text: `🚫 *Enlace de canal detectado*\n@${sender} no se permite compartir canales de WhatsApp.`,
+        mentions: [m.sender]
+      }
     );
 
-    // Si el que lo envió NO es admin → expulsión 🔥
     if (!isAdmin) {
       await conn.groupParticipantsUpdate(m.chat, [m.sender], 'remove');
     }
@@ -52,20 +47,27 @@ export async function before(m, { conn, isAdmin, isBotAdmin }) {
 }
 
 // ------------------------------
-// Comando para activar/desactivar
+// Comando activación/desactivación
+// SIN RESPUESTA CITADA
 // ------------------------------
-let handler = async (m, { conn, isAdmin, command }) => {
 
-  if (!m.isGroup) return m.reply("❌ Solo en grupos.");
-  if (!isAdmin) return m.reply("❌ Solo admins pueden activar o desactivar el Anti-Canal.");
+let handler = async (m, { conn, isAdmin }) => {
+
+  if (!m.isGroup)
+    return conn.sendMessage(m.chat, { text: "❌ Solo en grupos." }); // sin citar
+
+  if (!isAdmin)
+    return conn.sendMessage(m.chat, { text: "❌ Solo admins pueden activar o desactivar el Anti-Canal." }); // sin citar
 
   const chat = global.db.data.chats[m.chat] || (global.db.data.chats[m.chat] = {});
   chat.anticanal = !chat.anticanal;
 
-  m.reply(
-    `📡 Anti-Canal *${chat.anticanal ? "ACTIVADO" : "DESACTIVADO"}*\n` +
-    `Los enlaces de canales ahora ${chat.anticanal ? "serán bloqueados." : "ya no serán filtrados."}`
-  );
+  await conn.sendMessage(m.chat, {
+    text:
+      `📡 Anti-Canal *${chat.anticanal ? "ACTIVADO" : "DESACTIVADO"}*\n` +
+      `Los enlaces de canales ahora ` +
+      `${chat.anticanal ? "serán bloqueados." : "ya no serán filtrados."}`
+  }); // ✔ SIN citar el mensaje del comando
 };
 
 handler.help = ['anticanal'];
