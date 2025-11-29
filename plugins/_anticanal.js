@@ -1,139 +1,64 @@
-function cleanNum(jid) {
-  return String(jid || "").replace(/[^0-9]/g, "").trim();
+// 📂 plugins/anticanal.js — FelixCat_Bot 🐾
+// Anti-Canal: elimina mensajes que contengan un enlace a canales de WhatsApp
+
+// Regex oficial de enlaces a canales
+const canalRegex = /whatsapp\.com\/channel\/[0-9A-Za-z]+/i;
+
+// Dueños (si querés que estén exentos, agregalos acá)
+const owners = ['59896026646', '59898719147'];
+
+let handler = async (m, { conn, isAdmin, command }) => {
+    if (!m.isGroup) return;
+
+    // ---------------------------
+    // ⚙️ ACTIVAR / DESACTIVAR
+    // ---------------------------
+    if (command === "anticanal") {
+
+        if (!isAdmin)
+            return m.reply("❌ Solo admins pueden activar o desactivar el Anti-Canal.");
+
+        if (!global.db.data.chats[m.chat])
+            global.db.data.chats[m.chat] = {};
+
+        let chat = global.db.data.chats[m.chat];
+
+        chat.anticanal = !chat.anticanal;
+
+        return m.reply(`📢 Anti-Canal *${chat.anticanal ? "ACTIVADO" : "DESACTIVADO"}*`);
+    }
+};
+
+export async function before(m, { conn }) {
+    if (!m.isGroup) return;
+    if (!m.text) return;
+
+    let chat = global.db.data.chats[m.chat];
+    if (!chat || !chat.anticanal) return;
+
+    // Ignorar dueños (si querés que los bloquee igual, borra este bloque)
+    const sender = m.sender.replace(/\D/g, "");
+    if (owners.includes(sender)) return;
+
+    // ---------------------------
+    // 🚫 DETECTAR LINK DE CANAL
+    // ---------------------------
+    if (canalRegex.test(m.text)) {
+
+        try {
+            // ❌ Borrar mensaje
+            await conn.sendMessage(m.chat, {
+                delete: m.key
+            });
+
+            // ⚠️ Advertir
+            await conn.sendMessage(m.chat, {
+                text: `🚫 *Enlace a canal detectado y eliminado*\n@${sender} este tipo de enlace no está permitido.`,
+                mentions: [m.sender]
+            });
+        } catch { }
+    }
 }
 
-// Regex para links de canal de WhatsApp
-const canalRegex = /(?:https?:\/\/)?(?:www\.)?whatsapp\.com\/channel\/[0-9A-Za-z_-]+/i;
-
-export default {
-  command: ["anticanal"],
-  admin: true,
-
-  // =========================================================
-  // 🔧 ACTIVAR / DESACTIVAR
-  // =========================================================
-  run: async ({ conn, m, remoteJid, senderJid, isGroup, isAdmin }) => {
-    try {
-      if (!isGroup)
-        return await conn.sendText(remoteJid, "❌ Este comando solo funciona en grupos.", m);
-
-      if (!isAdmin)
-        return await conn.sendText(remoteJid, "🛡️ Solo administradores pueden usar este comando.", m, {
-          mentions: [senderJid],
-        });
-
-      if (!global.db.data.chats) global.db.data.chats = {};
-      if (!global.db.data.chats[remoteJid])
-        global.db.data.chats[remoteJid] = { antilink: true, anticanal: true };
-
-      const current = global.db.data.chats[remoteJid].anticanal;
-      const newState = !current;
-
-      global.db.data.chats[remoteJid].anticanal = newState;
-      await global.db.write();
-
-      // reacción ✔/❌
-      await conn.sendMessage(remoteJid, {
-        react: { text: newState ? "🟢" : "🔴", key: m.key },
-      });
-
-      // mensaje
-      await conn.sendText(
-        remoteJid,
-        `📢 *Anticanal ${newState ? "ACTIVADO" : "DESACTIVADO"}*`,
-        m
-      );
-    } catch (err) {
-      console.error("❌ Error en anticanal:", err);
-    }
-  },
-
-  // =========================================================
-  // BEFORE → DETECTA LINKS DE CANAL Y CONTENIDO REENVIADO
-  // =========================================================
-  before: async ({ conn, m, remoteJid, senderJid, isGroup, isAdmin, isBotAdmin }) => {
-    try {
-      if (!isGroup) return;
-      if (!global.db.data.chats[remoteJid]) return;
-
-      const chat = global.db.data.chats[remoteJid];
-      if (!chat.anticanal) return;
-
-      const num = cleanNum(senderJid);
-      const mention = senderJid;
-
-      const text =
-        m.text ||
-        m.message?.conversation ||
-        m.message?.extendedTextMessage?.text ||
-        m.message?.caption ||
-        "";
-
-      // =====================================================
-      // 🔍 1) DETECTAR LINKS DE CANAL
-      // =====================================================
-      if (canalRegex.test(text)) {
-
-        if (!isBotAdmin)
-          return await conn.sendText(remoteJid, "⚠️ Hay un link de canal, pero no soy admin.");
-
-        // borrar mensaje
-        await conn.sendMessage(remoteJid, {
-          delete: {
-            remoteJid,
-            fromMe: false,
-            id: m.key.id,
-            participant: m.key.participant || senderJid,
-          },
-        });
-
-        await conn.sendText(remoteJid, `🚫 Link de canal eliminado.`, null, {
-          mentions: [mention],
-        });
-
-        if (!isAdmin) {
-          await conn.groupParticipantsUpdate(remoteJid, [senderJid], "remove");
-        }
-
-        return false;
-      }
-
-      // =====================================================
-      // 🔍 2) DETECTAR REENVÍO DESDE CANALES (newsletter)
-      // =====================================================
-      const forwarded = m.message?.extendedTextMessage?.contextInfo?.isForwarded;
-      const fromNewsletter =
-        m.message?.extendedTextMessage?.contextInfo?.forwardedNewsletterMessageInfo;
-
-      if (forwarded && fromNewsletter) {
-        if (!isBotAdmin)
-          return await conn.sendText(remoteJid, "⚠️ Contenido de canal detectado, pero no soy admin.");
-
-        // borrar mensaje
-        await conn.sendMessage(remoteJid, {
-          delete: {
-            remoteJid,
-            fromMe: false,
-            id: m.key.id,
-            participant: m.key.participant || senderJid,
-          },
-        });
-
-        await conn.sendText(
-          remoteJid,
-          `📱 @${num} compartió contenido de canal.`,
-          null,
-          { mentions: [mention] }
-        );
-
-        if (!isAdmin) {
-          await conn.groupParticipantsUpdate(remoteJid, [senderJid], "remove");
-        }
-
-        return false;
-      }
-    } catch (err) {
-      console.error("❌ Error en before de anticanal:", err);
-    }
-  },
-};
+handler.command = ["anticanal"];
+export default handler;
