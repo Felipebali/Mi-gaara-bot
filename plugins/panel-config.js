@@ -1,6 +1,6 @@
-// plugins/grupo-configuracion.js - Panel con soporte de alias
+// plugins/grupo-configuracion.js — Panel actualizado y optimizado
 
-// 🔥 Mapa de alias compatibles con tus plugins
+// 🔥 Mapa de alias para compatibilidad con cualquier plugin
 const aliasMap = {
     welcome: ["welcome"],
     despedida: ["despedida"],
@@ -16,17 +16,20 @@ const aliasMap = {
     antillamada: ["antillamada", "antiLlamada"],
     antibot: ["antibot"],
     antilink: ["antilink", "antiLink"],
-
-    // 🆕 Nuevos agregados
     antilink2: ["antilink2", "antiLink2", "antilinks2"],
     anticanal: ["anticanal", "antiCanal", "antichannel", "antiChannel"]
 };
 
-// 🟣 Función que encuentra la propiedad correcta
+// 🟣 Función segura para obtener valores
 function getChatValue(chat, key) {
     const keys = aliasMap[key];
+    if (!keys) return false;
+
     for (const k of keys) {
-        if (chat[k] !== undefined) return chat[k];
+        if (chat[k] !== undefined) {
+            const val = chat[k];
+            return val === true || val === 1 || val === "on";
+        }
     }
     return false;
 }
@@ -37,26 +40,36 @@ let handler = async (m, { conn, isOwner, isAdmin }) => {
 
     let chat = global.db.data.chats[m.chat] || {};
 
-    let panel = `╭━━━[ PANEL DE CONFIGURACIÓN ]━━━╮
-┃ 👋 Welcome: ${getChatValue(chat, 'welcome') ? '✅' : '❌'}
-┃ 👋 Despedida: ${getChatValue(chat, 'despedida') ? '✅' : '❌'}
+    // 🟦 Nueva presentación: más clara y ordenada
+    let panel = `
+╭━━━[ 📌 CONFIGURACIÓN DEL GRUPO ]━━━╮
+
+🔰 *SEGURIDAD*
 ┃ 🔗 AntiLink: ${getChatValue(chat, 'antilink') ? '✅' : '❌'}
 ┃ 🔗 AntiLink2: ${getChatValue(chat, 'antilink2') ? '✅' : '❌'}
 ┃ 📡 AntiCanal: ${getChatValue(chat, 'anticanal') ? '✅' : '❌'}
 ┃ 🚫 AntiFake: ${getChatValue(chat, 'antifake') ? '✅' : '❌'}
 ┃ 🚫 AntiSpam: ${getChatValue(chat, 'antispam') ? '✅' : '❌'}
 ┃ 🤬 AntiTóxico: ${getChatValue(chat, 'antitoxic') ? '✅' : '❌'}
+┃ 📵 AntiLlamada: ${getChatValue(chat, 'antillamada') ? '✅' : '❌'}
+┃ 🤖 AntiBots: ${getChatValue(chat, 'antibot') ? '✅' : '❌'}
+
+🛠️ *ADMINISTRACIÓN*
 ┃ 🛰️ Detect: ${getChatValue(chat, 'detect') ? '✅' : '❌'}
+┃ 🛡️ SoloAdmins: ${getChatValue(chat, 'onlyadmin') ? '✅' : '❌'}
+┃ 🌐 Modo Público: ${getChatValue(chat, 'public') ? '✅' : '❌'}
+
+🎭 *MISCELÁNEOS*
+┃ 👋 Welcome: ${getChatValue(chat, 'welcome') ? '✅' : '❌'}
+┃ 👋 Despedida: ${getChatValue(chat, 'despedida') ? '✅' : '❌'}
 ┃ 🖼️ AutoSticker: ${getChatValue(chat, 'autosticker') ? '✅' : '❌'}
 ┃ 🔞 NSFW: ${getChatValue(chat, 'nsfw') ? '✅' : '❌'}
 ┃ 🎮 Juegos: ${getChatValue(chat, 'juegos') ? '✅' : '❌'}
-┃ 🌐 Modo Público: ${getChatValue(chat, 'public') ? '✅' : '❌'}
-┃ 🛡️ SoloAdmins: ${getChatValue(chat, 'onlyadmin') ? '✅' : '❌'}
-┃ 📵 AntiLlamada: ${getChatValue(chat, 'antillamada') ? '✅' : '❌'}
-┃ 🤖 AntiBots: ${getChatValue(chat, 'antibot') ? '✅' : '❌'}
-╰━━━━━━━━━━━━━━━━━━━━━━╯
 
-Escribe *.panel info* para ver cómo activar o configurar cada función.`;
+╰━━━━━━━━━━━━━━━━━━━━━━━━━━╯
+
+📌 Escribe *.panel info* para saber cómo activar o configurar cada opción.
+`.trim();
 
     m.reply(panel);
 };
@@ -64,11 +77,7 @@ Escribe *.panel info* para ver cómo activar o configurar cada función.`;
 // 🔥 COMPATIBLE CON CUALQUIER LOADER
 handler.help = ['panel'];
 handler.tags = ['group'];
-
 handler.command = ['panel'];
-handler.command = handler.command || /^panel$/i;
-
 handler.register = true;
-handler.customPrefix = null;
 
 export default handler;
