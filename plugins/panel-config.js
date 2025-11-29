@@ -84,7 +84,7 @@ Cada opción se activa/desactiva usando:
 
 ┃ 🛡️ SoloAdmins: ${getChatValue(chat, 'onlyadmin') ? '✅' : '❌'}
 ┃    • Solo admins pueden usar comandos.
-┃    • Cmd: *.onlyadmin*
+┃    • Cmd: *.modoadmin*
 
 ┃ 🌐 Público: ${getChatValue(chat, 'public') ? '✅' : '❌'}
 ┃    • Bot accesible para todos.
