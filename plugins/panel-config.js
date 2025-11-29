@@ -40,31 +40,46 @@ let handler = async (m, { conn, isOwner, isAdmin }) => {
 
     let chat = global.db.data.chats[m.chat] || {};
 
-    // 🟦 Nueva presentación: más clara y ordenada
     let panel = `
 ╭━━━[ 📌 CONFIGURACIÓN DEL GRUPO ]━━━╮
 
 🔰 *SEGURIDAD*
 ┃ 🔗 AntiLink: ${getChatValue(chat, 'antilink') ? '✅' : '❌'}
+┃    • Bloquea enlaces externos (grupos, webs, invitaciones).
 ┃ 🔗 AntiLink2: ${getChatValue(chat, 'antilink2') ? '✅' : '❌'}
+┃    • Modo agresivo: elimina enlaces aunque estén ocultos.
 ┃ 📡 AntiCanal: ${getChatValue(chat, 'anticanal') ? '✅' : '❌'}
+┃    • Bloquea enlaces de canales de WhatsApp.
 ┃ 🚫 AntiFake: ${getChatValue(chat, 'antifake') ? '✅' : '❌'}
+┃    • Expulsa números falsos o con prefijos sospechosos.
 ┃ 🚫 AntiSpam: ${getChatValue(chat, 'antispam') ? '✅' : '❌'}
+┃    • Detecta mensajes repetidos o spam masivo.
 ┃ 🤬 AntiTóxico: ${getChatValue(chat, 'antitoxic') ? '✅' : '❌'}
+┃    • Filtra insultos, hateo y lenguaje inapropiado.
 ┃ 📵 AntiLlamada: ${getChatValue(chat, 'antillamada') ? '✅' : '❌'}
+┃    • Expulsa usuarios que realizan llamadas al bot.
 ┃ 🤖 AntiBots: ${getChatValue(chat, 'antibot') ? '✅' : '❌'}
+┃    • Bloquea otros bots que entran al grupo.
 
 🛠️ *ADMINISTRACIÓN*
 ┃ 🛰️ Detect: ${getChatValue(chat, 'detect') ? '✅' : '❌'}
+┃    • Notifica cuando alguien entra, sale o cambia info.
 ┃ 🛡️ SoloAdmins: ${getChatValue(chat, 'onlyadmin') ? '✅' : '❌'}
+┃    • Solo admins pueden usar comandos en el grupo.
 ┃ 🌐 Modo Público: ${getChatValue(chat, 'public') ? '✅' : '❌'}
+┃    • El bot responde a cualquiera (modo público activo).
 
 🎭 *MISCELÁNEOS*
 ┃ 👋 Welcome: ${getChatValue(chat, 'welcome') ? '✅' : '❌'}
+┃    • Mensaje de bienvenida para nuevos miembros.
 ┃ 👋 Despedida: ${getChatValue(chat, 'despedida') ? '✅' : '❌'}
+┃    • Mensaje automático cuando alguien se va.
 ┃ 🖼️ AutoSticker: ${getChatValue(chat, 'autosticker') ? '✅' : '❌'}
+┃    • Convierte imágenes enviadas en stickers.
 ┃ 🔞 NSFW: ${getChatValue(chat, 'nsfw') ? '✅' : '❌'}
+┃    • Activa comandos de contenido +18.
 ┃ 🎮 Juegos: ${getChatValue(chat, 'juegos') ? '✅' : '❌'}
+┃    • Habilita juegos y comandos de diversión.
 
 ╰━━━━━━━━━━━━━━━━━━━━━━━━━━╯
 
