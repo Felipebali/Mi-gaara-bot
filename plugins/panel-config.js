@@ -16,8 +16,7 @@ const aliasMap = {
     antillamada: ["antillamada", "antiLlamada"],
     antibot: ["antibot"],
     antilink: ["antilink", "antiLink"],
-    antilink2: ["antilink2", "antiLink2", "antilinks2"],
-    anticanal: ["anticanal", "antiCanal", "antichannel", "antiChannel"]
+    antilink2: ["antilink2", "antiLink2", "antilinks2"]
 };
 
 // 🟣 Obtener valores seguros
@@ -51,10 +50,6 @@ Cada opción se activa/desactiva usando:
 ┃ 🔗 AntiLink2: ${getChatValue(chat, 'antilink2') ? '✅' : '❌'}
 ┃    • Detector avanzado de enlaces.
 ┃    • Cmd: *.antilink2*
-
-┃ 📡 AntiCanal: ${getChatValue(chat, 'anticanal') ? '✅' : '❌'}
-┃    • Bloquea enlaces de canales de WhatsApp.
-┃    • Cmd: *.anticanal*
 
 ┃ 🚫 AntiFake: ${getChatValue(chat, 'antifake') ? '✅' : '❌'}
 ┃    • Expulsa números falsos.
@@ -97,7 +92,6 @@ Cada opción se activa/desactiva usando:
 ┃    • Cmd: *.welcome*
 
 ┃ 👋 Despedida: ${getChatValue(chat, 'despedida') ? '✅' : '❌'}
-┃    • Mensaje de salida.
 ┃    • Cmd: *.despedida*
 
 ┃ 🖼️ AutoSticker: ${getChatValue(chat, 'autosticker') ? '✅' : '❌'}
