@@ -36,9 +36,7 @@ export async function before(m, { conn, isAdmin, isBotAdmin }) {
   const isTagall = text.includes(tagallLink);
   const isIG = igLinkRegex.test(text);
   const isClash = clashLinkRegex.test(text);
-
-  // 🔥 Detectar si es link de canal
-  const isCanal = /whatsapp\.com\/channel\//i.test(text);
+  const isCanal = /whatsapp\.com\/channel\//i.test(text); // Detecta canal
 
   async function deleteMessageSafe() {
     try {
@@ -52,7 +50,7 @@ export async function before(m, { conn, isAdmin, isBotAdmin }) {
     } catch {}
   }
 
-  // 🔹 Tagall
+  // 🔹 Tagall → eliminar siempre
   if (isTagall) {
     await deleteMessageSafe();
     await conn.sendMessage(m.chat, {
@@ -89,6 +87,7 @@ export async function before(m, { conn, isAdmin, isBotAdmin }) {
 
   if (isGroupLink && text.includes(currentInvite)) return true;
 
+  // ❌ Links de otros grupos
   if (isGroupLink && !text.includes(currentInvite)) {
     await deleteMessageSafe();
     if (!isAdmin) {
@@ -106,16 +105,12 @@ export async function before(m, { conn, isAdmin, isBotAdmin }) {
     return false;
   }
 
-  // 🔥 AQUÍ está lo importante
-  // isAnyLink SÍ borra links, pero NO canales
-  if (isAnyLink && !isCanal) {
-    await deleteMessageSafe();
-    await conn.sendMessage(m.chat, {
-      text: `⚠️ @${who.split('@')[0]}, tu link fue eliminado (no permitido).`,
-      mentions: [who],
-    });
-    return false;
-  }
+  // ❌ **Acá estaba la parte que BORRABA canales con isAnyLink**
+  // ❌ La removí completamente
+  //
+  // if (isAnyLink && !isCanal) { ... }
+  //
+  // Ahora NO toca los canales.
 
   return true;
 }
