@@ -1,10 +1,8 @@
-import { saveDB } from '../db.js'
-
 function cleanNum(jid) {
   return String(jid || "").replace(/[^0-9]/g, "").trim()
 }
 
-// 🔥 REGEX PARA DETECTAR LINKS DE CANAL
+// Regex para links de canal
 const canalRegex = /(?:https?:\/\/)?(?:www\.)?whatsapp\.com\/channel\/[0-9A-Za-z_-]+/i
 
 export default {
@@ -13,78 +11,66 @@ export default {
 
   run: async ({ conn, m, remoteJid, senderJid, isGroup, isAdmin }) => {
     try {
-      if (!isGroup) {
+      if (!isGroup)
         return await conn.sendText(remoteJid, "❌ Este comando solo funciona en grupos.", m)
-      }
 
-      if (!isAdmin) {
-        return await conn.sendText(
-          remoteJid,
-          "🛡️ Solo los administradores pueden usar este comando.",
-          m,
-          { mentions: [senderJid] }
-        )
-      }
+      if (!isAdmin)
+        return await conn.sendText(remoteJid, "🛡️ Solo administradores pueden usar este comando.", m, {
+          mentions: [senderJid]
+        })
 
       if (!global.db.data.chats) global.db.data.chats = {}
-      if (!global.db.data.chats[remoteJid]) {
-        global.db.data.chats[remoteJid] = {
-          antilink: true,
-          anticanal: true
-        }
-      }
+      if (!global.db.data.chats[remoteJid])
+        global.db.data.chats[remoteJid] = { antilink: true, anticanal: true }
 
-      const estadoActual = global.db.data.chats[remoteJid].anticanal
-      const nuevoEstado = !estadoActual
+      // toggle
+      const current = global.db.data.chats[remoteJid].anticanal
+      const newState = !current
 
-      global.db.data.chats[remoteJid].anticanal = nuevoEstado
-      saveDB()
+      global.db.data.chats[remoteJid].anticanal = newState
+      await global.db.write()
 
-      const emoji = nuevoEstado ? '✅' : '❌'
+      // reacción
       await conn.sendMessage(remoteJid, {
-        react: { text: emoji, key: m.key }
+        react: { text: newState ? "✅" : "❌", key: m.key }
       })
 
-      console.log(`${nuevoEstado ? "✅ Anticanal ACTIVADO" : "❌ Anticanal DESACTIVADO"}: ${remoteJid}`)
-
     } catch (err) {
-      console.error("❌ Error en anticanal.js:", err)
+      console.error("❌ Error en anticanal:", err)
     }
   },
 
   // =========================================================
-  // 📱 BEFORE → DETECTA TODO TIPO DE CANALES
+  // BEFORE → DETECTA Y BLOQUEA CONTENIDO DE CANAL
   // =========================================================
-
   before: async ({ conn, m, remoteJid, senderJid, isGroup, isAdmin, isBotAdmin }) => {
     try {
-      if (!isGroup) return true
-      if (!global.db.data.chats[remoteJid]) return true
+      if (!isGroup) return
+      if (!global.db.data.chats[remoteJid]) return
 
       const chat = global.db.data.chats[remoteJid]
-      if (!chat.anticanal) return true
-      if (!m.message) return true
+      if (!chat.anticanal) return
 
       const num = cleanNum(senderJid)
       const mention = senderJid
 
-      // Extraer texto
       const text =
         m.text ||
-        m.message.conversation ||
-        m.message.extendedTextMessage?.text ||
-        m.message.caption ||
-        ''
+        m.message?.conversation ||
+        m.message?.extendedTextMessage?.text ||
+        m.message?.caption ||
+        ""
 
-      // =========================================================
-      // 🔍 1) DETECTA LINKS DE CANALES
-      // =========================================================
-      if (text && canalRegex.test(text)) {
+      // =====================================================
+      // 🔍 1) DETECTAR LINKS DE CANAL
+      // =====================================================
+      if (canalRegex.test(text)) {
 
         if (!isBotAdmin) {
           return await conn.sendText(remoteJid, "⚠️ Hay un link de canal, pero no soy admin.")
         }
 
+        // borrar
         await conn.sendMessage(remoteJid, {
           delete: {
             remoteJid,
@@ -94,12 +80,9 @@ export default {
           }
         })
 
-        await conn.sendText(
-          remoteJid,
-          `🚫 Link de canal eliminado.\n@${num}`,
-          null,
-          { mentions: [mention] }
-        )
+        await conn.sendText(remoteJid, `🚫 Link de canal eliminado.`, null, {
+          mentions: [mention]
+        })
 
         if (!isAdmin) {
           await conn.groupParticipantsUpdate(remoteJid, [senderJid], "remove")
@@ -108,52 +91,38 @@ export default {
         return false
       }
 
-      // =========================================================
-      // 🔍 2) DETECTA MENSAJES REENVIADOS DESDE CANALES
-      // =========================================================
-      const isForwarded = m.message?.extendedTextMessage?.contextInfo?.isForwarded
-      const isFromNewsletter = m.message?.extendedTextMessage?.contextInfo?.forwardedNewsletterMessageInfo
+      // =====================================================
+      // 🔍 2) DETECTAR REENVÍO DESDE CANALES (newsletter)
+      // =====================================================
+      const forwarded = m.message?.extendedTextMessage?.contextInfo?.isForwarded
+      const fromNewsletter = m.message?.extendedTextMessage?.contextInfo?.forwardedNewsletterMessageInfo
 
-      if (isForwarded && isFromNewsletter) {
+      if (forwarded && fromNewsletter) {
 
         if (!isBotAdmin) {
-          return await conn.sendText(remoteJid, "⚠️ Se detectó contenido de canal, pero no soy admin.")
+          return await conn.sendText(remoteJid, "⚠️ Contenido de canal detectado, pero no soy admin.")
         }
 
-        await conn.sendText(
-          remoteJid,
-          `📱 @${num} compartió contenido de canal.\nSerá eliminado...`,
-          null,
-          { mentions: [mention] }
-        )
-
-        // borrar mensaje
-        try {
-          await conn.sendMessage(remoteJid, {
-            delete: {
-              remoteJid,
-              fromMe: false,
-              id: m.key.id,
-              participant: m.key.participant || senderJid
-            }
-          })
-        } catch (err) {
-          console.error("⚠️ Error eliminando mensaje:", err)
-        }
-
-        // expulsar
-        if (!isAdmin) {
-          try {
-            await conn.groupParticipantsUpdate(remoteJid, [senderJid], "remove")
-          } catch (err) {
-            console.error("⚠️ Error expulsando:", err)
+        // borrar
+        await conn.sendMessage(remoteJid, {
+          delete: {
+            remoteJid,
+            fromMe: false,
+            id: m.key.id,
+            participant: m.key.participant || senderJid
           }
+        })
+
+        await conn.sendText(remoteJid, `📱 @${num} compartió contenido de canal.`, null, {
+          mentions: [mention]
+        })
+
+        if (!isAdmin) {
+          await conn.groupParticipantsUpdate(remoteJid, [senderJid], "remove")
         }
 
         return false
       }
-
-      return true
 
     } catch (err) {
       console.error("❌ Error en before de anticanal:", err)
