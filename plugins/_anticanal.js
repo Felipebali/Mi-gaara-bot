@@ -1,63 +1,85 @@
-// 📂 plugins/anticanal.js — FelixCat_Bot 🐾
-// Anti-Canal: elimina mensajes que contengan un enlace a canales de WhatsApp
+// 📌 AntiCanal — Funciona en todos los tipos de mensaje
 
-// Regex oficial de enlaces a canales
+// Detecta CUALQUIER link de canal, incluso con parámetros
 const canalRegex = /whatsapp\.com\/channel\/[0-9A-Za-z]+/i;
 
-// Dueños (si querés que estén exentos, agregalos acá)
-const owners = ['59896026646', '59898719147'];
+// Si querés que los dueños no sean detectados, ponelos acá
+const owners = ["59896026646", "59898719147"];
 
-let handler = async (m, { conn, isAdmin, command }) => {
-    if (!m.isGroup) return;
+function cleanNum(jid) {
+  return jid.replace(/\D/g, "");
+}
 
-    // ---------------------------
-    // ⚙️ ACTIVAR / DESACTIVAR
-    // ---------------------------
-    if (command === "anticanal") {
+let handler = async (m, { conn, command, isAdmin }) => {
 
-        if (!isAdmin)
-            return m.reply("❌ Solo admins pueden activar o desactivar el Anti-Canal.");
+  if (command === "anticanal") {
 
-        if (!global.db.data.chats[m.chat])
-            global.db.data.chats[m.chat] = {};
+    if (!m.isGroup) return m.reply("❌ Solo funciona en grupos.");
+    if (!isAdmin) return m.reply("❌ Solo admins pueden usar este comando.");
 
-        let chat = global.db.data.chats[m.chat];
+    if (!global.db.data.chats[m.chat])
+      global.db.data.chats[m.chat] = {};
 
-        chat.anticanal = !chat.anticanal;
+    let chat = global.db.data.chats[m.chat];
+    chat.anticanal = !chat.anticanal;
 
-        return m.reply(`📢 Anti-Canal *${chat.anticanal ? "ACTIVADO" : "DESACTIVADO"}*`);
-    }
+    return m.reply(`🔰 AntiCanal *${chat.anticanal ? "ACTIVADO" : "DESACTIVADO"}*`);
+  }
 };
 
 export async function before(m, { conn }) {
-    if (!m.isGroup) return;
-    if (!m.text) return;
 
-    let chat = global.db.data.chats[m.chat];
-    if (!chat || !chat.anticanal) return;
+  if (!m.isGroup) return;
 
-    // Ignorar dueños (si querés que los bloquee igual, borra este bloque)
-    const sender = m.sender.replace(/\D/g, "");
-    if (owners.includes(sender)) return;
+  const chat = global.db.data.chats[m.chat];
+  if (!chat || !chat.anticanal) return;
 
-    // ---------------------------
-    // 🚫 DETECTAR LINK DE CANAL
-    // ---------------------------
-    if (canalRegex.test(m.text)) {
+  // ---------------------------
+  // EXTRAER TEXTO REAL DEL MENSAJE
+  // ---------------------------
+  const texto =
+    m.text ||
+    m.message?.conversation ||
+    m.message?.extendedTextMessage?.text ||
+    m.message?.extendedTextMessage?.canonicalUrl ||
+    m.message?.extendedTextMessage?.matchedText ||
+    m.message?.buttonsResponseMessage?.selectedButtonId ||
+    m.message?.listResponseMessage?.title ||
+    m.message?.interactiveResponseMessage?.body?.text ||
+    "";
 
-        try {
-            // ❌ Borrar mensaje
-            await conn.sendMessage(m.chat, {
-                delete: m.key
-            });
+  // ---------------------------
+  // IGNORAR DUEÑOS
+  // ---------------------------
+  const sender = cleanNum(m.sender);
+  if (owners.includes(sender)) return;
 
-            // ⚠️ Advertir
-            await conn.sendMessage(m.chat, {
-                text: `🚫 *Enlace a canal detectado y eliminado*\n@${sender} este tipo de enlace no está permitido.`,
-                mentions: [m.sender]
-            });
-        } catch { }
+  // ---------------------------
+  // DETECTAR LINK DE CANAL
+  // ---------------------------
+  if (canalRegex.test(texto)) {
+
+    try {
+      // BORRAR EL MENSAJE
+      await conn.sendMessage(m.chat, {
+        delete: {
+          remoteJid: m.chat,
+          fromMe: false,
+          id: m.key.id,
+          participant: m.key.participant || m.sender
+        }
+      });
+    } catch (e) {
+      console.log("Error borrando:", e);
     }
+
+    // NOTIFICAR
+    await conn.sendMessage(m.chat, {
+      text: `🚫 *Enlace a canal eliminado*\n@${sender}`,
+      mentions: [m.sender]
+    });
+
+  }
 }
 
 handler.command = ["anticanal"];
