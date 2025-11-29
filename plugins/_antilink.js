@@ -1,6 +1,7 @@
 // 📂 plugins/antilink.js
 
 const groupLinkRegex = /chat\.whatsapp\.com\/(?:invite\/)?([0-9A-Za-z]{20,24})/i;
+const channelRegex = /whatsapp\.com\/channel\/[0-9A-Za-z]{20,32}/i; // ✔️ permitir canales
 const anyLinkRegex = /https?:\/\/[^\s]+/i;
 
 // 🔹 Enlaces permitidos
@@ -36,6 +37,7 @@ export async function before(m, { conn, isAdmin, isBotAdmin }) {
   const number = who.replace(/\D/g, '');
 
   const isGroupLink = groupLinkRegex.test(text);
+  const isChannel = channelRegex.test(text); // ✔️ detectar canales
   const isAnyLink = anyLinkRegex.test(text);
   const isAllowedLink = allowedLinks.test(text);
   const isTagall = text.includes(tagallLink);
@@ -77,6 +79,9 @@ export async function before(m, { conn, isAdmin, isBotAdmin }) {
     }
     return true;
   }
+
+  // 🔹 PERMITIR CANALES ✔️
+  if (isChannel) return true;
 
   // 🔹 Links permitidos
   if (isIG || isClash || isAllowedLink) return true;
