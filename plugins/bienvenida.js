@@ -2,8 +2,11 @@
 // Welcome + Leave con toggle usando SOLO: welcome
 
 let handler = async (m, { conn, isAdmin }) => {
-    if (!m.isGroup) return m.reply("❌ Solo funciona en grupos.");
-    if (!isAdmin) return m.reply("⚠️ Solo los administradores pueden usar este comando.");
+    if (!m.isGroup)
+        return conn.sendMessage(m.chat, { text: "❌ Solo funciona en grupos." });
+
+    if (!isAdmin)
+        return conn.sendMessage(m.chat, { text: "⚠️ Solo los administradores pueden usar este comando." });
 
     if (!global.db.data.chats[m.chat]) global.db.data.chats[m.chat] = {};
 
@@ -11,7 +14,9 @@ let handler = async (m, { conn, isAdmin }) => {
 
     chat.welcome = !chat.welcome;
 
-    await m.reply(`✨ *Welcome ${chat.welcome ? "ACTIVADO" : "DESACTIVADO"}*\nLos mensajes de entrada y salida están ${chat.welcome ? "habilitados" : "deshabilitados"}.`);
+    await conn.sendMessage(m.chat, {
+        text: `✨ *Welcome ${chat.welcome ? "ACTIVADO" : "DESACTIVADO"}*\nLos mensajes de entrada y salida están ${chat.welcome ? "habilitados" : "deshabilitados"}.`
+    });
 };
 
 // --- BEFORE ---
@@ -44,8 +49,8 @@ handler.before = async function (m, { conn }) {
     // 🎉 Bienvenida
     for (let user of added) {
         await conn.sendMessage(m.chat, {
-            text: `🎉 ¡Bienvenido/a *@${user.split("@")[0]}* al grupo *${groupName}*!
-Disfruta tu estadía.`, mentions: [user]
+            text: `🎉 ¡Bienvenido/a *@${user.split("@")[0]}* al grupo *${groupName}*!\nDisfruta tu estadía.`,
+            mentions: [user]
         });
     }
 
@@ -60,7 +65,9 @@ Disfruta tu estadía.`, mentions: [user]
     chat.participants = current;
 };
 
-handler.command = /^welcome$/i;
+// 📌 ARRAY DE COMANDOS
+handler.command = ["welcome", "welc", "wl"];
+
 handler.group = true;
 handler.admin = true;
 
