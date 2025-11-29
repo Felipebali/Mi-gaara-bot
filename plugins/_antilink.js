@@ -30,8 +30,8 @@ export async function before(m, { conn, isAdmin, isBotAdmin }) {
 
   if (!text) return true;
 
-  // ⛔ EXCEPCIÓN: NO BLOQUEAR CANALES
-  if (/whatsapp\.com\/channel\//i.test(text)) return true;
+  // ❌ **ELIMINADO el filtro que ignoraba canales**
+  // (ANTES estaba aquí el return true que rompía todo)
 
   const who = m.sender;
   const number = who.replace(/\D/g, '');
