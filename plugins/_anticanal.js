@@ -1,60 +1,99 @@
 // 📂 plugins/anticanal.js — FelixCat_Bot 🐾
-// Anti-Canal: elimina mensajes que tengan links de canales de WhatsApp
-// On/Off con:  anticanal
 
-const canalRegex = /(?:https?:\/\/)?(?:www\.)?whatsapp\.com\/channel\/[a-zA-Z0-9]+/i;
-const owners = ['59896026646', '59898719147', '59892363485']; // DUEÑOS
+// 🔹 Detecta enlaces de canales de WhatsApp
+const channelRegex = /(?:https?:\/\/)?(?:www\.)?whatsapp\.com\/channel\/[0-9A-Za-z]{20,32}/i;
 
-let handler = async (m, { conn, isAdmin, isBotAdmin, command }) => {
+// 🔹 Owners exentos (igual que en antilink)
+const owners = ['59896026646', '59898719147', '59892363485'];
 
-    // ≡ ACTIVAR / DESACTIVAR
-    if (command === "anticanal") {
+export async function before(m, { conn, isAdmin, isBotAdmin }) {
+  if (!m.isGroup) return true;
+  if (!m.message) return true;
 
-        if (!m.isGroup) return m.reply("❗ Solo funciona en grupos.");
-        if (!isAdmin) return m.reply("❌ Solo admins pueden activar/desactivar el Anti-Canal.");
+  const chat = global.db.data.chats[m.chat];
+  if (!chat?.antiCanal) return true;
 
-        if (!global.db.data.chats[m.chat])
-            global.db.data.chats[m.chat] = {};
+  const text =
+    m.text ||
+    m.message.conversation ||
+    m.message.extendedTextMessage?.text ||
+    m.message.caption ||
+    '';
 
-        let chat = global.db.data.chats[m.chat];
+  if (!text) return true;
 
-        chat.anticanal = !chat.anticanal;
+  const who = m.sender;
+  const number = who.replace(/\D/g, '');
 
-        return m.reply(`📡 Anti-Canal *${chat.anticanal ? "ACTIVADO" : "DESACTIVADO"}*`);
+  const isChannel = channelRegex.test(text);
+
+  async function deleteMessageSafe() {
+    try {
+      const deleteKey = {
+        remoteJid: m.chat,
+        fromMe: m.key.fromMe,
+        id: m.key.id,
+        participant: m.key.participant || m.participant || m.sender,
+      };
+      await conn.sendMessage(m.chat, { delete: deleteKey });
+    } catch { }
+  }
+
+  // 🔹 Owners exentos, igual que en antilink
+  if (owners.includes(number)) return true;
+
+  // 🔹 Admins no son expulsados ni bloqueados
+  if (isChannel) {
+
+    // Si bot NO es admin → no puede borrar
+    if (!isBotAdmin) {
+      await conn.sendMessage(m.chat, {
+        text: `⚠️ Detecté un *link de canal*, pero no soy admin para borrarlo.`,
+      });
+      return false;
     }
 
+    // ✔ Borrar link del canal
+    await deleteMessageSafe();
+
+    // ✔ Aviso
+    await conn.sendMessage(m.chat, {
+      text: `🚫 *Enlace de canal eliminado*\n@${who.split('@')[0]} no se permite compartir canales aquí.`,
+      mentions: [who],
+    });
+
+    return false;
+  }
+
+  return true;
+}
+
+// ------------------------------
+// Comando ON / OFF igual que en antilink
+// ------------------------------
+
+let handler = async (m, { conn, isAdmin }) => {
+
+  if (!m.isGroup)
+    return conn.sendMessage(m.chat, { text: "❌ Solo en grupos." });
+
+  if (!isAdmin)
+    return conn.sendMessage(m.chat, { text: "❌ Solo admins pueden usar este comando." });
+
+  const chat = global.db.data.chats[m.chat] || (global.db.data.chats[m.chat] = {});
+
+  chat.antiCanal = !chat.antiCanal;
+
+  await conn.sendMessage(m.chat, {
+    text:
+      `📡 Anti-Canal *${chat.antiCanal ? "ACTIVADO" : "DESACTIVADO"}*\n` +
+      `Los enlaces de canales ahora ` +
+      `${chat.antiCanal ? "serán eliminados." : "ya no serán filtrados."}`
+  });
 };
 
+handler.help = ['anticanal'];
+handler.tags = ['grupo'];
+handler.command = ['anticanal'];
+
 export default handler;
-
-
-// =======================
-// 🔥 FILTRO AUTOMÁTICO
-// =======================
-export async function before(m, { conn, isAdmin, isBotAdmin }) {
-    if (!m.isGroup) return;
-
-    const chat = global.db.data.chats[m.chat] || {};
-    if (!chat.anticanal) return; // No activado → no hace nada
-
-    if (!m.text) return;
-    if (!canalRegex.test(m.text)) return; // No es canal → ignorar
-
-    const sender = m.sender.replace(/\D/g, '');
-
-    // Dueños EXENTOS (no se elimina)
-    if (owners.includes(sender)) return;
-
-    // Admins del grupo EXENTOS
-    if (isAdmin) return;
-
-    // No bot admin → no puede borrar
-    if (!isBotAdmin) {
-        return m.reply("⚠️ Tengo Anti-Canal activado, pero necesito ser *admin* para borrar mensajes.");
-    }
-
-    try {
-        await conn.sendMessage(m.chat, { delete: m.key });
-        await conn.sendMessage(m.chat, { text: `🚫 Se prohiben los links de canal en este grupo.` });
-    } catch {}
-}
