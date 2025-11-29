@@ -1,6 +1,6 @@
 /* plugins/_deletebotmsg.js
    SILENT DELETE — SOLO OWNERS
-   - H : elimina el mensaje citado (de cualquiera)
+   - H : elimina el mensaje citado (exactamente el citado)
 */
 
 let handler = async (m, { conn }) => {
@@ -16,14 +16,21 @@ let handler = async (m, { conn }) => {
     try {
         const quoted = m.quoted;
 
-        // 🗑️ Borrar el mensaje citado (sea de quien sea)
-        await conn.sendMessage(m.chat, { delete: quoted.key });
+        // Construir key exacto del mensaje citado
+        const key = {
+            remoteJid: m.chat,
+            id: quoted.id,
+            participant: quoted.participant || quoted.sender
+        };
 
-        // 🗑️ Borrar el mensaje del owner ("H")
+        // 🗑️ Borrar mensaje citado
+        await conn.sendMessage(m.chat, { delete: key });
+
+        // 🗑️ Borrar tu mensaje ("H")
         await conn.sendMessage(m.chat, { delete: m.key });
 
     } catch (e) {
-        // silencioso
+        // silencioso, sin errores visibles
     }
 };
 
