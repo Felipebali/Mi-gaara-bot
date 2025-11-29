@@ -1,9 +1,6 @@
-// 📂 plugins/antilink.js
-
 const groupLinkRegex = /chat\.whatsapp\.com\/(?:invite\/)?([0-9A-Za-z]{20,24})/i;
 const anyLinkRegex = /https?:\/\/[^\s]+/i;
 
-// 🔹 Enlaces permitidos
 const allowedLinks = /(tiktok\.com|youtube\.com|youtu\.be|link\.clashroyale\.com)/i;
 const tagallLink = 'https://miunicolink.local/tagall-FelixCat';
 const igLinkRegex = /(https?:\/\/)?(www\.)?instagram\.com\/[^\s]+/i;
@@ -30,9 +27,6 @@ export async function before(m, { conn, isAdmin, isBotAdmin }) {
 
   if (!text) return true;
 
-  // ❌ **ELIMINADO el filtro que ignoraba canales**
-  // (ANTES estaba aquí el return true que rompía todo)
-
   const who = m.sender;
   const number = who.replace(/\D/g, '');
 
@@ -42,6 +36,9 @@ export async function before(m, { conn, isAdmin, isBotAdmin }) {
   const isTagall = text.includes(tagallLink);
   const isIG = igLinkRegex.test(text);
   const isClash = clashLinkRegex.test(text);
+
+  // 🔥 Detectar si es link de canal
+  const isCanal = /whatsapp\.com\/channel\//i.test(text);
 
   async function deleteMessageSafe() {
     try {
@@ -55,7 +52,7 @@ export async function before(m, { conn, isAdmin, isBotAdmin }) {
     } catch {}
   }
 
-  // 🔹 Tagall → eliminar siempre
+  // 🔹 Tagall
   if (isTagall) {
     await deleteMessageSafe();
     await conn.sendMessage(m.chat, {
@@ -109,7 +106,9 @@ export async function before(m, { conn, isAdmin, isBotAdmin }) {
     return false;
   }
 
-  if (isAnyLink) {
+  // 🔥 AQUÍ está lo importante
+  // isAnyLink SÍ borra links, pero NO canales
+  if (isAnyLink && !isCanal) {
     await deleteMessageSafe();
     await conn.sendMessage(m.chat, {
       text: `⚠️ @${who.split('@')[0]}, tu link fue eliminado (no permitido).`,
