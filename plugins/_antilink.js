@@ -9,10 +9,8 @@ const tagallLink = 'https://miunicolink.local/tagall-FelixCat';
 const igLinkRegex = /(https?:\/\/)?(www\.)?instagram\.com\/[^\s]+/i;
 const clashLinkRegex = /(https?:\/\/)?(link\.clashroyale\.com)\/[^\s]+/i;
 
-// 🔹 Cache para códigos de invitación por grupo
 if (!global.groupInviteCodes) global.groupInviteCodes = {};
 
-// 🔹 Números dueños exentos
 const owners = ['59896026646', '59898719147', '59892363485'];
 
 export async function before(m, { conn, isAdmin, isBotAdmin }) {
@@ -31,6 +29,9 @@ export async function before(m, { conn, isAdmin, isBotAdmin }) {
     '';
 
   if (!text) return true;
+
+  // ⛔ EXCEPCIÓN: NO BLOQUEAR CANALES
+  if (/whatsapp\.com\/channel\//i.test(text)) return true;
 
   const who = m.sender;
   const number = who.replace(/\D/g, '');
@@ -66,7 +67,6 @@ export async function before(m, { conn, isAdmin, isBotAdmin }) {
 
   const isOwner = owners.includes(number);
 
-  // 🔹 Dueños exentos solo del antilink de grupo
   if (isOwner) {
     if (isGroupLink) {
       await deleteMessageSafe();
@@ -78,10 +78,8 @@ export async function before(m, { conn, isAdmin, isBotAdmin }) {
     return true;
   }
 
-  // 🔹 Links permitidos
   if (isIG || isClash || isAllowedLink) return true;
 
-  // 🔹 Link del mismo grupo permitido
   let currentInvite = global.groupInviteCodes[m.chat];
   if (!currentInvite) {
     try {
@@ -91,9 +89,9 @@ export async function before(m, { conn, isAdmin, isBotAdmin }) {
       return true;
     }
   }
+
   if (isGroupLink && text.includes(currentInvite)) return true;
 
-  // 🔹 Link de otro grupo → eliminar + expulsar
   if (isGroupLink && !text.includes(currentInvite)) {
     await deleteMessageSafe();
     if (!isAdmin) {
@@ -111,7 +109,6 @@ export async function before(m, { conn, isAdmin, isBotAdmin }) {
     return false;
   }
 
-  // 🔹 Otros links no permitidos
   if (isAnyLink) {
     await deleteMessageSafe();
     await conn.sendMessage(m.chat, {
