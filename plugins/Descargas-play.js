@@ -9,8 +9,8 @@ const warnings = {};
 const warningTimers = {};
 const owners = ["59896026646@s.whatsapp.net", "59898719147@s.whatsapp.net"];
 
-// 🔥 API estable sin limites
-const API_BASE = "https://api.cafirexos.com/api/v1/yt";
+// 🔥 API SUPER ESTABLE
+const API_BASE = "https://ytdl.redchef.es";
 
 const handler = async (m, { conn, text, command }) => {
   try {
@@ -33,9 +33,10 @@ const handler = async (m, { conn, text, command }) => {
         warnings[m.sender] = (warnings[m.sender] || 0) + 1;
 
         if (warningTimers[m.sender]) clearTimeout(warningTimers[m.sender]);
-        warningTimers[m.sender] = setTimeout(() => {
-          warnings[m.sender] = 0;
-        }, 3 * 60 * 1000);
+        warningTimers[m.sender] = setTimeout(
+          () => (warnings[m.sender] = 0),
+          3 * 60 * 1000
+        );
 
         const remaining = Math.ceil(
           (waitTime - (now - lastUsed)) / 1000
@@ -98,7 +99,7 @@ const handler = async (m, { conn, text, command }) => {
 
     const { title, thumbnail, timestamp, views, ago, url, author } = video;
 
-    // Enviar info del video
+    // Enviar info
     await conn.sendMessage(
       m.chat,
       {
@@ -122,11 +123,12 @@ const handler = async (m, { conn, text, command }) => {
       { quoted: m }
     );
 
-    // 🔊 DESCARGAR AUDIO — API ONLINE
+    // 🔊 AUDIO — API Estable
     if (command === "ytplay" || command === "ytaudio") {
       await m.react("⬇️");
 
-      const dl = await fetch(`${API_BASE}/audio?url=${encodeURIComponent(url)}`);
+      const api = `${API_BASE}/audio?url=${encodeURIComponent(url)}`;
+      const dl = await fetch(api);
       const json = await dl.json();
 
       if (!json.status) return conn.reply(m.chat, "⚠ Error al generar audio.", m);
@@ -134,7 +136,7 @@ const handler = async (m, { conn, text, command }) => {
       await conn.sendMessage(
         m.chat,
         {
-          audio: { url: json.result.download },
+          audio: { url: json.audio },
           mimetype: "audio/mpeg",
           fileName: `${title}.mp3`,
         },
@@ -144,11 +146,12 @@ const handler = async (m, { conn, text, command }) => {
       await m.react("🎶");
     }
 
-    // 🎥 DESCARGAR VIDEO — API ONLINE
+    // 🎥 VIDEO — API Estable
     else if (command === "ytvideo" || command === "ytplay2") {
       await m.react("⬇️");
 
-      const dl = await fetch(`${API_BASE}/video?url=${encodeURIComponent(url)}`);
+      const api = `${API_BASE}/video?url=${encodeURIComponent(url)}`;
+      const dl = await fetch(api);
       const json = await dl.json();
 
       if (!json.status) return conn.reply(m.chat, "⚠ Error al generar video.", m);
@@ -156,7 +159,7 @@ const handler = async (m, { conn, text, command }) => {
       await conn.sendMessage(
         m.chat,
         {
-          video: { url: json.result.download },
+          video: { url: json.video },
           mimetype: "video/mp4",
           caption: title,
         },
