@@ -12,7 +12,7 @@ handler.before = async (m, { conn }) => {
     try {
       await conn.sendMessage(m.chat, {
         react: {
-          text: "🤣🤣",
+          text: "🤣",
           key: m.key
         }
       });
