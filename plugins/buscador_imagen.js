@@ -1,8 +1,7 @@
 // 📂 plugins/buscador_imagen.js — FelixCat-Bot
-// Buscador de imágenes HD sin API Key (versión ultra estable)
+// Buscador de imágenes usando Yandex (mucho más estable que Google)
 
 import fetch from 'node-fetch'
-import cheerio from 'cheerio'
 
 let handler = async (m, { conn, text }) => {
   if (!text) {
@@ -15,52 +14,38 @@ let handler = async (m, { conn, text }) => {
 
   try {
     await conn.sendMessage(m.chat, { react: { text: '🕒', key: m.key } })
+
     const query = encodeURIComponent(text)
 
-    // Obtener HTML de Google
-    const res = await fetch(`https://www.google.com/search?tbm=isch&q=${query}`, {
-      headers: { 'User-Agent': 'Mozilla/5.0' }
+    // 🔹 Buscar imágenes en Yandex
+    const url = `https://yandex.com/images/search?text=${query}`
+
+    const res = await fetch(url, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0'
+      }
     })
     const html = await res.text()
 
+    // Extraer URL reales de imágenes desde "img_url="
+    const regex = /img_url=(.*?)&/g
     let images = []
-
-    // 1️⃣ Método HD (JSON interno "ou")
     let match
-    const regex = /"ou":"(.*?)"/g
+
     while ((match = regex.exec(html)) !== null) {
-      images.push(match[1])
+      let clean = decodeURIComponent(match[1])
+      if (clean.startsWith('http')) images.push(clean)
     }
 
-    // 2️⃣ Fallback: capturar miniaturas válidas
-    if (images.length === 0) {
-      const regexThumb = /"tu":"(.*?)"/g
-      while ((match = regexThumb.exec(html)) !== null) {
-        images.push(match[1])
-      }
-    }
-
-    // 3️⃣ Último método: scrapear <img>
-    if (images.length === 0) {
-      const $ = cheerio.load(html)
-      $('img').each((i, el) => {
-        const src = $(el).attr('src')
-        if (src && src.startsWith('http') && !src.includes('gstatic')) {
-          images.push(src)
-        }
-      })
-    }
-
-    // ❌ Si aún no hay nada
-    if (images.length === 0) {
+    if (!images.length) {
       return await conn.sendMessage(
         m.chat,
-        { text: '⚠️ No se encontraron imágenes en la búsqueda. Intenta con otro término.' },
+        { text: '⚠️ No se encontraron imágenes.' },
         { quoted: m }
       )
     }
 
-    // Elegir una imagen random
+    // Elegir una random
     const image = images[Math.floor(Math.random() * images.length)]
 
     // Descargar imagen
@@ -85,7 +70,7 @@ let handler = async (m, { conn, text }) => {
     await conn.sendMessage(m.chat, { react: { text: '❌', key: m.key } })
     await conn.sendMessage(
       m.chat,
-      { text: '⚠️ Ocurrió un error al buscar la imagen. Intenta con otro término.' },
+      { text: '⚠️ Error al buscar la imagen. Intenta con otro término.' },
       { quoted: m }
     )
   }
