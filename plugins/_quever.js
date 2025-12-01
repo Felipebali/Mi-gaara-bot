@@ -1,12 +1,12 @@
 import fetch from "node-fetch";
 
 const generos = {
-  accion: ["Terminator", "Mad Max Fury Road", "John Wick", "Die Hard", "Gladiator"],
-  terror: ["The Conjuring", "Insidious", "Annabelle", "The Nun", "Hereditary"],
-  comedia: ["Superbad", "The Mask", "Ted", "21 Jump Street", "The Hangover"],
-  romance: ["The Notebook", "La La Land", "Titanic", "Pride and Prejudice", "About Time"],
-  drama: ["The Shawshank Redemption", "Fight Club", "The Green Mile", "Joker", "Forrest Gump"],
-  scifi: ["Interstellar", "The Matrix", "Inception", "Blade Runner 2049", "Arrival"]
+  accion: ["Terminator", "John Wick", "Mad Max", "The Bourne Ultimatum", "Taken"],
+  terror: ["The Conjuring", "Hereditary", "Insidious", "The Exorcist", "The Ring"],
+  comedia: ["Superbad", "Ted", "The Mask", "21 Jump Street", "Step Brothers"],
+  romance: ["The Notebook", "Titanic", "La La Land", "500 Days of Summer", "About Time"],
+  drama: ["Fight Club", "Forrest Gump", "The Green Mile", "Whiplash", "The Pursuit of Happyness"],
+  scifi: ["Interstellar", "Inception", "The Matrix", "Arrival", "Blade Runner 2049"]
 };
 
 let handler = async (m, { args }) => {
@@ -22,32 +22,32 @@ let handler = async (m, { args }) => {
     return m.reply(`❌ Género no válido.\nGéneros disponibles:\n${Object.keys(generos).join(", ")}`);
   }
 
-  m.reply(`🍿 Buscando pelis de *${gen}*...`);
+  m.reply(`🍿 Buscando recomendaciones de *${gen}*...`);
 
-  // Mezclar aleatoriamente
   const lista = generos[gen].sort(() => Math.random() - 0.5).slice(0, 5);
-  let respuesta = `🎬 *Recomendaciones ${gen} (sin API key)*\n\n`;
+  let resultado = `🎬 *Recomendaciones ${gen}*\n\n`;
 
   for (let titulo of lista) {
     try {
-      const url = `https://www.omdbapi.com/?t=${encodeURIComponent(titulo)}&plot=short&apikey=none`;
+      const url = `https://api.tvmaze.com/search/shows?q=${encodeURIComponent(titulo)}`;
       const res = await fetch(url);
-      const data = await res.json();
+      const json = await res.json();
 
-      if (data.Response === "False") continue;
+      if (!json || !json[0] || !json[0].show) continue;
 
-      respuesta += `🎞️ *${data.Title}* (${data.Year})\n`;
-      respuesta += `⭐ IMDB: ${data.imdbRating}\n`;
-      respuesta += `📖 ${data.Plot}\n`;
-      respuesta += `🔗 https://www.imdb.com/title/${data.imdbID}\n`;
-      respuesta += `🖼️ Poster: ${data.Poster}\n\n`;
+      const show = json[0].show;
+
+      resultado += `🎞️ *${show.name}* (${show.premiered ? show.premiered.slice(0,4) : "?"})\n`;
+      resultado += `📖 ${show.summary ? show.summary.replace(/<[^>]+>/g, "") : "Sin descripción"}\n`;
+      resultado += `🔗 ${show.url}\n`;
+      resultado += `🖼️ Poster: ${show.image?.original || "No disponible"}\n\n`;
 
     } catch (e) {
       continue;
     }
   }
 
-  return m.reply(respuesta);
+  return m.reply(resultado);
 };
 
 handler.command = ["quever"];
