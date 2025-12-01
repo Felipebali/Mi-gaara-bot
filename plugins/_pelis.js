@@ -1,78 +1,43 @@
-import fetch from "node-fetch";
-import cheerio from "cheerio";
+/* Creado por Bruno Sobrino (https://github.com/BrunoSobrino) */
+import fetch from 'node-fetch';
+import axios from 'axios';
 
-let handler = async (m, { text }) => {
-  if (!text)
-    return m.reply(
-`🎬 ¿Qué películas querés buscar?
-
-Ejemplo:
-.pelis accion
-.pelis terror 2024`
-    );
-
-  await m.reply("🔎 Buscando películas en Google...");
-
-  try {
-    const query = encodeURIComponent(`películas ${text}`);
-    const url = `https://www.google.com/search?q=${query}&hl=es`;
-
-    const res = await fetch(url, {
-      headers: {
-        "User-Agent":
-          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121 Safari/537.36",
-      },
-    });
-
-    const html = await res.text();
-    const $ = cheerio.load(html);
-
-    let resultados = [];
-
-    // MÉTODO 1: Titles dentro de los carruseles modernos
-    $("div[role='heading']").each((i, el) => {
-      const t = $(el).text().trim();
-      if (t && t.length > 2 && !t.match(/Google|Buscar/)) resultados.push(t);
-    });
-
-    // MÉTODO 2: Titles de tarjetas informativas
-    $("div[jsname='U8S5sf']").each((i, el) => {
-      const t = $(el).text().trim();
-      if (t && t.length > 2) resultados.push(t);
-    });
-
-    // MÉTODO 3: Card-style results (muy estable)
-    $("div[data-attrid='title']").each((i, el) => {
-      const t = $(el).text().trim();
-      if (t) resultados.push(t);
-    });
-
-    // MÉTODO 4: Titles dentro de snippets recientes
-    $("h3").each((i, el) => {
-      const t = $(el).text().trim();
-      if (t && t.length > 2) resultados.push(t);
-    });
-
-    // Limpieza
-    resultados = [...new Set(resultados)]
-      .filter(t => /^[A-Za-zÁÉÍÓÚÑ0-9\s:()'-]{3,}/.test(t))
-      .slice(0, 10);
-
-    if (resultados.length === 0)
-      return m.reply("❌ No encontré resultados. Google cambió el formato o no hay coincidencias.");
-
-    let texto = `🍿 *Resultados para:* _${text}_\n\n`;
-    resultados.forEach((t, i) => {
-      texto += `🎬 *${i + 1}.* ${t}\n`;
-    });
-
-    return m.reply(texto);
-
-  } catch (e) {
-    console.log(e);
-    return m.reply("⚠️ Google bloqueó temporalmente el scraping. Intentá de nuevo.");
-  }
-};
-
-handler.command = ["pelis", "googlepelis", "buscapelis"];
+const handler = async (m, {text, usedPrefix, command, conn}) => {
+ try {
+  const idioma = global.db.data.users[m.sender].language || global.defaultLenguaje
+  const _translate = JSON.parse(fs.readFileSync(`./src/languages/${idioma}.json`))
+  const tradutor = _translate.plugins.buscador_peliculas
+  if (!text) throw `*${tradutor.texto1}*`;
+  let aaaa;
+  let img;
+    aaaa = await searchC(text);
+    const randomIndex = Math.floor(Math.random() * aaaa.length);
+    try {
+        img = 'https://wwv.cuevana8.com' + aaaa[randomIndex].image;
+    } catch {
+        img = 'https://www.poresto.net/u/fotografias/m/2023/7/5/f1280x720-305066_436741_5050.png';
+    }    
+  if (aaaa == '') throw `*${tradutor.texto2}*`;                                        /* https://wwv.cuevana8.com */
+  const res = await aaaa.map((v) => `*${tradutor.texto3[0]}* ${v.title}\n*${tradutor.texto3[1]}* ${v.link}`).join`\n\n─────────────────\n\n`;
+  const ads = `*${tradutor.texto3[2]}* ${tradutor.texto3[3]}\n*${tradutor.texto3[4]}* https://block-this.com/block-this-latest.apk\n\n≣≣≣≣≣≣≣≣≣≣≣≣≣≣≣≣≣≣≣≣≣≣≣≣≣≣\n\n`;
+  conn.sendMessage(m.chat, {image: {url: img}, caption: ads + res}, {quoted: m});
+ } catch {
+   return conn.sendMessage(m.chat, {text: '*[❗] Error, no se obtuvieron resultados.'}, {quoted: m});   
+ }    
+};   
+handler.command = ['cuevana', 'pelisplus'];
 export default handler;
+
+async function searchC(query) {
+  const response = await axios.get(`https://wwv.cuevana8.com/search?q=${query}`);
+  const $ = cheerio.load(response.data);
+  const resultSearch = [];
+  $('.MovieList .TPostMv').each((_, e) => {
+    const element = $(e);
+    const title = element.find('.TPostMv .Title').first().text();  
+    const link = element.find('a').attr('href');
+    const image = element.find('img').attr('src');
+    resultSearch.push({ title, link, image });
+  });
+  return resultSearch;
+}
