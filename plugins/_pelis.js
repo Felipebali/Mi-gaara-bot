@@ -2,23 +2,25 @@ import axios from "axios";
 
 const handler = async (m, { text, conn }) => {
   try {
-    if (!text) return m.reply("🎬 ¿Qué película querés buscar?\nEjemplo:\n.pelis terminator");
+    if (!text)
+      return m.reply("🎬 ¿Qué película querés buscar?\nEjemplo:\n.pelis terminator");
 
     m.reply("🔎 Buscando películas...");
 
-    const url = `https://vidsrc.xyz/movies/search/${encodeURIComponent(text)}`;
+    // NUEVA API — FUNCIONAL 2025
+    const url = `https://vidsrc.pro/api/search?query=${encodeURIComponent(text)}`;
     const res = await axios.get(url);
-    const data = res.data.data;
 
+    const data = res.data.results;
     if (!data || data.length === 0)
-      return m.reply("❌ No se encontraron resultados.");
+      return m.reply("❌ No se encontraron películas con ese nombre.");
 
-    const p = data[0]; // primera película
+    const p = data[0]; // primera coincidencia
 
     let caption = `🎬 *${p.title}*\n`;
-    caption += `📅 Año: ${p.year}\n`;
+    caption += `📅 Año: ${p.year || "?"}\n`;
     caption += `🆔 ID: ${p.id}\n`;
-    caption += `🔗 Ver: https://vidsrc.xyz/embed/movie/${p.id}\n\n`;
+    caption += `🔗 Ver online:\nhttps://vidsrc.pro/embed/movie/${p.id}\n\n`;
 
     caption += "🍿 *Resultados similares:*\n\n";
     data.slice(0, 10).forEach((x, i) => {
