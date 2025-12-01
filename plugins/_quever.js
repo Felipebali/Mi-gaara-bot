@@ -1,84 +1,54 @@
-// plugins/quever.js
-// Recomendador de películas SIN API KEY
-// Fuente: https://api-movies-v1.vercel.app (pública)
-
 import fetch from "node-fetch";
 
-// Mapa de géneros
-const genres = {
-  accion: "Action",
-  terror: "Horror",
-  comedia: "Comedy",
-  drama: "Drama",
-  romance: "Romance",
-  animacion: "Animation",
-  aventura: "Adventure",
-  fantasia: "Fantasy",
-  crimen: "Crime",
-  documental: "Documentary",
-  familia: "Family",
-  scifi: "Science Fiction"
+const generos = {
+  accion: ["Terminator", "Mad Max Fury Road", "John Wick", "Die Hard", "Gladiator"],
+  terror: ["The Conjuring", "Insidious", "Annabelle", "The Nun", "Hereditary"],
+  comedia: ["Superbad", "The Mask", "Ted", "21 Jump Street", "The Hangover"],
+  romance: ["The Notebook", "La La Land", "Titanic", "Pride and Prejudice", "About Time"],
+  drama: ["The Shawshank Redemption", "Fight Club", "The Green Mile", "Joker", "Forrest Gump"],
+  scifi: ["Interstellar", "The Matrix", "Inception", "Blade Runner 2049", "Arrival"]
 };
 
 let handler = async (m, { args }) => {
   if (!args[0]) {
     return m.reply(
-      `🎬 *¿Qué género querés ver Feli?*\n\nEjemplos:\n` +
-      `.quever accion\n.quever terror\n.quever comedia`
+      `🎬 *¿Qué género querés ver?*\n` +
+      `Ejemplos:\n.quever accion\n.quever terror\n.quever comedia`
     );
   }
 
-  const userGen = args[0].toLowerCase();
-  const genre = genres[userGen];
-
-  if (!genre) {
-    return m.reply(`❌ Género no válido.\nGéneros disponibles:\n${Object.keys(genres).join(", ")}`);
+  const gen = args[0].toLowerCase();
+  if (!generos[gen]) {
+    return m.reply(`❌ Género no válido.\nGéneros disponibles:\n${Object.keys(generos).join(", ")}`);
   }
 
-  await m.reply(`🍿 Buscando películas *${userGen}*...`)
+  m.reply(`🍿 Buscando pelis de *${gen}*...`);
 
-  try {
-    // Endpoint sin API KEY
-    const url = "https://api-movies-v1.vercel.app/movies";
+  // Mezclar aleatoriamente
+  const lista = generos[gen].sort(() => Math.random() - 0.5).slice(0, 5);
+  let respuesta = `🎬 *Recomendaciones ${gen} (sin API key)*\n\n`;
 
-    const res = await fetch(url);
-    const data = await res.json();
+  for (let titulo of lista) {
+    try {
+      const url = `https://www.omdbapi.com/?t=${encodeURIComponent(titulo)}&plot=short&apikey=none`;
+      const res = await fetch(url);
+      const data = await res.json();
 
-    if (!data || !Array.isArray(data)) {
-      return m.reply("⚠️ No pude obtener películas ahora.");
+      if (data.Response === "False") continue;
+
+      respuesta += `🎞️ *${data.Title}* (${data.Year})\n`;
+      respuesta += `⭐ IMDB: ${data.imdbRating}\n`;
+      respuesta += `📖 ${data.Plot}\n`;
+      respuesta += `🔗 https://www.imdb.com/title/${data.imdbID}\n`;
+      respuesta += `🖼️ Poster: ${data.Poster}\n\n`;
+
+    } catch (e) {
+      continue;
     }
-
-    // Filtrar por género
-    let list = data.filter(mov =>
-      mov.genre_ids_text?.some(g => g.toLowerCase().includes(genre.toLowerCase()))
-    );
-
-    if (list.length === 0) {
-      return m.reply("😕 No encontré pelis de ese género, probá otro.");
-    }
-
-    // Mezclar y tomar 10
-    list = list.sort(() => Math.random() - 0.5).slice(0, 10);
-
-    // Construir mensaje
-    let msg = `🎬 *QueVer: ${userGen}*\nAquí van 10 pelis:\n\n`;
-
-    for (let i = 0; i < list.length; i++) {
-      const p = list[i];
-      msg += `*${i + 1}. ${p.title}* (${p.release_date?.split("-")[0]})\n`;
-      msg += `📝 ${p.overview || "Sin descripción"}\n`;
-      msg += `🔗 https://www.themoviedb.org/movie/${p.id}\n\n`;
-    }
-
-    await m.reply(msg);
-
-  } catch (e) {
-    console.log(e);
-    m.reply("⚠️ Error obteniendo películas.");
   }
+
+  return m.reply(respuesta);
 };
 
 handler.command = ["quever"];
-handler.tags = ["fun"];
-
-export default handler; 
+export default handler;
