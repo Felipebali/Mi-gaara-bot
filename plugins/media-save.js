@@ -1,6 +1,7 @@
 // plugins/media-save.js
 import fs from 'fs';
 import path from 'path';
+import { downloadMediaMessage } from '@whiskeysockets/baileys';  // <<--- IMPORT CORRECTO
 
 const handler = {};
 
@@ -23,9 +24,10 @@ handler.all = async function (m, { conn }) {
     else if (mtype === 'videoMessage') type = 'video';
     else if (mtype === 'audioMessage') type = 'audio';
     else if (mtype === 'documentMessage') type = 'document';
-    else return; // ignorar si no es media
+    else return; // no es media
 
-    const buffer = await conn.downloadMediaMessage(m);
+    // DESCARGA CORRECTA PARA TU VERSIÓN DE BAILEYS
+    const buffer = await downloadMediaMessage(m, 'buffer');
     if (!buffer) return;
 
     // Nombre de archivo  
