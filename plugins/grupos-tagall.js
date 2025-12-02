@@ -1,12 +1,12 @@
 // 📂 plugins/tagall.js — FelixCat-Bot 🐾
-// TagAll con toggle .antitagall ON/OFF
+// TagAll con toggle .antitagall
 
 let handler = async function (m, { conn, groupMetadata, args, isAdmin, isOwner, command }) {
   if (!m.isGroup) return m.reply('❌ Este comando solo funciona en grupos.');
 
   const chatId = m.chat;
 
-  // Inicializar la configuración si no existe
+  // Inicializar configuración del chat
   if (!global.db.data.chats[chatId]) global.db.data.chats[chatId] = {};
   const chatData = global.db.data.chats[chatId];
 
@@ -17,7 +17,10 @@ let handler = async function (m, { conn, groupMetadata, args, isAdmin, isOwner, 
     }
 
     chatData.tagallEnabled = !chatData.tagallEnabled;
-    return m.reply(`⚡ TagAll ahora está ${chatData.tagallEnabled ? 'activado ✅' : 'desactivado ❌'} para este grupo.`);
+    return await conn.sendMessage(m.chat, {
+      text: `⚡ TagAll ahora está ${chatData.tagallEnabled ? 'activado ✅' : 'desactivado ❌'} para este grupo.`,
+      quoted: null
+    });
   }
 
   // ===========================
@@ -26,11 +29,11 @@ let handler = async function (m, { conn, groupMetadata, args, isAdmin, isOwner, 
 
   // Validar permisos
   if (!(isAdmin || isOwner)) {
-    await conn.sendMessage(m.chat, {
+    return await conn.sendMessage(m.chat, {
       text: '❌ Solo un administrador puede usar este comando.',
-      mentions: [m.sender]
+      mentions: [m.sender],
+      quoted: null
     });
-    throw false;
   }
 
   // Verificar si TagAll está activado
@@ -54,7 +57,8 @@ let handler = async function (m, { conn, groupMetadata, args, isAdmin, isOwner, 
 
   await conn.sendMessage(m.chat, {
     text: mensaje,
-    mentions: mencionados.concat(m.sender)
+    mentions: mencionados.concat(m.sender),
+    quoted: null // evita citar el mensaje del comando
   });
 };
 
