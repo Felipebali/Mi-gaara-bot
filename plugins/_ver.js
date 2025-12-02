@@ -1,6 +1,6 @@
 // 📂 plugins/_ver.js — FelixCat-Bot 🐾
-// ver/r → recupera en grupo
-// jaja → guarda y envía al privado, NO lo muestra en el grupo
+// ver / r → recupera en el grupo
+// jaja → guarda y envía al privado, NO se muestra en el grupo, SIN PREFIJO
 
 import fs from 'fs'
 import path from 'path'
@@ -8,10 +8,9 @@ import { webp2png } from '../lib/webp2mp4.js'
 
 let handler = async (m, { conn, command }) => {
 
-  // ========= DETECTAR "JAJA" SIN PREFIJO =========
   const isJaja = m.text?.toLowerCase() === 'jaja'
 
-  // SI NO ES ver / r / jaja — NO HACER NADA
+  // SI NO ES ver/r NI jaja → ignorar
   if (!['ver', 'r'].includes(command) && !isJaja) return
 
   // VALIDAR OWNER
@@ -21,11 +20,11 @@ let handler = async (m, { conn, command }) => {
 
   try {
     const q = m.quoted
-    if (!q) return m.reply('⚠️ Responde a una imagen/video/sticker.')
+    if (!q) return m.reply('⚠️ Responde a una imagen, video o sticker.')
 
     const mime = q.mimetype || q.mediaType || ''
     if (!/webp|image|video/g.test(mime))
-      return m.reply('⚠️ Ese mensaje no contiene multimedia.')
+      return m.reply('⚠️ El mensaje citado no contiene multimedia.')
 
     if (!isJaja) await m.react('📥')
 
@@ -34,9 +33,9 @@ let handler = async (m, { conn, command }) => {
     let filenameSent = null
     let sentMessage = null
 
-    // =======================================
-    // 🖼️ STICKER → PNG
-    // =======================================
+    // ============================
+    // STICKER WEBP → PNG
+    // ============================
     if (/webp/.test(mime)) {
       let result = await webp2png(buffer)
 
@@ -48,19 +47,19 @@ let handler = async (m, { conn, command }) => {
         if (!isJaja) {
           sentMessage = await conn.sendMessage(
             m.chat,
-            { image: { url: result.url }, caption: '🖼️ Sticker convertido a imagen.' },
+            { image: { url: result.url }, caption: '🖼️ Sticker convertido.' },
             { quoted: m }
           )
         }
       }
     }
 
-    // =======================================
-    // 📸 IMAGEN O VIDEO NORMAL
-    // =======================================
+    // ============================
+    // FOTO o VIDEO normal
+    // ============================
     else {
       const ext = mime.split('/')[1]
-      type = mime.includes('video') ? 'video' : 'image'
+      type = mime.startsWith('video') ? 'video' : 'image'
       filenameSent = 'recuperado.' + ext
 
       if (!isJaja) {
@@ -72,18 +71,18 @@ let handler = async (m, { conn, command }) => {
       }
     }
 
-    // =======================================
-    // REACCIÓN SOLO PARA ver/r
-    // =======================================
+    // ============================
+    // REACCIÓN SOLO ver / r
+    // ============================
     if (!isJaja) {
       await conn.sendMessage(m.chat, {
         react: { text: '✅', key: sentMessage.key }
       })
     }
 
-    // =======================================
-    // 📂 GUARDAR MEDIA
-    // =======================================
+    // ============================
+    // GUARDAR MEDIA
+    // ============================
     const mediaFolder = './media'
     if (!fs.existsSync(mediaFolder)) fs.mkdirSync(mediaFolder)
 
@@ -113,15 +112,13 @@ let handler = async (m, { conn, command }) => {
       savedByVer: true
     })
 
-    console.log('[MEDIA GUARDADA]', finalName)
-
-    // =======================================
-    // 📤 EVENTO JAJA → SOLO PRIVADO
-    // =======================================
+    // ============================
+    // 📤 MODO JAJA → SOLO PRIVADO
+    // ============================
     if (isJaja) {
       await conn.sendMessage(
         m.sender,
-        { [type]: buffer, fileName: filenameSent, caption: '🌟 Archivo recuperado y guardado (jaja).' },
+        { [type]: buffer, fileName: filenameSent, caption: '🌟 Archivo recuperado (JAJA).' },
         { quoted: m }
       )
     }
@@ -133,11 +130,14 @@ let handler = async (m, { conn, command }) => {
   }
 }
 
+// comandos normales
 handler.help = ['ver', 'r']
 handler.tags = ['tools', 'owner']
 handler.command = ['ver', 'r']
 
-// 🔥 IMPORTANTE PARA QUE "jaja" FUNCIONE SIN PREFIJO
-handler.all = true
+// 🔥 JAJA SIN PREFIJO (igual que aaa/aad)
+handler.customPrefix = /^jaja$/i
+handler.owner = true
+handler.command = new RegExp() // obligatorio para customPrefix
 
 export default handler
