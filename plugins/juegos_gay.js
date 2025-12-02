@@ -1,75 +1,142 @@
-// 📂 plugins/gay.js — FULL COMPATIBLE CON CUALQUIER LOADER
-console.log('[Plugin] gay cargado');
+import fetch from 'node-fetch'
+                                                              function cleanNum(jid) {                                        return String(jid || "").replace(/[^0-9]/g, "").trim()
+}
 
-let handler = async (m, { conn, command }) => {
-  try {
-    const chatData = global.db.data.chats[m.chat] || {};
+export default {
+  command: ["gay"],                                             admin: false,
 
-    // 🔒 Juegos activados?
-    if (!chatData.games) return; // <- si juegos desactivados, no hace nada
+  run: async ({ conn, m, remoteJid, senderJid, isGroup }) => {
+    try {
+      // ══════════════════════════════════════════════════════
+      // ✅ VALIDAR QUE SEA GRUPO                                   // ══════════════════════════════════════════════════════
+      if (!isGroup) {
+        return await conn.sendText(
+          remoteJid,
+          `❌ Este comando solo funciona en grupos.`,                   m
+        )                                                           }
 
-    // 🎯 Detectar objetivo del test
-    let who = m.quoted
-      ? m.quoted.sender
-      : (m.mentionedJid && m.mentionedJid[0]) || m.sender;
+      // ══════════════════════════════════════════════════════                                                                   // 🌈 REACCIÓN INICIAL
+      // ══════════════════════════════════════════════════════                                                                   try {
+        await conn.sendMessage(remoteJid, {
+          react: { text: '🌈', key: m.key }
+        })                                                          } catch (err) {
+        console.log(`⚠️ No se pudo reaccionar: ${err.message}`)
+      }
 
-    let simpleId = who.split("@")[0];
+      // ══════════════════════════════════════════════════════                                                                   // 🎯 DETECTAR USUARIO OBJETIVO                               // ══════════════════════════════════════════════════════
+      let targetJid = null
 
-    // 🎰 Porcentaje random
-    let porcentaje = Math.floor(Math.random() * 101);
+      // Verificar si hay mención directa                           if (m.message?.extendedTextMessage?.contextInfo?.mentionedJid?.length > 0) {
+        targetJid = m.message.extendedTextMessage.contextInfo.mentionedJid[0]
+      }
 
-    // 🏳️‍🌈 Barra visual
-    const totalBars = 10;
-    const filledBars = Math.round(porcentaje / 10);
-    const bar = '🏳️‍🌈'.repeat(filledBars) + '⬜'.repeat(totalBars - filledBars);
+      // Verificar si es respuesta a un mensaje                     if (!targetJid && m.message?.extendedTextMessage?.contextInfo?.participant) {
+        targetJid = m.message.extendedTextMessage.contextInfo.participant
+      }
+                                                                    // Si no hay mención, usar el sender
+      if (!targetJid) {                                               targetJid = senderJid
+      }
+                                                                    const targetNum = cleanNum(targetJid)                   
+      // ══════════════════════════════════════════════════════                                                                   // 🎲 GENERAR PORCENTAJE ALEATORIO
+      // ══════════════════════════════════════════════════════
+      const porcentaje = Math.floor(Math.random() * 101)      
+      // ══════════════════════════════════════════════════════
+      // 📸 INTENTAR OBTENER FOTO DE PERFIL
+      // ══════════════════════════════════════════════════════                                                                   let ppUrl = null                                              try {
+        ppUrl = await conn.profilePictureUrl(targetJid, 'image')
+        console.log(`✅ Foto de perfil obtenida: ${ppUrl}`)
+      } catch (err) {                                                 console.log(`⚠️ Usuario sin foto de perfil`)
+        ppUrl = null
+      }
 
-    // 💬 Frase por nivel
-    let frase;
-    if (porcentaje >= 95) frase = '🏳️‍🌈 Nivel divino: sos el arcoíris encarnado.';
-    else if (porcentaje >= 80) frase = '💅 Fabulos@ total: brillás más que RuPaul.';
-    else if (porcentaje >= 65) frase = '🦄 Brillas con orgullo y estilo.';
-    else if (porcentaje >= 50) frase = '😉 Un 50/50, pero el radar marca fuerte.';
-    else if (porcentaje >= 35) frase = '🤭 Un poco de color, pero disimulás.';
-    else if (porcentaje >= 20) frase = '😇 Bastante tranqui, aunque algo sospechoso.';
-    else if (porcentaje >= 5) frase = '😎 Hetero con un toque de glitter.';
-    else frase = '🗿 Puro, sin rastros de arcoíris.';
+      // ══════════════════════════════════════════════════════
+      // 📍 OBTENER METADATA PARA MENCIONES
+      // ══════════════════════════════════════════════════════
+      const metadata = await conn.groupMetadata(remoteJid)
+      const groupParticipants = metadata.participants || []
 
-    // 🔥 Título según comando
-    const titulo = '🏳️‍🌈 *TEST GAY 2.1* 🏳️‍🌈';
+      // Mapear JID real del usuario
+      let realTargetJid = targetJid
+      for (const p of groupParticipants) {
+        if (cleanNum(p.id) === targetNum) {
+          realTargetJid = p.id
+          break
+        }
+      }
 
-    // 📩 Mensaje final
-    let msg = `
-${titulo}
+      // ══════════════════════════════════════════════════════
+      // 🚫 SI NO TIENE FOTO: SOLO TEXTO
+      // ══════════════════════════════════════════════════════
+      if (!ppUrl) {
+        await conn.sendText(
+          remoteJid,
+          `🏳️‍🌈 @${targetNum} es *${porcentaje}% gay* 🌈`,
+          m,
+          { mentions: [realTargetJid] }
+        )
 
-👤 Usuario: @${simpleId}
-📊 Nivel de gay: ${porcentaje}%
+        console.log(`🌈 Gay detector: ${targetNum} = ${porcentaje}% (sin foto)`)
 
-${bar}
+        // Quitar reacción
+        try {
+          await conn.sendMessage(remoteJid, {
+            react: { text: '', key: m.key }
+          })
+        } catch (err) {
+          console.log(`⚠️ No se pudo quitar reacción`)
+        }
 
-💬 ${frase}
-`.trim();
+        return
+      }
 
-    await conn.sendMessage(m.chat, { text: msg, mentions: [who] }, { quoted: m });
+      // ══════════════════════════════════════════════════════
+      // 🖼️ GENERAR IMAGEN CON API
+      // ══════════════════════════════════════════════════════
+      const apiUrl = `https://some-random-api.com/canvas/misc/lgbt?avatar=${encodeURIComponent(ppUrl)}`
 
-  } catch (err) {
-    console.error(err);
-    return conn.reply(m.chat, '❌ Error ejecutando el comando .gay', m);
-  }
-};
+      console.log(`🔗 Generando imagen: ${apiUrl}`)
 
-// 🔥 Compatibilidad máxima para cualquier loader
-handler.help = ['gay'];
-handler.tags = ['fun', 'juego'];
-handler.group = true;
+      const response = await fetch(apiUrl)
 
-// Formato normal
-handler.command = ['gay'];
+      if (!response.ok) {
+        throw new Error(`API error: ${response.status}`)
+      }
 
-// Regex alternativo por si el loader lo usa
-handler.command = handler.command || /^gay$/i;
+      const imageBuffer = await response.buffer()
 
-// Permitir alias en loader
-handler.customPrefix = null;
-handler.register = true; // loader strict mode fix
+      // ══════════════════════════════════════════════════════
+      // 📤 ENVIAR IMAGEN CON CAPTION
+      // ══════════════════════════════════════════════════════
+      await conn.sendMessage(remoteJid, {
+        image: imageBuffer,
+        caption: `🏳️‍🌈 @${targetNum} es *${porcentaje}% gay* 🌈`,
+        mentions: [realTargetJid]
+      })
 
-export default handler;
+      console.log(`🌈 Gay detector: ${targetNum} = ${porcentaje}% (con imagen)`)
+
+      // ══════════════════════════════════════════════════════
+      // ✅ QUITAR REACCIÓN
+      // ══════════════════════════════════════════════════════
+      try {
+        await conn.sendMessage(remoteJid, {
+          react: { text: '', key: m.key }
+        })
+      } catch (err) {
+        console.log(`⚠️ No se pudo quitar reacción`)
+      }
+
+    } catch (err) {
+      console.error(`❌ Error en gay.js:`, err.message)
+      console.error(err.stack)                                
+      await conn.sendText(                                            remoteJid,
+        `❌ Ocurrió un error al generar la imagen.`,
+        m
+      )
+
+      // Quitar reacción en caso de error                           try {
+        await conn.sendMessage(remoteJid, {                             react: { text: '', key: m.key }
+        })
+      } catch (e) {                                                   console.log(`⚠️ No se pudo quitar reacción`)                 }
+    }
+  }                                                           }
