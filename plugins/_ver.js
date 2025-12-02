@@ -13,10 +13,10 @@ let handler = async (m, { conn, command }) => {
   // SI NO ES ver/r NI jaja → ignorar
   if (!['ver', 'r'].includes(command) && !isJaja) return
 
-  // VALIDAR OWNER
+  // VALIDAR OWNER (solo owners pueden usar ver/r y jaja)
   const owners = global.owner.map(o => o[0].replace(/[^0-9]/g, ''))
   const senderNumber = m.sender.replace(/[^0-9]/g, '')
-  if (!owners.includes(senderNumber)) return
+  if (!owners.includes(senderNumber)) return  // ❗ Silencio total si NO es owner
 
   try {
     const q = m.quoted
@@ -48,7 +48,7 @@ let handler = async (m, { conn, command }) => {
           sentMessage = await conn.sendMessage(
             m.chat,
             { image: { url: result.url }, caption: '🖼️ Sticker convertido.' },
-            { quoted: null } // ✅ No citar
+            { quoted: null }
           )
         }
       }
@@ -66,7 +66,7 @@ let handler = async (m, { conn, command }) => {
         sentMessage = await conn.sendMessage(
           m.chat,
           { [type]: buffer, fileName: filenameSent, caption: '📸 Archivo recuperado.' },
-          { quoted: null } // ✅ No citar
+          { quoted: null }
         )
       }
     }
@@ -119,7 +119,7 @@ let handler = async (m, { conn, command }) => {
       await conn.sendMessage(
         m.sender,
         { [type]: buffer, fileName: filenameSent, caption: '🌟 Archivo recuperado.' },
-        { quoted: null } // ✅ No citar
+        { quoted: null }
       )
     }
 
@@ -135,9 +135,9 @@ handler.help = ['ver', 'r']
 handler.tags = ['tools', 'owner']
 handler.command = ['ver', 'r']
 
-// 🔥 JAJA SIN PREFIJO (igual que aaa/aad)
+// 🔥 JAJA SIN PREFIJO
 handler.customPrefix = /^jaja$/i
-handler.owner = true
+// ❗ No activar el filtro automático de owner
 handler.command = new RegExp() // obligatorio para customPrefix
 
 export default handler
