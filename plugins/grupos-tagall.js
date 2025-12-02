@@ -1,5 +1,5 @@
 // 📂 plugins/tagall.js — FelixCat-Bot 🐾
-// TagAll con toggle .antitagall
+// TagAll con toggle .antitagall — sin citar nunca
 
 let handler = async function (m, { conn, groupMetadata, args, isAdmin, isOwner, command }) {
   if (!m.isGroup) return m.reply('❌ Este comando solo funciona en grupos.');
@@ -13,13 +13,12 @@ let handler = async function (m, { conn, groupMetadata, args, isAdmin, isOwner, 
   // 🔥 Toggle .antitagall — SOLO ADMIN / OWNER
   if (command === 'antitagall') {
     if (!(isAdmin || isOwner)) {
-      return m.reply('❌ Solo un administrador puede usar este comando.');
+      return await conn.sendMessage(chatId, { text: '❌ Solo un administrador puede usar este comando.' });
     }
 
     chatData.tagallEnabled = !chatData.tagallEnabled;
-    return await conn.sendMessage(m.chat, {
-      text: `⚡ TagAll ahora está ${chatData.tagallEnabled ? 'activado ✅' : 'desactivado ❌'} para este grupo.`,
-      quoted: null
+    return await conn.sendMessage(chatId, { 
+      text: `⚡ TagAll ahora está ${chatData.tagallEnabled ? 'activado ✅' : 'desactivado ❌'} para este grupo.` 
     });
   }
 
@@ -27,24 +26,21 @@ let handler = async function (m, { conn, groupMetadata, args, isAdmin, isOwner, 
   // TagAll normal (.tagall / .invocar / .todos)
   // ===========================
 
-  // Validar permisos
   if (!(isAdmin || isOwner)) {
-    return await conn.sendMessage(m.chat, {
+    return await conn.sendMessage(chatId, {
       text: '❌ Solo un administrador puede usar este comando.',
-      mentions: [m.sender],
-      quoted: null
+      mentions: [m.sender]
     });
   }
 
-  // Verificar si TagAll está activado
   if (!chatData.tagallEnabled) {
-    return m.reply('⚠️ El TagAll está desactivado. Usa ".antitagall" para activarlo.');
+    return await conn.sendMessage(chatId, { text: '⚠️ El TagAll está desactivado. Usa ".antitagall" para activarlo.' });
   }
 
   const participantes = groupMetadata?.participants || [];
   const mencionados = participantes.map(p => p.id).filter(Boolean);
 
-  const mensajeOpcional = args.length ? args.join(' ') : '⚡ Sin mensaje extra.';
+  const mensajeOpcional = args.length ? args.join(' ') : '';
 
   const mensaje = [
     `🔥 Se activó el tag de todos! 🔥`,
@@ -53,13 +49,10 @@ let handler = async function (m, { conn, groupMetadata, args, isAdmin, isOwner, 
     '💥 Que comience la acción!',
     'https://miunicolink.local/tagall-FelixCat',
     mensajeOpcional
-  ].join('\n');
+  ].filter(Boolean).join('\n');
 
-  await conn.sendMessage(m.chat, {
-    text: mensaje,
-    mentions: mencionados.concat(m.sender),
-    quoted: null // evita citar el mensaje del comando
-  });
+  // Envía el mensaje SIN citar NADA
+  await conn.sendMessage(chatId, { text: mensaje, mentions: mencionados.concat(m.sender) });
 };
 
 // Comandos
