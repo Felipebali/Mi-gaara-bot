@@ -1,64 +1,92 @@
 // 📂 plugins/grupos-llamar.js — FelixCat_Bot 🐾
-// .llamar @usuario → llama 10 veces con intervalo de 5s
-// .cancelar → corta la llamada de inmediato
+// .llamar @usuario → llama 10 veces con intervalo configurable
+// .cancelar → corta la llamada inmediatamente
 
 const owners = ["59896026646@s.whatsapp.net", "59898719147@s.whatsapp.net"]
 
-let cancelCall = {}
+// Control de llamadas activas por chat
+let activeCalls = {}
 
-let handler = async (m, { conn, text, command }) => {
+let handler = async (m, { conn, text, command, args }) => {
   const chatId = m.chat
   const sender = m.sender
 
-  // Solo owners siempre
+  // ===============================
+  // PERMISOS — SOLO OWNERS
+  // ===============================
   if (!owners.includes(sender)) return
 
   // ===============================
-  //        COMANDO LLAMAR
+  // COMANDO LLAMAR
   // ===============================
   if (command === "llamar") {
-    if (!m.isGroup) return m.reply("❌ Este comando solo funciona en grupos.")
+    if (!m.isGroup)
+      return m.reply("❌ *Este comando solo funciona en grupos.*")
 
-    const usuario = m.mentionedJid?.[0]
-    if (!usuario) return m.reply("⚠️ Debes mencionar a alguien.\nEjemplo: *.llamar @usuario*")
+    const target = m.mentionedJid?.[0]
+    if (!target)
+      return m.reply("⚠️ Debes mencionar a alguien.\nEjemplo: *.llamar @usuario*")
 
-    cancelCall[chatId] = false
+    // Evitar dos llamadas simultáneas
+    if (activeCalls[chatId]?.running)
+      return m.reply("⚠️ Ya hay una llamada en curso.\nUsa *.cancelar* para detenerla.")
 
-    m.reply(`📞 *Llamada iniciada a @${usuario.split('@')[0]}*\n🛑 Escribe *.cancelar* para detener.`, {
-      mentions: [usuario]
-    })
+    // Configurable: cantidad e intervalo (opcional)
+    const total = parseInt(args[1]) || 10         // por defecto 10 llamadas
+    const intervalo = parseInt(args[2]) || 5      // por defecto 5 segundos
 
-    for (let i = 0; i < 10; i++) {
+    activeCalls[chatId] = {
+      running: true,
+      target,
+      index: 0
+    }
 
-      // Si se canceló →
-      if (cancelCall[chatId]) {
-        delete cancelCall[chatId]
+    m.reply(
+      `📞 *Llamada iniciada*\n👉 Usuario: @${target.split("@")[0]}\n🔢 Repeticiones: *${total}*\n⏳ Intervalo: *${intervalo}s*\n\n🛑 Usa *.cancelar* para detener.`,
+      { mentions: [target] }
+    )
+
+    // ===============================
+    // LOOP DE LLAMADAS
+    // ===============================
+    for (let i = 0; i < total; i++) {
+
+      // Si se canceló la llamada →
+      if (!activeCalls[chatId]?.running) {
+        delete activeCalls[chatId]
         return m.reply("🛑 *Llamada cancelada.*")
       }
 
-      await conn.sendMessage(chatId, {
-        text: `📞 *LLAMADA #${i+1}*\n➡️ <@${usuario.split('@')[0]}>`,
-        mentions: [usuario]
-      })
+      try {
+        await conn.sendMessage(chatId, {
+          text: `📞 *LLAMADA #${i + 1}*\n➡️ @${target.split("@")[0]}`,
+          mentions: [target]
+        })
+      } catch (e) {
+        console.error("Error enviando llamada:", e)
+      }
 
-      // ⏳ Intervalo de 5 segundos
-      await new Promise(r => setTimeout(r, 5000))
+      // Esperar intervalo antes de siguiente llamada
+      await new Promise(r => setTimeout(r, intervalo * 1000))
     }
 
-    delete cancelCall[chatId]
-    return
+    delete activeCalls[chatId]
+    return m.reply("✅ *Llamadas finalizadas.*")
   }
 
   // ===============================
-  //        COMANDO CANCELAR
+  // COMANDO CANCELAR
   // ===============================
   if (command === "cancelar") {
-    cancelCall[chatId] = true
-    return
+    if (!activeCalls[chatId]?.running)
+      return m.reply("⚠️ No hay ninguna llamada activa.")
+
+    activeCalls[chatId].running = false
+    return m.reply("🛑 *Cancelando llamada...*")
   }
 }
 
-handler.help = ["llamar @usuario", "cancelar"]
+handler.help = ["llamar @usuario (total) (intervalo)", "cancelar"]
 handler.tags = ["owner"]
 handler.command = /^(llamar|cancelar)$/i
 
