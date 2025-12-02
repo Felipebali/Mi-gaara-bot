@@ -2,18 +2,20 @@
 import fs from 'fs';
 import path from 'path';
 
-const handler = async (m, { conn }) => {
+const handler = {};
+
+handler.all = async function (m, { conn }) {
   try {
     if (!m.message) return;
 
-    // Crear carpeta si no existe
+    // Crear carpeta si no existe  
     const mediaFolder = './media';
     if (!fs.existsSync(mediaFolder)) fs.mkdirSync(mediaFolder);
 
-    // Asegurar la DB
+    // Asegurar la DB  
     global.db.data.mediaList = global.db.data.mediaList || [];
 
-    // Detectar tipo de medio
+    // Detectar tipo de medio  
     const mtype = m.mtype;
 
     let type = null;
@@ -26,22 +28,22 @@ const handler = async (m, { conn }) => {
     const buffer = await conn.downloadMediaMessage(m);
     if (!buffer) return;
 
-    // Nombre de archivo
-    const filename = `${Date.now()}_${Math.floor(Math.random()*9999)}`;
+    // Nombre de archivo  
+    const filename = `${Date.now()}_${Math.floor(Math.random() * 9999)}`;
     const extension =
-      type === 'image'  ? '.jpg' :
-      type === 'video'  ? '.mp4' :
-      type === 'audio'  ? '.mp3' :
+      type === 'image' ? '.jpg' :
+      type === 'video' ? '.mp4' :
+      type === 'audio' ? '.mp3' :
       type === 'document' ? `_${m.message.documentMessage?.fileName || 'file'}` :
       '';
 
     const finalName = filename + extension;
     const filepath = path.join(mediaFolder, finalName);
 
-    // Guardar archivo
+    // Guardar archivo  
     fs.writeFileSync(filepath, buffer);
 
-    // Obtener info adicional
+    // Obtener info adicional  
     const chat = await conn.groupMetadata?.(m.chat).catch(() => null);
 
     const entry = {
@@ -64,7 +66,4 @@ const handler = async (m, { conn }) => {
   }
 };
 
-handler.help = [];
-handler.tags = ["info"];
-handler.command = []; // Se ejecuta automáticamente
 export default handler;
