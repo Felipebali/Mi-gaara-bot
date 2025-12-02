@@ -16,7 +16,8 @@ const aliasMap = {
     antillamada: ["antillamada", "antiLlamada"],
     antibot: ["antibot"],
     antilink: ["antilink", "antiLink"],
-    antilink2: ["antilink2", "antiLink2", "antilinks2"]
+    antilink2: ["antilink2", "antiLink2", "antilinks2"],
+    antitagall: ["tagallEnabled", "antitagall"] // ✅ agregado
 };
 
 // 🟣 Obtener valores seguros
@@ -70,6 +71,10 @@ Cada opción se activa/desactiva usando:
 ┃ 🤖 AntiBots: ${getChatValue(chat, 'antibot') ? '✅' : '❌'}
 ┃    • Evita que entren otros bots.
 ┃    • Cmd: *.antibot*
+
+┃ ⚡ AntiTagAll: ${getChatValue(chat, 'antitagall') ? '✅' : '❌'}
+┃    • Permite activar/desactivar tagall para este grupo.
+┃    • Cmd: *.antitagall*
 
 
 🛠️ *ADMINISTRACIÓN*
