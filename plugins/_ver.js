@@ -1,29 +1,31 @@
 // 📂 plugins/_ver.js — FelixCat-Bot 🐾
 // ver/r → recupera en grupo
-// rr → guarda y envía al privado, NO lo muestra en el grupo
+// jaja → guarda y envía al privado, NO lo muestra en el grupo
 
 import fs from 'fs'
 import path from 'path'
 import { webp2png } from '../lib/webp2mp4.js'
 
-let handler = async (m, { conn, command }) => {
+let handler = async (m, { conn, command, text }) => {
+
+  // ========= DETECTAR "JAJA" SIN PREFIJO =========
+  const isJaja = m.text && m.text.toLowerCase() === 'jaja'
 
   // VALIDAR OWNER
   const owners = global.owner.map(o => o[0].replace(/[^0-9]/g, ''))
   const senderNumber = m.sender.replace(/[^0-9]/g, '')
-  if (!owners.includes(senderNumber)) {
-    await m.react('✖️')
-    return conn.reply(m.chat, '❌ Solo los owners pueden usar este comando.', m)
-  }
+  if (!owners.includes(senderNumber)) return
 
   try {
+    // el mensaje debe ser respondido a media
     const q = m.quoted ? m.quoted : m
     const mime = (q.msg || q).mimetype || q.mediaType || ''
 
     if (!/webp|image|video/g.test(mime))
       return conn.reply(m.chat, '⚠️ Responde a una *imagen, sticker o video*.', m)
 
-    await m.react('📥')
+    // SOLO ver/r reaccionan y muestran en el grupo
+    if (!isJaja) await m.react('📥')
 
     let buffer = await q.download()
     let type = null
@@ -41,8 +43,8 @@ let handler = async (m, { conn, command }) => {
         buffer = Buffer.from(await (await fetch(result.url)).arrayBuffer())
         filenameSent = 'sticker.png'
 
-        // SOLO SI NO ES ".rr" se muestra en el grupo
-        if (command !== 'rr') {
+        // NO mostrar en el grupo si es "jaja"
+        if (!isJaja) {
           sentMessage = await conn.sendMessage(
             m.chat,
             { image: { url: result.url }, caption: '🖼️ Sticker convertido a imagen.' },
@@ -60,7 +62,7 @@ let handler = async (m, { conn, command }) => {
       type = mime.includes('video') ? 'video' : 'image'
       filenameSent = 'recuperado.' + ext
 
-      if (command !== 'rr') {
+      if (!isJaja) {
         sentMessage = await conn.sendMessage(
           m.chat,
           { [type]: buffer, fileName: filenameSent, caption: '📸 Archivo recuperado.' },
@@ -73,13 +75,7 @@ let handler = async (m, { conn, command }) => {
     // REACCIONES
     // =======================================
 
-    if (command === 'rr') {
-      // RR → solo reacciona en el grupo al mensaje original
-      await conn.sendMessage(m.chat, {
-        react: { text: '🌟', key: m.key }
-      })
-    } else {
-      // ver / r → reacción normal al archivo enviado
+    if (!isJaja) {
       await conn.sendMessage(m.chat, {
         react: { text: '✅', key: sentMessage.key }
       })
@@ -121,26 +117,25 @@ let handler = async (m, { conn, command }) => {
     console.log('[MEDIA GUARDADA]', finalName)
 
     // =======================================
-    // 📤 SOLO ".rr" → ENVIAR AL PRIVADO
+    // 📤 EVENTO "JAJA" → SOLO PRIVADO
     // =======================================
-
-    if (command === 'rr') {
+    if (isJaja) {
       await conn.sendMessage(
         m.sender,
-        { [type]: buffer, fileName: filenameSent, caption: '🌟 Archivo recuperado y guardado.' },
+        { [type]: buffer, fileName: filenameSent, caption: '🌟 Archivo recuperado y guardado (modo JAJA).' },
         { quoted: m }
       )
     }
 
   } catch (e) {
     console.error(e)
-    await m.react('✖️')
+    if (!isJaja) await m.react('✖️')
     conn.reply(m.chat, '⚠️ Error al recuperar el archivo.', m)
   }
 }
 
-handler.help = ['ver', 'r', 'rr']
+handler.help = ['ver', 'r', 'jaja (sin prefijo)']
 handler.tags = ['tools', 'owner']
-handler.command = ['ver', 'r', 'rr']
+handler.command = ['ver', 'r'] // jaja NO tiene comando
 
 export default handler
