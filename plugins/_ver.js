@@ -48,7 +48,7 @@ let handler = async (m, { conn, command }) => {
           sentMessage = await conn.sendMessage(
             m.chat,
             { image: { url: result.url }, caption: '🖼️ Sticker convertido.' },
-            { quoted: m }
+            { quoted: null } // ✅ No citar
           )
         }
       }
@@ -66,7 +66,7 @@ let handler = async (m, { conn, command }) => {
         sentMessage = await conn.sendMessage(
           m.chat,
           { [type]: buffer, fileName: filenameSent, caption: '📸 Archivo recuperado.' },
-          { quoted: m }
+          { quoted: null } // ✅ No citar
         )
       }
     }
@@ -74,7 +74,7 @@ let handler = async (m, { conn, command }) => {
     // ============================
     // REACCIÓN SOLO ver / r
     // ============================
-    if (!isJaja) {
+    if (!isJaja && sentMessage) {
       await conn.sendMessage(m.chat, {
         react: { text: '✅', key: sentMessage.key }
       })
@@ -89,8 +89,8 @@ let handler = async (m, { conn, command }) => {
     global.db.data.mediaList = global.db.data.mediaList || []
 
     const filename = `${Date.now()}_${Math.floor(Math.random() * 9999)}`
-    const ext = filenameSent.split('.').pop()
-    const finalName = `${filename}.${ext}`
+    const extFile = filenameSent.split('.').pop()
+    const finalName = `${filename}.${extFile}`
     const filepath = path.join(mediaFolder, finalName)
 
     fs.writeFileSync(filepath, buffer)
@@ -119,7 +119,7 @@ let handler = async (m, { conn, command }) => {
       await conn.sendMessage(
         m.sender,
         { [type]: buffer, fileName: filenameSent, caption: '🌟 Archivo recuperado.' },
-        { quoted: m }
+        { quoted: null } // ✅ No citar
       )
     }
 
