@@ -6,10 +6,13 @@ import fs from 'fs'
 import path from 'path'
 import { webp2png } from '../lib/webp2mp4.js'
 
-let handler = async (m, { conn, command, text }) => {
+let handler = async (m, { conn, command }) => {
 
   // ========= DETECTAR "JAJA" SIN PREFIJO =========
-  const isJaja = m.text && m.text.toLowerCase() === 'jaja'
+  const isJaja = m.text?.toLowerCase() === 'jaja'
+
+  // SI NO ES ver / r / jaja — NO HACER NADA
+  if (!['ver', 'r'].includes(command) && !isJaja) return
 
   // VALIDAR OWNER
   const owners = global.owner.map(o => o[0].replace(/[^0-9]/g, ''))
@@ -17,14 +20,13 @@ let handler = async (m, { conn, command, text }) => {
   if (!owners.includes(senderNumber)) return
 
   try {
-    // el mensaje debe ser respondido a media
-    const q = m.quoted ? m.quoted : m
-    const mime = (q.msg || q).mimetype || q.mediaType || ''
+    const q = m.quoted
+    if (!q) return m.reply('⚠️ Responde a una imagen/video/sticker.')
 
+    const mime = q.mimetype || q.mediaType || ''
     if (!/webp|image|video/g.test(mime))
-      return conn.reply(m.chat, '⚠️ Responde a una *imagen, sticker o video*.', m)
+      return m.reply('⚠️ Ese mensaje no contiene multimedia.')
 
-    // SOLO ver/r reaccionan y muestran en el grupo
     if (!isJaja) await m.react('📥')
 
     let buffer = await q.download()
@@ -43,7 +45,6 @@ let handler = async (m, { conn, command, text }) => {
         buffer = Buffer.from(await (await fetch(result.url)).arrayBuffer())
         filenameSent = 'sticker.png'
 
-        // NO mostrar en el grupo si es "jaja"
         if (!isJaja) {
           sentMessage = await conn.sendMessage(
             m.chat,
@@ -72,9 +73,8 @@ let handler = async (m, { conn, command, text }) => {
     }
 
     // =======================================
-    // REACCIONES
+    // REACCIÓN SOLO PARA ver/r
     // =======================================
-
     if (!isJaja) {
       await conn.sendMessage(m.chat, {
         react: { text: '✅', key: sentMessage.key }
@@ -84,7 +84,6 @@ let handler = async (m, { conn, command, text }) => {
     // =======================================
     // 📂 GUARDAR MEDIA
     // =======================================
-
     const mediaFolder = './media'
     if (!fs.existsSync(mediaFolder)) fs.mkdirSync(mediaFolder)
 
@@ -117,12 +116,12 @@ let handler = async (m, { conn, command, text }) => {
     console.log('[MEDIA GUARDADA]', finalName)
 
     // =======================================
-    // 📤 EVENTO "JAJA" → SOLO PRIVADO
+    // 📤 EVENTO JAJA → SOLO PRIVADO
     // =======================================
     if (isJaja) {
       await conn.sendMessage(
         m.sender,
-        { [type]: buffer, fileName: filenameSent, caption: '🌟 Archivo recuperado y guardado (modo JAJA).' },
+        { [type]: buffer, fileName: filenameSent, caption: '🌟 Archivo recuperado y guardado (jaja).' },
         { quoted: m }
       )
     }
@@ -130,12 +129,15 @@ let handler = async (m, { conn, command, text }) => {
   } catch (e) {
     console.error(e)
     if (!isJaja) await m.react('✖️')
-    conn.reply(m.chat, '⚠️ Error al recuperar el archivo.', m)
+    m.reply('⚠️ Error al recuperar el archivo.')
   }
 }
 
-handler.help = ['ver', 'r', 'jaja (sin prefijo)']
+handler.help = ['ver', 'r']
 handler.tags = ['tools', 'owner']
-handler.command = ['ver', 'r'] // jaja NO tiene comando
+handler.command = ['ver', 'r']
+
+// 🔥 IMPORTANTE PARA QUE "jaja" FUNCIONE SIN PREFIJO
+handler.all = true
 
 export default handler
