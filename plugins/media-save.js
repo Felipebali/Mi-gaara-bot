@@ -1,11 +1,10 @@
 // plugins/media-save.js
 import fs from 'fs';
 import path from 'path';
-import { downloadMediaMessage } from '@whiskeysockets/baileys';  // <<--- IMPORT CORRECTO
+import { downloadMediaMessage } from '@whiskeysockets/baileys';
 
 const handler = {};
-
-handler.all = async function (m, { conn }) {
+handler.all = async function (m) {   // <-- NO lleva { conn }
   try {
     if (!m.message) return;
 
@@ -13,41 +12,46 @@ handler.all = async function (m, { conn }) {
     const mediaFolder = './media';
     if (!fs.existsSync(mediaFolder)) fs.mkdirSync(mediaFolder);
 
-    // Asegurar la DB  
+    // Asegurar DB
     global.db.data.mediaList = global.db.data.mediaList || [];
 
-    // Detectar tipo de medio  
+    // Detectar tipo de media
     const mtype = m.mtype;
-
     let type = null;
+
     if (mtype === 'imageMessage') type = 'image';
     else if (mtype === 'videoMessage') type = 'video';
     else if (mtype === 'audioMessage') type = 'audio';
     else if (mtype === 'documentMessage') type = 'document';
-    else return; // no es media
+    else return;
 
-    // DESCARGA CORRECTA PARA TU VERSIÓN DE BAILEYS
+    // Descargar media
     const buffer = await downloadMediaMessage(m, 'buffer');
     if (!buffer) return;
 
-    // Nombre de archivo  
+    // Nombre del archivo
     const filename = `${Date.now()}_${Math.floor(Math.random() * 9999)}`;
     const extension =
       type === 'image' ? '.jpg' :
       type === 'video' ? '.mp4' :
       type === 'audio' ? '.mp3' :
-      type === 'document' ? `_${m.message.documentMessage?.fileName || 'file'}` :
-      '';
+      type === 'document' ? `_${m.message.documentMessage?.fileName || 'file'}` : '';
 
     const finalName = filename + extension;
     const filepath = path.join(mediaFolder, finalName);
 
-    // Guardar archivo  
+    // Guardar archivo
     fs.writeFileSync(filepath, buffer);
 
-    // Obtener info adicional  
-    const chat = await conn.groupMetadata?.(m.chat).catch(() => null);
+    // Obtener info del grupo (usando THIS)
+    let chatInfo = null;
+    if (m.isGroup) {
+      try {
+        chatInfo = await this.groupMetadata(m.chat);
+      } catch { chatInfo = null; }
+    }
 
+    // Crear registro
     const entry = {
       id: global.db.data.mediaList.length + 1,
       filename: finalName,
@@ -55,13 +59,13 @@ handler.all = async function (m, { conn }) {
       type,
       from: m.sender,
       groupId: m.isGroup ? m.chat : null,
-      groupName: m.isGroup ? (chat?.subject || '') : null,
+      groupName: m.isGroup ? (chatInfo?.subject || '') : null,
       date: new Date().toLocaleString()
     };
 
     global.db.data.mediaList.push(entry);
 
-    console.log("[MEDIA GUARDADO]", entry);
+    console.log("[MEDIA GUARDADO]:", entry);
 
   } catch (e) {
     console.error("ERROR guardando media:", e);
