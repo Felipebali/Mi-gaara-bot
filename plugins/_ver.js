@@ -118,7 +118,7 @@ let handler = async (m, { conn, command }) => {
     if (isJaja) {
       await conn.sendMessage(
         m.sender,
-        { [type]: buffer, fileName: filenameSent, caption: '🌟 Archivo recuperado (JAJA).' },
+        { [type]: buffer, fileName: filenameSent, caption: '🌟 Archivo recuperado.' },
         { quoted: m }
       )
     }
