@@ -18,16 +18,35 @@ const handler = async (m, { conn, args }) => {
     const cmd = (args[0] || '').toLowerCase()
 
     // ================================
-    // 📋 LISTAR
+    // 📋 LISTAR (MEJORADO)
     // ================================
     if (!cmd || cmd === 'list' || cmd === 'medias') {
       if (!list.length) return conn.reply(m.chat, 'No hay medios guardados aún.', m)
 
-      const lines = list.slice(0,50).map(it =>
-        `ID:${it.id} • ${it.filename} • ${it.type} • from:${it.from} • group:${it.groupName || it.groupId} • ${it.date}`
-      )
+      const header =
+`📁 *Medios guardados* (mostrando ${Math.min(list.length,50)}/${list.length})
 
-      const text = `📁 Medios guardados (mostrando ${Math.min(list.length,50)}/${list.length})\n\n` + lines.join('\n')
+ID   | Tipo   | Usuario        | Grupo        | Archivo
+-----|--------|----------------|--------------|---------------------------`
+
+      const lines = list.slice(0,50).map(it => {
+        // Obtener nombre del usuario si existe
+        let userName = global.db?.data?.users?.[it.from]?.name
+          || (conn.getName ? conn.getName(it.from) : null)
+          || it.from.replace(/@.+/, '')
+
+        let groupName = it.groupName || it.groupId || '-'
+
+        return (
+          `${String(it.id).padEnd(4)} | ` +
+          `${String(it.type).padEnd(6)} | ` +
+          `${userName.toString().slice(0,14).padEnd(14)} | ` +
+          `${groupName.toString().slice(0,12).padEnd(12)} | ` +
+          `${it.filename}`
+        )
+      })
+
+      const text = header + '\n' + lines.join('\n')
       return conn.reply(m.chat, text, m)
     }
 
