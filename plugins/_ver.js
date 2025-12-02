@@ -6,8 +6,8 @@ import { webp2png } from '../lib/webp2mp4.js'
 
 let handler = async (m, { conn }) => {
   // --- NORMALIZA NÚMEROS ---
-  const owners = global.owner.map(o => o[0].replace(/[^0-9]/g, '')) // Solo números
-  const senderNumber = m.sender.replace(/[^0-9]/g, '') // Número del que envía
+  const owners = global.owner.map(o => o[0].replace(/[^0-9]/g, ''))
+  const senderNumber = m.sender.replace(/[^0-9]/g, '')
 
   // --- SOLO OWNERS ---
   if (!owners.includes(senderNumber)) {
@@ -23,21 +23,46 @@ let handler = async (m, { conn }) => {
       return conn.reply(m.chat, '⚠️ Responde a una *imagen, sticker o video* para verlo.', m)
 
     await m.react('📥')
-    let buffer = await q.download()
 
-    // 🖼️ Si es sticker, lo convierte a imagen PNG
+    const buffer = await q.download()
+    let sentMessage = null  // <-- aquí guardaremos el mensaje reenviado
+
+    // 🖼️ Si es sticker → convertir a PNG
     if (/webp/.test(mime)) {
-      let result = await webp2png(buffer)
+      const result = await webp2png(buffer)
+
       if (result && result.url) {
-        await conn.sendFile(m.chat, result.url, 'sticker.png', '🖼️ Sticker convertido a imagen.', m)
-        await m.react('✅')
+        sentMessage = await conn.sendMessage(
+          m.chat,
+          {
+            image: { url: result.url },
+            caption: '🖼️ Sticker convertido a imagen.'
+          },
+          { quoted: m }
+        )
+        await conn.sendMessage(m.chat, { react: { text: '✅', key: sentMessage.key }} )
         return
       }
     }
 
-    // 🎥 Si es imagen o video normal, lo reenvía tal cual
-    await conn.sendFile(m.chat, buffer, 'recuperado.' + mime.split('/')[1], '📸 Archivo recuperado.', m)
-    await m.react('✅')
+    // 🎥 Imagen o video normal: enviarlo directamente
+    sentMessage = await conn.sendMessage(
+      m.chat,
+      {
+        [mime.split('/')[0]]: buffer,
+        fileName: 'recuperado.' + mime.split('/')[1],
+        caption: '📸 Archivo recuperado.'
+      },
+      { quoted: m }
+    )
+
+    // ✅ Reacción al archivo recuperado
+    await conn.sendMessage(m.chat, {
+      react: {
+        text: '✅',
+        key: sentMessage.key
+      }
+    })
 
   } catch (e) {
     console.error(e)
@@ -49,6 +74,5 @@ let handler = async (m, { conn }) => {
 handler.help = ['ver']
 handler.tags = ['tools', 'owner']
 handler.command = ['ver', 'r']
-handler.owner = false // controlado manualmente
 
 export default handler
