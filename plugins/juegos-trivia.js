@@ -26,7 +26,7 @@ const preguntasTrivia = [
   { pregunta: "¿Qué instrumento mide la temperatura?", opciones: ["Barómetro", "Termómetro", "Higrómetro", "Anemómetro"], respuesta: "Termómetro" }
 ];
 
-let handler = async (m, { conn, command }) => {
+let handler = async (m, { conn }) => {
   try {
     const chat = global.db.data.chats[m.chat] || {};
 
@@ -36,28 +36,41 @@ let handler = async (m, { conn, command }) => {
     if (activeTrivia[m.chat]) return;
 
     const pregunta = preguntasTrivia[Math.floor(Math.random() * preguntasTrivia.length)];
-    const texto = `🎯 *Trivia de Conocimiento* 🎯\n\n${pregunta.pregunta}\n\n${pregunta.opciones.map((o, i) => `${i + 1}) ${o}`).join('\n')}\n\n📝 *Responde escribiendo el nombre completo de la respuesta.*`;
 
-    await conn.reply(m.chat, texto, m);
-    activeTrivia[m.chat] = { ...pregunta };
+    const texto = `🎯 *Trivia de Conocimiento* 🎯\n\n${pregunta.pregunta}\n\n${pregunta.opciones.map((o, i) => `${i + 1}) ${o}`).join('\n')}\n\n📝 *Responde citando este mensaje.*`;
 
-    // ⏳ Tiempo límite
+    // Enviar mensaje y guardar ID
+    const msg = await conn.reply(m.chat, texto, m);
+
+    activeTrivia[m.chat] = {
+      ...pregunta,
+      msgId: msg.key.id // Guardamos el mensaje ORIGINAL de la trivia
+    };
+
+    // ⏳ 30 segundos de tiempo límite
     activeTrivia[m.chat].timeout = setTimeout(() => {
       if (activeTrivia[m.chat]) {
         conn.reply(m.chat, `⏰ Tiempo agotado. La respuesta correcta era: *${pregunta.respuesta}*.`);
         delete activeTrivia[m.chat];
       }
     }, 30000);
+
   } catch (err) {
     console.error(err);
   }
 };
 
-// Captura las respuestas de los usuarios
+// 📌 Captura SOLO mensajes que sean reply al mensaje exacto
 handler.all = async function (m) {
   const conn = global.conn;
+
   if (!m.text || !activeTrivia[m.chat]) return;
+
   const juego = activeTrivia[m.chat];
+
+  // ❗ El usuario DEBE responder citando el mensaje de la trivia
+  const quoted = m.quoted?.id || m.quoted?.key?.id;
+  if (!quoted || quoted !== juego.msgId) return; // ❌ Ignora cualquier mensaje que NO sea reply exacto
 
   const respuestaUsuario = m.text.trim().toLowerCase();
   const respuestaCorrecta = juego.respuesta.toLowerCase();
@@ -67,23 +80,15 @@ handler.all = async function (m) {
     await conn.reply(m.chat, `✅ ¡Correcto, ${m.pushName || "usuario"}! La respuesta era *${juego.respuesta}*.`);
     delete activeTrivia[m.chat];
   } else {
-    await conn.reply(m.chat, `❌ Incorrecto, ${m.pushName || "usuario"}. Intenta de nuevo.`);
+    await conn.reply(m.chat, `❌ Incorrecto, ${m.pushName || "usuario"}. Responde *citando el mensaje de la trivia*.`);
   }
 };
 
-// 🔥 Compatibilidad máxima para cualquier loader
+// Config Loader
 handler.help = ['trivia'];
 handler.tags = ['fun', 'juego'];
 handler.group = true;
-
-// Formato normal
 handler.command = ['trivia'];
-
-// Regex alternativo por si el loader lo usa
-handler.command = handler.command || /^trivia$/i;
-
-// Permitir alias en loader
-handler.customPrefix = null;
 handler.register = true;
 
 export default handler;
