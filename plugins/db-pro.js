@@ -1,29 +1,37 @@
-// 📂 plugins/db-pro-lite.js
-// Base de datos avanzada SIN sqlite — 100% compatible con Termux
+// 📂 plugins/db-ultra.js
+// Base de datos universal sin dependencias — 100% funcional en Termux
 // Comandos:
-// .dbset clave valor
-// .dbget clave
-// .dbpush clave valor
-// .dbdel clave
-// .dblist
+// .set clave valor
+// .get clave
+// .push clave valor
+// .del clave
+// .keys
 
-import { Low } from 'lowdb'
-import { JSONFile } from 'lowdb/node'
-import path from 'path'
 import fs from 'fs'
+import path from 'path'
 
-const dbPath = path.join(global.__dirname(import.meta.url), '../database/db-pro.json')
+const dbFolder = path.join(global.__dirname(import.meta.url), '../database')
+const dbFile = path.join(dbFolder, 'db-ultra.json')
 
 // Crear carpeta si no existe
-if (!fs.existsSync(path.dirname(dbPath))) {
-  fs.mkdirSync(path.dirname(dbPath), { recursive: true })
+if (!fs.existsSync(dbFolder)) {
+  fs.mkdirSync(dbFolder, { recursive: true })
 }
 
-// Inicializar DB
-const adapter = new JSONFile(dbPath)
-const db = new Low(adapter, { data: {} })
+// Cargar DB o crear
+let db = {}
+if (fs.existsSync(dbFile)) {
+  try {
+    db = JSON.parse(fs.readFileSync(dbFile))
+  } catch (e) {
+    db = {}
+  }
+}
 
-await db.read()
+// Guardar DB
+const saveDB = () => {
+  fs.writeFileSync(dbFile, JSON.stringify(db, null, 2))
+}
 
 let handler = async (m, { conn, command, args }) => {
   const key = args[0]
@@ -31,47 +39,43 @@ let handler = async (m, { conn, command, args }) => {
 
   switch (command) {
 
-    case 'dbset':
-      if (!key || !value) 
-        return m.reply('*Uso:* .dbset clave valor')
-      db.data[key] = value
-      await db.write()
-      m.reply(`✔️ Guardado:\n*${key}* = ${value}`)
+    case 'set':
+      if (!key || !value) return m.reply('Uso: .set clave valor')
+      db[key] = value
+      saveDB()
+      m.reply(`✔️ *Guardado*\n${key} = ${value}`)
     break
 
-    case 'dbget':
-      if (!key) return m.reply('*Uso:* .dbget clave')
-      const res = db.data[key]
-      m.reply(res ? `📌 Valor de *${key}:*\n${res}` : '❌ No existe esa clave')
+    case 'get':
+      if (!key) return m.reply('Uso: .get clave')
+      m.reply(db[key] ? `📌 ${key}: ${db[key]}` : '❌ No existe esa clave')
     break
 
-    case 'dbpush':
-      if (!key || !value) return m.reply('*Uso:* .dbpush clave valor')
-      if (!Array.isArray(db.data[key])) db.data[key] = []
-      db.data[key].push(value)
-      await db.write()
-      m.reply(`📌 Agregado a *${key}:*\n${value}`)
+    case 'push':
+      if (!key || !value) return m.reply('Uso: .push clave valor')
+      if (!Array.isArray(db[key])) db[key] = []
+      db[key].push(value)
+      saveDB()
+      m.reply(`📌 Agregado a ${key}: ${value}`)
     break
 
-    case 'dbdel':
-      if (!key) return m.reply('*Uso:* .dbdel clave')
-      delete db.data[key]
-      await db.write()
-      m.reply(`🗑️ Se borró la clave: ${key}`)
+    case 'del':
+      if (!key) return m.reply('Uso: .del clave')
+      delete db[key]
+      saveDB()
+      m.reply(`🗑️ Se borró ${key}`)
     break
 
-    case 'dblist':
-      if (!Object.keys(db.data).length) return m.reply('📭 BD vacía')
-      m.reply(
-        '📚 *Claves guardadas:*\n' +
-        Object.keys(db.data).map(k => `• ${k}`).join('\n')
-      )
+    case 'keys':
+      const keys = Object.keys(db)
+      if (!keys.length) return m.reply('📭 Base de datos vacía')
+      m.reply('📚 *Claves almacenadas:*\n' + keys.map(k => `• ${k}`).join('\n'))
     break
   }
 }
 
-handler.help = ['dbset','dbget','dbpush','dbdel','dblist']
+handler.command = ['set','get','push','del','keys']
 handler.tags = ['tools']
-handler.command = ['dbset','dbget','dbpush','dbdel','dblist']
+handler.help = ['set','get','push','del','keys']
 
 export default handler
