@@ -1,50 +1,59 @@
-// ⚠️ COMANDO SENSIBLE — Prevención + Motivación + AutoKick
-// .sucidarse → mensaje de apoyo + auto kick seguro
+// 📂 plugins/_suicidarse.js
+// PREVENCIÓN + MENSAJE DE APOYO + AUTOKICK
+// .suicidarse → envía frase motivadora + recurso de ayuda + expulsa al usuario
 
-let handler = async (m, { conn }) => {
+const frases = [
+  "💙 Tu vida vale más de lo que hoy estás sintiendo. Esto también pasará.",
+  "🌤️ No estás solo/a. Pedir ayuda es un acto de valentía.",
+  "🫂 Incluso en los días más oscuros, tu vida sigue teniendo valor.",
+  "💪 Hoy puede doler, pero mañana puede sorprenderte. Resistir también es ganar.",
+  "🌱 Aún queda mucho por vivir, sentir, reír y descubrir."
+];
 
-  if (!m.isGroup)
-    return conn.reply(m.chat, '⚠️ Este comando solo funciona en grupos.', m)
+let handler = async (m, { conn, isBotAdmin }) => {
 
-  const numero = m.sender.split('@')[0]
+  // Solo en grupos
+  if (!m.isGroup) return;
 
-  const frases = [
-    '💛 Tu vida vale más de lo que imaginás.',
-    '🌤️ Esto también va a pasar, no estás solo.',
-    '🫂 Pedir ayuda también es una forma de ser fuerte.',
-    '✨ Todavía quedan cosas lindas por vivir.',
-    '🧠 Tu mente importa, cuidarla también es valentía.',
-    '🤍 Aunque hoy duela, mañana puede doler menos.',
-    '🔥 Sos más fuerte de lo que pensás.'
-  ]
+  // El bot debe ser admin para poder expulsar
+  if (!isBotAdmin) {
+    return m.reply("⚠️ Necesito ser *administrador* para aplicar el autokick.");
+  }
 
-  const frase = frases[Math.floor(Math.random() * frases.length)]
+  try {
+    const user = m.sender;
+    const frase = frases[Math.floor(Math.random() * frases.length)];
 
-  const texto = `
-🛑 *@${numero}*
-No estás solo/a.
+    // 🛟 Mensaje de apoyo + recursos reales (Uruguay)
+    const mensaje =
+`🛑 *@${user.split("@")[0]}*, este mensaje es importante:
+
 ${frase}
 
-Si estás pasando un mal momento, hablá con alguien de confianza.
-Tu vida importa más de lo que creés. 🤍
-`.trim()
+📞 *Líneas de ayuda (Uruguay):*
+• *0800 0767* — Línea Vida (24h)
+• *911* — Emergencias
 
-  await conn.sendMessage(m.chat, {
-    text: texto,
-    mentions: [m.sender]
-  })
+Hablar con alguien puede salvar una vida. Pedir ayuda está bien. 💙`;
 
-  await conn.sendMessage(m.chat, { react: { text: '🤍', key: m.key } })
+    await conn.sendMessage(m.chat, {
+      text: mensaje,
+      mentions: [user]
+    });
 
-  await new Promise(resolve => setTimeout(resolve, 3000))
-  await conn.groupParticipantsUpdate(m.chat, [m.sender], 'remove')
-}
+    // ⏳ Esperar 6 segundos antes de expulsar
+    setTimeout(async () => {
+      try {
+        await conn.groupParticipantsUpdate(m.chat, [user], "remove");
+      } catch (e) {}
+    }, 6000);
 
-// ✅ ASÍ LO RECONOCE TU LOADER
-handler.help = ['sucidarse']
-handler.tags = ['seguridad']
-handler.command = /^sucidarse$/i
-handler.group = true
-handler.botAdmin = true
+  } catch (e) {
+    // silencioso
+  }
+};
 
-export default handler
+handler.command = ["suicidarse"];
+handler.group = true;
+
+export default handler;
