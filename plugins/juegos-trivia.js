@@ -80,7 +80,7 @@ handler.all = async function (m) {
     await conn.reply(m.chat, `✅ ¡Correcto, ${m.pushName || "usuario"}! La respuesta era *${juego.respuesta}*.`);
     delete activeTrivia[m.chat];
   } else {
-    await conn.reply(m.chat, `❌ Incorrecto, ${m.pushName || "usuario"}. Responde *citando el mensaje de la trivia*.`);
+    await conn.reply(m.chat, `❌ Incorrecto, ${m.pushName || "usuario"}.`);
   }
 };
 
