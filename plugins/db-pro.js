@@ -1,130 +1,70 @@
-// 📂 plugins/db-pro.js — FelixCat_Bot 🐾
-// Base de datos de usuarios del grupo (sin dependencias, 100% Termux safe)
-
 import fs from 'fs'
 import path from 'path'
 
-const dbFolder = path.join(global.__dirname(import.meta.url), '../database')
-const dbFile = path.join(dbFolder, 'users.json')
+const dbFile = path.join(process.cwd(), 'database', 'userdb.json')
 
-// Crear carpeta si no existe
-if (!fs.existsSync(dbFolder)) fs.mkdirSync(dbFolder, { recursive: true })
-
-// Cargar DB
-let users = {}
-if (fs.existsSync(dbFile)) {
-  try { users = JSON.parse(fs.readFileSync(dbFile)) }
-  catch { users = {} }
+// Asegurar archivo
+function ensureDB() {
+  if (!fs.existsSync(path.dirname(dbFile))) {
+    fs.mkdirSync(path.dirname(dbFile), { recursive: true })
+  }
+  if (!fs.existsSync(dbFile)) {
+    fs.writeFileSync(dbFile, JSON.stringify({}))
+  }
 }
 
-// Guardar DB
-const saveDB = () => fs.writeFileSync(dbFile, JSON.stringify(users, null, 2))
+function loadDB() {
+  ensureDB()
+  return JSON.parse(fs.readFileSync(dbFile))
+}
 
-let handler = async (m, { conn, command, args }) => {
+function saveDB(db) {
+  fs.writeFileSync(dbFile, JSON.stringify(db, null, 2))
+}
 
-  const action = args[0]
-
-  // listar no necesita menciones
-  if (action !== 'list') {
-    const mention = m.mentionedJid?.[0]
-    if (!mention) return m.reply("❗ Tenés que mencionar un usuario")
-
-    var id = mention.replace(/[^0-9]/g, '')
-    var jid = mention
+// Obtener nombre sin romper el bot
+async function safeGetName(conn, jid) {
+  try {
+    const name = await conn.getName(jid)
+    return name || jid.split('@')[0]
+  } catch {
+    return jid.split('@')[0]
   }
+}
 
-  const now = new Date().toISOString()
+let handler = async (m, { conn, text }) => {
+  ensureDB()
+  const db = loadDB()
 
-  // Función async ahora dentro del handler
-  const ensureUser = async () => {
-    if (!users[id]) {
-      const name = await conn.getName(jid).catch(() => "Sin nombre")
-      users[id] = {
-        id,
-        name,
-        warns: 0,
-        notes: [],
-        registered: now,
-        lastSeen: now,
-        groups: []
-      }
+  const mention = m.mentionedJid?.[0] || m.sender
+  const id = mention
+
+  // Crear usuario si no existe
+  if (!db[id]) {
+    db[id] = {
+      id,
+      name: await safeGetName(conn, id),
+      xp: 0,
+      msgs: 0,
+      lastSeen: 0
     }
   }
 
-  // -------------------------
-  //    ACCIONES DEL COMMAND
-  // -------------------------
+  // Actualizar datos
+  db[id].msgs++
+  db[id].lastSeen = Date.now()
 
-  switch (action) {
+  saveDB(db)
 
-    case 'add':
-      await ensureUser()
-      if (!users[id].groups.includes(m.chat)) users[id].groups.push(m.chat)
-      saveDB()
-      return m.reply(`✔️ Usuario registrado:\n@${id}`, { mentions: [jid] })
-
-    case 'info':
-      await ensureUser()
-      const u = users[id]
-      return m.reply(
-`📋 *INFO DEL USUARIO*
-👤 Nombre: ${u.name}
-📱 Número: +${u.id}
-⚠ Warns: ${u.warns}
-📝 Notas: ${u.notes.length}
-📅 Registrado: ${u.registered}
-👀 Última actividad: ${u.lastSeen}
-👥 Grupos: ${u.groups.length}`
-      )
-
-    case 'set':
-      const key = args[1]
-      const value = args.slice(2).join(" ")
-      if (!key || !value) return m.reply("Uso: .user set @user clave valor")
-
-      await ensureUser()
-      users[id][key] = value
-      saveDB()
-      return m.reply(`✔️ Actualizado:\n${key} = ${value}`)
-
-    case 'get':
-      const field = args[1]
-      if (!field) return m.reply("Uso: .user get @user clave")
-
-      await ensureUser()
-      return m.reply(users[id][field] ?? "❌ No existe esa clave")
-
-    case 'warn':
-      await ensureUser()
-      users[id].warns++
-      users[id].lastSeen = now
-      saveDB()
-      return m.reply(`⚠ Warn agregado a @${id}\nTotal: ${users[id].warns}`, { mentions: [jid] })
-
-    case 'unwarn':
-      await ensureUser()
-      if (users[id].warns > 0) users[id].warns--
-      saveDB()
-      return m.reply(`♻ Warn removido de @${id}\nTotal: ${users[id].warns}`, { mentions: [jid] })
-
-    case 'del':
-      delete users[id]
-      saveDB()
-      return m.reply(`🗑 Registro eliminado de @${id}`, { mentions: [jid] })
-
-    case 'list':
-      const keys = Object.keys(users)
-      if (!keys.length) return m.reply("📭 No hay usuarios registrados")
-      return m.reply(
-        "📚 *Usuarios registrados:*\n\n" +
-        keys.map(k => `• +${k} — warns: ${users[k].warns}`).join("\n")
-      )
-  }
-
-  return m.reply("❗ Uso: .user (add/info/set/get/warn/unwarn/del/list)")
+  await conn.reply(m.chat, `📂 Datos del usuario:\n\n` +
+    `👤 *Nombre:* ${db[id].name}\n` +
+    `🆔 *ID:* ${db[id].id}\n` +
+    `💬 *Mensajes:* ${db[id].msgs}\n` +
+    `⏳ *Última vez:* ${new Date(db[id].lastSeen).toLocaleString()}`, m)
 }
 
-handler.help = ['user add', 'user info', 'user set', 'user get', 'user warn', 'user unwarn', 'user del', 'user list']
-handler.tags = ['group']
-handler.command = /^user$/i
+handler.help = ['dbuser']
+handler.tags = ['tools']
+handler.command = /^dbuser|db$/i
+
 export default handler
