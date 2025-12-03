@@ -1,12 +1,10 @@
 // ⚠️ COMANDO SENSIBLE — Prevención + Motivación + AutoKick
-// .sucidarse → mensaje de apoyo + auto kick
+// .sucidarse → mensaje de apoyo + auto kick seguro
 
-let handler = async (m, { conn, isBotAdmin }) => {
+let handler = async (m, { conn }) => {
+
   if (!m.isGroup)
     return conn.reply(m.chat, '⚠️ Este comando solo funciona en grupos.', m)
-
-  if (!isBotAdmin)
-    return conn.reply(m.chat, '❗ Necesito ser administrador para aplicar el auto-kick.', m)
 
   const numero = m.sender.split('@')[0]
 
@@ -42,9 +40,11 @@ Tu vida importa más de lo que creés. 🤍
   await conn.groupParticipantsUpdate(m.chat, [m.sender], 'remove')
 }
 
+// ✅ ASÍ LO RECONOCE TU LOADER
 handler.help = ['sucidarse']
 handler.tags = ['seguridad']
-handler.command = ['sucidarse']
+handler.command = /^sucidarse$/i
 handler.group = true
+handler.botAdmin = true
 
 export default handler
