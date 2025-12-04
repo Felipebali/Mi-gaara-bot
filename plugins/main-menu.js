@@ -55,6 +55,11 @@ let handler = async (m, { conn }) => {
 ┃ 🎵 *.tiktok* – TikTok
 ┗━━━━━━━━━━━━━━━━━━━━━┛
 
+┏━━━ 🎬 *ENTRETENIMIENTO* ━━━┓
+┃ 🎥 *.quever <género>* – Películas aleatorias por género
+┃ 📺 *.verserie <género>* – Series aleatorias por género
+┗━━━━━━━━━━━━━━━━━━━━━┛
+
 ┏━━━ 🎶 *MÚSICA / VIDEOS* ━━━┓
 ┃ 🎵 *.ytplay* – Música de YouTube
 ┃ 🎶 *.ytaudio* – Alternativa de audio
