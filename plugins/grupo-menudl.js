@@ -3,10 +3,10 @@ let handler = async (m, { conn }) => {
 ╭━━〔 ⚡ *FelixCat-Bot* ⚡ 〕━━⬣
 ┃ ✨ *YouTube Mejorado*
 ┃
-┃ • .ytplay
-┃ • .ytaudio
-┃ • .ytvideo
-┃ • .ytplay2
+┃ • .play
+┃ • .audio
+┃ • .video
+┃ • .play2
 ┃
 ┃ 📥 *Menú de Descargas*
 ┃
