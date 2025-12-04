@@ -47,24 +47,8 @@ let handler = async (m, { conn, usedPrefix }) => {
       console.log('Error al obtener modo del bot:', e)
     }
 
-    // --- Owners adaptado ---
-    let ownerInfo = '👑 Desconocido'
-    try {
-      if (global.owner && Array.isArray(global.owner) && global.owner.length > 0) {
-        const ownersFormatted = global.owner.map(o => {
-          let num = Array.isArray(o) ? o[0] : o
-          num = num.toString().replace(/@s\.whatsapp\.net/, '')
-          return `@${num}`
-        })
-        ownerInfo = ownersFormatted.join(', ')
-      }
-    } catch (e) {
-      console.log('Error al obtener info del owner:', e)
-    }
-
     let vegeta = `
 ╭━━━〔 🌪️ INFO DE ${botname} 〕━━━⬣
-┃ ➪ ${ownerInfo}
 ┃ ➪ ⚡ Prefijo: [ ${usedPrefix} ]
 ┃ ➪ 📦 Total Plugins: ${totalf}
 ┃ ➪ 🖥️ Plataforma: ${sistemaPlatform}
@@ -93,8 +77,7 @@ ${memoryInfo}
 `.trim()
 
     await conn.sendMessage(m.chat, { 
-      text: vegeta,
-      mentions: conn.parseMention(vegeta)
+      text: vegeta
     }, { quoted: m })
     
   } catch (error) {
