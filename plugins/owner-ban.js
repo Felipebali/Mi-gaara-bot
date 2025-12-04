@@ -1,4 +1,6 @@
-// 📂 plugins/propietario-listanegra.js — FINAL DEFINITIVO REAL (NUM LISTA + AUTOKICK GLOBAL)
+// 📂 plugins/propietario-listanegra.js — FINAL DEFINITIVO REAL (NUM LISTA + AUTOKICK GLOBAL + AVISO)
+
+// ================= UTILIDADES =================
 
 function sleep(ms) { return new Promise(r => setTimeout(r, ms)) }
 
@@ -33,12 +35,14 @@ function findMemberByNumber(group, numberDigits) {
   return null
 }
 
+// ================= HANDLER PRINCIPAL =================
+
 const handler = async (m, { conn, command, text }) => {
   const emoji = '🚫'
   const done = '✅'
   const dbUsers = global.db.data.users || (global.db.data.users = {})
 
-  const reactions = { addn: '✅', remn: '☢️', clrn: '🧹', listn: '📜', seen: '👀' }
+  const reactions = { addn: '✅', remn: '☢️', clrn: '🧹', listn: '📜' }
   if (reactions[command])
     await conn.sendMessage(m.chat, { react: { text: reactions[command], key: m.key } })
 
@@ -47,7 +51,7 @@ const handler = async (m, { conn, command, text }) => {
   let userJid = null
   let numberDigits = null
 
-  // ✅ REMN POR NÚMERO
+  // ✅ REMN POR NÚMERO DE LISTA
   if (command === 'remn' && /^\d+$/.test(text?.trim())) {
     const index = parseInt(text.trim()) - 1
     if (!bannedList[index])
@@ -107,7 +111,7 @@ const handler = async (m, { conn, command, text }) => {
     }
   }
 
-  // ✅ REMOVER
+  // ✅ REMOVER DE LISTA NEGRA
   else if (command === 'remn') {
     if (!dbUsers[userJid]?.banned)
       return conn.sendMessage(m.chat, { text: `${emoji} No está en lista negra.` })
@@ -122,7 +126,7 @@ const handler = async (m, { conn, command, text }) => {
     })
   }
 
-  // ✅ LISTA
+  // ✅ LISTAR
   else if (command === 'listn') {
     if (bannedList.length === 0)
       return conn.sendMessage(m.chat, { text: `${done} Lista negra vacía.` })
@@ -138,7 +142,7 @@ const handler = async (m, { conn, command, text }) => {
     await conn.sendMessage(m.chat, { text: list.trim(), mentions })
   }
 
-  // ✅ LIMPIAR
+  // ✅ LIMPIAR LISTA
   else if (command === 'clrn') {
     for (const jid in dbUsers) {
       if (dbUsers[jid]?.banned) {
@@ -153,7 +157,8 @@ const handler = async (m, { conn, command, text }) => {
   if (global.db.write) await global.db.write()
 }
 
-// ✅ AUTO-KICK SI HABLA
+// ================= AUTO-KICK SI HABLA =================
+
 handler.all = async function (m) {
   try {
     if (!m.isGroup || !m.sender) return
@@ -165,18 +170,36 @@ handler.all = async function (m) {
   } catch {}
 }
 
-// ✅ AUTO-KICK AL ENTRAR
+// ================= AUTO-KICK AL ENTRAR + AVISO =================
+
 handler.before = async function (m) {
   try {
     if (![27, 31].includes(m.messageStubType)) return
     const db = global.db.data.users
+    const conn = this
+
     for (const user of m.messageStubParameters || []) {
       const u = normalizeJid(user)
-      if (db[u]?.banned)
-        await this.groupParticipantsUpdate(m.chat, [u], 'remove')
+
+      if (db[u]?.banned) {
+        const reason = db[u].banReason || 'No especificado'
+
+        await sleep(600)
+        await conn.groupParticipantsUpdate(m.chat, [u], 'remove')
+        await sleep(800)
+
+        await conn.sendMessage(m.chat, {
+          text: `🚫 @${u.split('@')[0]} fue eliminado automáticamente al ingresar.\n📝 Motivo: ${reason}`,
+          mentions: [u]
+        })
+      }
     }
-  } catch {}
+  } catch (e) {
+    console.error('Error en auto-kick al entrar:', e)
+  }
 }
+
+// ================= CONFIG FINAL =================
 
 handler.help = ['addn', 'remn', 'clrn', 'listn']
 handler.tags = ['owner']
