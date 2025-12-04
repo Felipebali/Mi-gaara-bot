@@ -13,7 +13,6 @@ const owners = ["59896026646@s.whatsapp.net", "59898719147@s.whatsapp.net"];
 // ⬇️ NUEVO: yt-dlp estable y sin errores
 async function downloadYTDLP(url, output, mode) {
   return new Promise((resolve, reject) => {
-
     let args = [];
 
     if (mode === "audio") {
@@ -144,7 +143,7 @@ const handler = async (m, { conn, text, command }) => {
     );
 
     // 🔊 AUDIO — AHORA FUNCIONA SIEMPRE
-    if (command === "ytplay" || command === "ytaudio") {
+    if (command === "play" || command === "audio") {
       try {
         const output = `/sdcard/${title}.mp3`;
 
@@ -170,7 +169,7 @@ const handler = async (m, { conn, text, command }) => {
     }
 
     // 🎥 VIDEO — SIN ERRORES DE FORMATO
-    else if (command === "ytvideo" || command === "ytplay2") {
+    else if (command === "video" || command === "play2") {
       try {
         const output = `/sdcard/${title}.mp4`;
 
@@ -200,7 +199,7 @@ const handler = async (m, { conn, text, command }) => {
   }
 };
 
-handler.command = ["ytplay", "ytaudio", "ytvideo", "ytplay2"];
+handler.command = ["play", "audio", "video", "play2"];
 handler.tags = ["descargas"];
 
 export default handler;
