@@ -21,16 +21,16 @@ function writeDB(data) {
   fs.writeFileSync(dbPath, JSON.stringify(data, null, 2))
 }
 
-let handler = async (m, { client, text, usedPrefix, command }) => {
+let handler = async (m, { conn, text, usedPrefix, command, isOwner }) => {
 
-  // ✅ VER LISTA
+  // ✅ VER LISTA NEGRA
   if (command === "vre") {
     const entries = readDB()
 
     if (!entries.length) {
-      return await client.sendMessage(
+      return await conn.sendMessage(
         m.chat,
-        { text: "✅ No hay usuarios en lista negra." },
+        { text: "✅ No hay usuarios en la blacklist." },
         { quoted: m }
       )
     }
@@ -42,7 +42,7 @@ let handler = async (m, { client, text, usedPrefix, command }) => {
 
     const jids = entries.map(e => e.jid)
 
-    return await client.sendMessage(
+    return await conn.sendMessage(
       m.chat,
       { text: msg, mentions: jids },
       { quoted: m }
@@ -61,22 +61,23 @@ let handler = async (m, { client, text, usedPrefix, command }) => {
     reason = text?.trim()
   }
 
-  if (!who)
-    return await client.sendMessage(
+  if (!who) {
+    return await conn.sendMessage(
       m.chat,
       { text: `Uso correcto:\n${usedPrefix + command} @usuario motivo` },
       { quoted: m }
     )
+  }
 
   if (who === m.sender) return m.react("❌")
 
-  const ownerJids = (globalThis.owners || []).map(o => o + "@s.whatsapp.net")
+  const ownerJids = (global.owner || []).map(o => o + "@s.whatsapp.net")
   if (ownerJids.includes(who)) return m.react("❌")
 
   let db = readDB()
   const index = db.findIndex(u => u.jid === who)
 
-  // ✅ AGREGAR BLACKLIST
+  // ✅ AGREGAR A BLACKLIST
   if (command === "re") {
     if (index !== -1) {
       db[index].reason = reason || "Sin motivo"
@@ -87,20 +88,21 @@ let handler = async (m, { client, text, usedPrefix, command }) => {
     writeDB(db)
 
     if (m.isGroup) {
-      await client.groupParticipantsUpdate(m.chat, [who], "remove")
+      await conn.groupParticipantsUpdate(m.chat, [who], "remove")
     }
 
     return m.react("✅")
   }
 
-  // ✅ QUITAR BLACKLIST
+  // ✅ QUITAR DE BLACKLIST
   if (command === "re2") {
-    if (index === -1)
-      return await client.sendMessage(
+    if (index === -1) {
+      return await conn.sendMessage(
         m.chat,
         { text: "Ese usuario no estaba en la lista negra." },
         { quoted: m }
       )
+    }
 
     db.splice(index, 1)
     writeDB(db)
