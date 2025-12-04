@@ -17,13 +17,22 @@ function readDB() {
   return JSON.parse(fs.readFileSync(dbPath))
 }
 
+function writeDB(data) {
+  fs.writeFileSync(dbPath, JSON.stringify(data, null, 2))
+}
+
 let handler = async (m, { client, text, usedPrefix, command }) => {
 
   // ✅ VER LISTA
   if (command === "vre") {
     const entries = readDB()
+
     if (!entries.length) {
-      return client.sendMessage(m.chat, { text: "✅ No hay usuarios en lista negra." }, { quoted: m })
+      return await client.sendMessage(
+        m.chat,
+        { text: "✅ No hay usuarios en lista negra." },
+        { quoted: m }
+      )
     }
 
     let msg = entries.map((entry, i) => {
@@ -33,7 +42,7 @@ let handler = async (m, { client, text, usedPrefix, command }) => {
 
     const jids = entries.map(e => e.jid)
 
-    return client.sendMessage(
+    return await client.sendMessage(
       m.chat,
       { text: msg, mentions: jids },
       { quoted: m }
@@ -42,24 +51,24 @@ let handler = async (m, { client, text, usedPrefix, command }) => {
 
   // ✅ OBTENER USUARIO
   let who, reason
-  const phoneMatches = text.match(/\+\d[\d\s]*/g)
+  const phoneMatches = text?.match(/\+\d[\d\s]*/g)
 
   if (phoneMatches?.length) {
     who = phoneMatches[0].replace(/\+|\s+/g, "") + "@s.whatsapp.net"
     reason = text.replace(phoneMatches[0], "").trim()
   } else {
     who = m.mentionedJid?.[0] || m.quoted?.sender || null
-    reason = text.trim()
+    reason = text?.trim()
   }
 
   if (!who)
-    return client.sendMessage(
+    return await client.sendMessage(
       m.chat,
       { text: `Uso correcto:\n${usedPrefix + command} @usuario motivo` },
       { quoted: m }
     )
 
-  if (who === client.user?.jid || who === m.sender) return m.react("❌")
+  if (who === m.sender) return m.react("❌")
 
   const ownerJids = (globalThis.owners || []).map(o => o + "@s.whatsapp.net")
   if (ownerJids.includes(who)) return m.react("❌")
@@ -67,7 +76,7 @@ let handler = async (m, { client, text, usedPrefix, command }) => {
   let db = readDB()
   const index = db.findIndex(u => u.jid === who)
 
-  // ✅ AGREGAR
+  // ✅ AGREGAR BLACKLIST
   if (command === "re") {
     if (index !== -1) {
       db[index].reason = reason || "Sin motivo"
@@ -75,26 +84,27 @@ let handler = async (m, { client, text, usedPrefix, command }) => {
       db.push({ jid: who, reason: reason || "Sin motivo" })
     }
 
-    fs.writeFileSync(dbPath, JSON.stringify(db, null, 2))
+    writeDB(db)
 
-    if (m.isGroup)
+    if (m.isGroup) {
       await client.groupParticipantsUpdate(m.chat, [who], "remove")
+    }
 
     return m.react("✅")
   }
 
-  // ✅ QUITAR
+  // ✅ QUITAR BLACKLIST
   if (command === "re2") {
-    if (index === -1) {
-      return client.sendMessage(
+    if (index === -1)
+      return await client.sendMessage(
         m.chat,
         { text: "Ese usuario no estaba en la lista negra." },
         { quoted: m }
       )
-    }
 
     db.splice(index, 1)
-    fs.writeFileSync(dbPath, JSON.stringify(db, null, 2))
+    writeDB(db)
+
     return m.react("☑️")
   }
 }
