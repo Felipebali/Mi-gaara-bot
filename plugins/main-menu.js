@@ -61,11 +61,11 @@ let handler = async (m, { conn }) => {
 ┗━━━━━━━━━━━━━━━━━━━━━┛
 
 ┏━━━ 🎶 *MÚSICA / VIDEOS* ━━━┓
-┃ 🎵 *.ytplay* – Música de YouTube
-┃ 🎶 *.ytaudio* – Alternativa de audio
-┃ 🔊 *.ytmp3* – Convierte a MP3
-┃ 🎬 *.ytvideo* – Video completo
-┃ 🎥 *.ytplay2* – Alternativa de video
+┃ 🎵 *.play* – Música de YouTube
+┃ 🎶 *.audio* – Alternativa de audio
+┃ 🔊 *.mp3* – Convierte a MP3
+┃ 🎬 *.video* – Video completo
+┃ 🎥 *.play2* – Alternativa de video
 ┗━━━━━━━━━━━━━━━━━━━━━┛
 
 ┏━━━ 🔍 *BUSCADOR* ━━━┓
