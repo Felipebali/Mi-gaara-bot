@@ -1,4 +1,25 @@
-import { addToBlacklist, removeFromBlacklist, getBlacklist, isBlacklisted, getUser } from "../databaseFunctions.js";
+import fs from "fs";
+import path from "path";
+
+const dbPath = path.join(process.cwd(), "database", "blacklist.json");
+
+function ensureDB() {
+  if (!fs.existsSync(path.dirname(dbPath))) {
+    fs.mkdirSync(path.dirname(dbPath), { recursive: true });
+  }
+  if (!fs.existsSync(dbPath)) {
+    fs.writeFileSync(dbPath, JSON.stringify([]));
+  }
+}
+
+function readDB() {
+  ensureDB();
+  return JSON.parse(fs.readFileSync(dbPath));
+}
+
+function writeDB(data) {
+  fs.writeFileSync(dbPath, JSON.stringify(data, null, 2));
+}
 
 let plugin = {};
 plugin.cmd = ["re", "re2", "vre"];
@@ -6,11 +27,11 @@ plugin.onlyOwner = true;
 
 plugin.run = async (m, { client, text, usedPrefix, command }) => {
 
-  // ✅ VER LISTA NEGRA
+  // ✅ VER LISTA
   if (command === "vre") {
-    const entries = getBlacklist();
+    const entries = readDB();
 
-    if (!entries.length) 
+    if (!entries.length)
       return client.sendText(m.chat, "No hay usuarios en lista negra.", m);
 
     let msg = entries.map((entry, i) => {
@@ -34,29 +55,26 @@ plugin.run = async (m, { client, text, usedPrefix, command }) => {
     reason = text.trim();
   }
 
-  // ✅ LID → JID
-  if (who?.endsWith("@lid")) {
-    const whoData = getUser(who);
-    who = whoData?.jid;
-  }
-
-  if (!who) 
+  if (!who)
     return client.sendText(m.chat, txt.defaultWhoBlackList(usedPrefix, command), m);
 
   if (who === client.user.jid || who === m.sender) return m.react("❌");
 
-  if (command === "re" && !reason) 
-    return client.sendText(m.chat, txt.blistRejectNullReason, m);
-
-  // ✅ PROTEGER OWNERS
   const ownerJids = (globalThis.owners || []).map(o => o + "@s.whatsapp.net");
   if (ownerJids.includes(who)) return m.react("❌");
 
-  const exists = isBlacklisted(who);
+  let db = readDB();
+  const index = db.findIndex(u => u.jid === who);
 
   // ✅ AGREGAR
   if (command === "re") {
-    addToBlacklist(who, reason || "Sin motivo");
+    if (index !== -1) {
+      db[index].reason = reason || "Sin motivo";
+    } else {
+      db.push({ jid: who, reason: reason || "Sin motivo" });
+    }
+
+    writeDB(db);
 
     if (m.isGroup)
       await client.groupParticipantsUpdate(m.chat, [who], "remove");
@@ -66,10 +84,11 @@ plugin.run = async (m, { client, text, usedPrefix, command }) => {
 
   // ✅ QUITAR
   if (command === "re2") {
-    if (!exists)
+    if (index === -1)
       return client.sendText(m.chat, "Ese usuario no estaba en la lista negra.", m);
 
-    removeFromBlacklist(who);
+    db.splice(index, 1);
+    writeDB(db);
     return m.react("☑️");
   }
 };
