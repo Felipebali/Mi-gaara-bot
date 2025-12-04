@@ -1,50 +1,51 @@
-import fs from "fs";
-import path from "path";
+import fs from "fs"
+import path from "path"
 
-const dbPath = path.join(process.cwd(), "database", "blacklist.json");
+const dbPath = path.join(process.cwd(), "database", "blacklist.json")
 
 function ensureDB() {
   if (!fs.existsSync(path.dirname(dbPath))) {
-    fs.mkdirSync(path.dirname(dbPath), { recursive: true });
+    fs.mkdirSync(path.dirname(dbPath), { recursive: true })
   }
   if (!fs.existsSync(dbPath)) {
-    fs.writeFileSync(dbPath, JSON.stringify([]));
+    fs.writeFileSync(dbPath, JSON.stringify([]))
   }
 }
 
 function readDB() {
-  ensureDB();
-  return JSON.parse(fs.readFileSync(dbPath));
+  ensureDB()
+  return JSON.parse(fs.readFileSync(dbPath))
 }
 
-let plugin = (m) => m;
+let handler = (m) => m
 
-plugin.before = async function (m, { client, isBotAdmin, isRAdmin }) {
+handler.before = async function (m, { client, isBotAdmin, isRAdmin }) {
   try {
-    if (isRAdmin) return;
-    if (!isBotAdmin) return;
-    if (!m.isGroup) return;
-    if (m.messageStubType) return;
+    if (isRAdmin) return
+    if (!isBotAdmin) return
+    if (!m.isGroup) return
+    if (!m.sender) return
 
-    const sender = m.sender;
-    const db = readDB();
-    const entry = db.find(u => u.jid === sender);
-    if (!entry) return;
+    const sender = m.sender
+    const db = readDB()
+    const entry = db.find(u => u.jid === sender)
+    if (!entry) return
 
-    await m.delete();
-    await client.groupParticipantsUpdate(m.chat, [sender], "remove");
+    await m.delete()
+    await client.groupParticipantsUpdate(m.chat, [sender], "remove")
 
-    await client.sendText(
+    await client.sendMessage(
       m.chat,
-      txt.blackList(sender, entry.reason),
-      null,
-      { mentions: [sender] }
-    );
+      {
+        text: `🚫 Usuario en lista negra\n@${sender.split("@")[0]}\nMotivo: ${entry.reason}`,
+        mentions: [sender]
+      }
+    )
 
-    return true;
+    return true
   } catch (e) {
-    console.error("Error autokick blacklist:", e);
+    console.error("Error autokick blacklist:", e)
   }
-};
+}
 
-export default plugin;
+export default handler
