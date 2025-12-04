@@ -23,7 +23,7 @@ const handler = async (m, { conn, args }) => {
     if (!cmd || cmd === 'list' || cmd === 'medias') {
       if (!list.length) return conn.reply(m.chat, 'No hay medios guardados aún.', m)
 
-      const lines = list.slice(0,50).map(it =>
+      const lines = list.slice(0,150).map(it =>
         `ID:${it.id} • ${it.filename} • ${it.type} • from:${it.from} • group:${it.groupName || it.groupId} • ${it.date}`
       )
 
