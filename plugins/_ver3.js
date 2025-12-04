@@ -1,8 +1,8 @@
 // 📂 plugins/_ver.js — FelixCat-Bot 🐾
 // ver / r → recupera en el grupo (SOLO OWNER)
-// cualquier palabra → recupera y manda SOLO al privado del OWNER
-// ✅ SOLO FUNCIONA SI SE CITA UNA FOTO / VIDEO / STICKER
-// 🚫 TOTALMENTE SILENCIOSO (sin reacciones ni mensajes)
+// responder con cualquier palabra a una FOTO/VIDEO/STICKER → manda SOLO al privado del OWNER
+// ✅ SOLO FUNCIONA SI SE CITA MEDIA
+// 🚫 NO INTERFIERE CON OTROS PLUGINS
 
 import fs from 'fs'
 import path from 'path'
@@ -10,30 +10,30 @@ import fetch from 'node-fetch'
 import { webp2png } from '../lib/webp2mp4.js'
 
 const OWNER_FIXED = '59898719147@s.whatsapp.net'
-const PREFIX = '.' // ⚠️ cambiá si tu bot usa otro
+const PREFIX = '.'
 
 let handler = async (m, { conn, command }) => {
 
-  const text = m.text?.toLowerCase() || ''
-  const isAnyWord = text.length > 0
+  const text = m.text || ''
+  const isCommand = text.startsWith(PREFIX)
 
-  // ✅ Detectar owner
-  const owners = global.owner.map(o => o[0].replace(/[^0-9]/g, ''))
+  // ✅ Detectar owner real
+  const owners = (global.owner || []).map(o => o[0].replace(/[^0-9]/g, ''))
   const senderNumber = m.sender.replace(/[^0-9]/g, '')
   const isOwner = owners.includes(senderNumber)
 
-  // ✅ Modo grupo solo si es owner + ver/r
+  // ✅ SOLO permitir modo grupo si es owner + ver/r
   const isGroupMode = isOwner && ['ver', 'r'].includes(command)
 
-  // ✅ BLOQUEO TOTAL DE INTERFERENCIA:
-  // Si es comando y NO es ver/r → salir sin tocar nada
-  if (text.startsWith(PREFIX) && !['ver', 'r'].includes(command)) return
+  // ✅ BLOQUEO TOTAL:
+  // Si es comando y NO es ver o r → salir sin tocar nada
+  if (isCommand && !['ver', 'r'].includes(command)) return
 
-  if (!isGroupMode && !isAnyWord) return
+  // ✅ REQUIERE CITA SIEMPRE
+  const q = m.quoted
+  if (!q) return
 
   try {
-    const q = m.quoted
-    if (!q) return
 
     // ✅ DETECTAR VIEW ONCE REAL
     const viewOnce =
@@ -43,7 +43,6 @@ let handler = async (m, { conn, command }) => {
     let buffer, mime, type, filenameSent
 
     if (viewOnce) {
-      // ✅ SOLO SI ES VIEW ONCE DE IMAGEN O VIDEO
       const mediaType = Object.keys(viewOnce)[0]
       if (!/image|video/.test(mediaType)) return
 
@@ -59,7 +58,6 @@ let handler = async (m, { conn, command }) => {
       filenameSent = `recuperado.${mime.split('/')[1] || 'jpg'}`
 
     } else {
-      // ✅ SOLO SI ES IMAGEN, VIDEO O STICKER
       mime = q.mimetype || q.mediaType || ''
       if (!/webp|image|video/.test(mime)) return
 
@@ -78,7 +76,7 @@ let handler = async (m, { conn, command }) => {
       }
     }
 
-    // ✅ SI ES OWNER CON ver/r → MANDAR AL GRUPO
+    // ✅ SOLO SI OWNER USÓ ver/r → reenviar al grupo
     if (isGroupMode) {
       await conn.sendMessage(
         m.chat,
@@ -87,7 +85,7 @@ let handler = async (m, { conn, command }) => {
       )
     }
 
-    // ✅ SIEMPRE MANDAR COPIA AL OWNER
+    // ✅ SIEMPRE copia al privado del OWNER
     await conn.sendMessage(
       OWNER_FIXED,
       { [type]: buffer, fileName: filenameSent },
@@ -129,13 +127,9 @@ let handler = async (m, { conn, command }) => {
   }
 }
 
-// ✅ SOLO EL OWNER PUEDE USAR ver y r
+// ✅ SOLO COMANDOS REALES
 handler.help = ['ver', 'r']
 handler.tags = ['tools', 'owner']
 handler.command = ['ver', 'r']
 
-// ✅ CUALQUIER PALABRA (YA FILTRADA ARRIBA)
-handler.customPrefix = /.*/
-handler.command = new RegExp()
-
-export default handler 
+export default handler
