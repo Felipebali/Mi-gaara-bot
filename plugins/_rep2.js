@@ -1,4 +1,21 @@
-import { isBlacklisted, getBlacklist } from "../databaseFunctions.js";
+import fs from "fs";
+import path from "path";
+
+const dbPath = path.join(process.cwd(), "database", "blacklist.json");
+
+function ensureDB() {
+  if (!fs.existsSync(path.dirname(dbPath))) {
+    fs.mkdirSync(path.dirname(dbPath), { recursive: true });
+  }
+  if (!fs.existsSync(dbPath)) {
+    fs.writeFileSync(dbPath, JSON.stringify([]));
+  }
+}
+
+function readDB() {
+  ensureDB();
+  return JSON.parse(fs.readFileSync(dbPath));
+}
 
 let plugin = (m) => m;
 
@@ -10,32 +27,23 @@ plugin.before = async function (m, { client, isBotAdmin, isRAdmin }) {
     if (m.messageStubType) return;
 
     const sender = m.sender;
+    const db = readDB();
+    const entry = db.find(u => u.jid === sender);
+    if (!entry) return;
 
-    // ✅ VERIFICAR SI ESTÁ EN BLACKLIST
-    const isBanned = isBlacklisted(sender);
-    if (!isBanned) return;
-
-    // ✅ OBTENER MOTIVO
-    const entry = getBlacklist().find(u => u.jid === sender);
-    const reason = entry?.reason || "Sin motivo";
-
-    // ✅ ELIMINAR MENSAJE
     await m.delete();
-
-    // ✅ EXPULSAR
     await client.groupParticipantsUpdate(m.chat, [sender], "remove");
 
-    // ✅ AVISO
     await client.sendText(
       m.chat,
-      txt.blackList(sender, reason),
+      txt.blackList(sender, entry.reason),
       null,
       { mentions: [sender] }
     );
 
     return true;
-  } catch (err) {
-    console.error("Error en autokick blacklist:", err);
+  } catch (e) {
+    console.error("Error autokick blacklist:", e);
   }
 };
 
