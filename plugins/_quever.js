@@ -1,3 +1,4 @@
+
 // plugins/_quever.js
 // 🎬 .quever <género>
 // Ej: .quever terror | accion | comedia | drama | romance | ciencia-ficcion
@@ -22,31 +23,39 @@ Ejemplos:
 
     const url = `https://streaming-recommendation-api.vercel.app/api/movie?genre=${encodeURIComponent(genero)}`
     const res = await fetch(url)
+    const raw = await res.text()
 
-    const raw = await res.text() // ⬅️ NO JSON todavía
-
-    // ❌ Si la API devuelve HTML (deploy error)
-    if (!raw.startsWith('[')) {
-      console.log('API devolvió este texto:', raw)
-      return conn.reply(m.chat, '❌ La API de películas está caída en este momento.', m)
+    // 🛡️ Blindaje por si la API cae
+    let data
+    try {
+      data = JSON.parse(raw)
+    } catch {
+      console.log("Respuesta inválida:", raw)
+      return conn.reply(m.chat, '❌ La API de películas está caída.', m)
     }
 
-    const data = JSON.parse(raw)
-
-    if (!Array.isArray(data) || data.length === 0) {
+    if (!data.success || !data.recommendation) {
       return conn.reply(m.chat, `❌ No encontré películas del género *${genero}*`, m)
     }
 
-    const pelis = data.slice(0, 10)
+    const p = data.recommendation
 
-    let texto = `🎬 *TOP 10 — ${genero.toUpperCase()}*\n\n`
+    let texto = `
+🎬 *RECOMENDACIÓN — ${genero.toUpperCase()}*
 
-    pelis.forEach((p, i) => {
-      texto += `*${i + 1}.* ${p.title}\n`
-      texto += `🔗 ${p.link}\n\n`
-    })
+🎞️ *Título:* ${p.name}
+📅 *Estreno:* ${p.date}
+⭐ *Puntaje:* ${p.vote}
+🎭 *Géneros:* ${p.genres}
 
-    texto += `🍿 *FelixCat_Bot recomienda cine real*`
+📖 *Sinopsis:*
+${p.overview}
+
+🖼️ *Poster:*
+https://image.tmdb.org/t/p/original${p.urlImage}
+
+🍿 *FelixCat_Bot recomienda cine de verdad*
+`.trim()
 
     await conn.reply(m.chat, texto, m)
 
