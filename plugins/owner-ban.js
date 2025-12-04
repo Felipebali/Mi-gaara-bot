@@ -1,4 +1,4 @@
-// 📂 plugins/propietario-listanegra.js — FINAL DEFINITIVO AUTO-KICK PERFECTO
+// 📂 plugins/propietario-listanegra.js — FINAL DEFINITIVO AUTO-KICK PERFECTO (ARREGLADO)
 
 function sleep(ms) { return new Promise(r => setTimeout(r, ms)) }
 
@@ -23,6 +23,20 @@ function extractPhoneNumber(text = '') {
   const d = digitsOnly(text)
   if (!d || d.length < 5) return null
   return d
+}
+
+// ✅ FUNCIÓN CLAVE: encuentra al usuario real aunque lo pases distinto
+function forceFindUser(dbUsers, userJid, numberDigits) {
+  if (dbUsers[userJid]) return userJid
+
+  if (numberDigits) {
+    for (const jid in dbUsers) {
+      const d = digitsOnly(jid)
+      if (d === numberDigits || d.endsWith(numberDigits))
+        return jid
+    }
+  }
+  return userJid
 }
 
 function findMemberByNumber(group, numberDigits) {
@@ -113,35 +127,39 @@ const handler = async (m, { conn, command, text }) => {
     }
   }
 
-  // ✅ REMOVER
+  // ✅ REMOVER (ARREGLADO)
   else if (command === 'remn') {
-    if (!dbUsers[userJid]?.banned)
+    const realJid = forceFindUser(dbUsers, userJid, numberDigits)
+
+    if (!dbUsers[realJid]?.banned)
       return conn.sendMessage(m.chat, {
-        text: `${emoji} @${userJid.split('@')[0]} no está en lista negra.`,
-        mentions: [userJid]
+        text: `${emoji} @${realJid.split('@')[0]} no está en lista negra.`,
+        mentions: [realJid]
       })
 
-    dbUsers[userJid].banned = false
-    dbUsers[userJid].banReason = ''
-    dbUsers[userJid].bannedBy = null
+    dbUsers[realJid].banned = false
+    dbUsers[realJid].banReason = ''
+    dbUsers[realJid].bannedBy = null
 
     await conn.sendMessage(m.chat, {
-      text: `${done} @${userJid.split('@')[0]} eliminado de la lista negra.`,
-      mentions: [userJid]
+      text: `${done} @${realJid.split('@')[0]} eliminado de la lista negra.`,
+      mentions: [realJid]
     })
   }
 
-  // ✅ CONSULTAR
+  // ✅ CONSULTAR (ARREGLADO)
   else if (command === 'seen') {
-    if (!dbUsers[userJid]?.banned)
+    const realJid = forceFindUser(dbUsers, userJid, numberDigits)
+
+    if (!dbUsers[realJid]?.banned)
       return conn.sendMessage(m.chat, {
-        text: `✅ @${userJid.split('@')[0]} no está en la lista negra.`,
-        mentions: [userJid]
+        text: `✅ @${realJid.split('@')[0]} no está en la lista negra.`,
+        mentions: [realJid]
       })
 
     await conn.sendMessage(m.chat, {
-      text: `🚫 @${userJid.split('@')[0]} está en la lista negra.\n📝 Motivo: ${dbUsers[userJid].banReason}`,
-      mentions: [userJid]
+      text: `🚫 @${realJid.split('@')[0]} está en la lista negra.\n📝 Motivo: ${dbUsers[realJid].banReason}`,
+      mentions: [realJid]
     })
   }
 
@@ -197,7 +215,7 @@ handler.all = async function (m) {
   } catch {}
 }
 
-// ✅ AUTO-KICK AL ENTRAR (SIN handler)
+// ✅ AUTO-KICK AL ENTRAR
 handler.before = async function (m) {
   try {
     if (!m.messageStubType || !m.isGroup) return
