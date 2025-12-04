@@ -1,4 +1,21 @@
-import { isBlacklisted, getBlacklist } from "../databaseFunctions.js";
+import fs from "fs";
+import path from "path";
+
+const dbPath = path.join(process.cwd(), "database", "blacklist.json");
+
+function ensureDB() {
+  if (!fs.existsSync(path.dirname(dbPath))) {
+    fs.mkdirSync(path.dirname(dbPath), { recursive: true });
+  }
+  if (!fs.existsSync(dbPath)) {
+    fs.writeFileSync(dbPath, JSON.stringify([]));
+  }
+}
+
+function readDB() {
+  ensureDB();
+  return JSON.parse(fs.readFileSync(dbPath));
+}
 
 let plugin = {};
 
@@ -7,31 +24,25 @@ plugin.groupParticipantsUpdate = async function (m, { client, isBotAdmin }) {
     if (!isBotAdmin) return;
     if (!m.isGroup) return;
 
+    const db = readDB();
+
     for (let user of m.participants) {
+      const entry = db.find(u => u.jid === user);
+      if (!entry) continue;
 
-      // ✅ Verificar blacklist
-      const banned = isBlacklisted(user);
-      if (!banned) continue;
-
-      // ✅ Obtener motivo
-      const entry = getBlacklist().find(u => u.jid === user);
-      const reason = entry?.reason || "Sin motivo";
-
-      // ✅ Expulsar automáticamente
       await client.groupParticipantsUpdate(m.chat, [user], "remove");
 
-      // ✅ Aviso al grupo
       await client.sendText(
         m.chat,
-        txt.blackList(user, reason),
+        txt.blackList(user, entry.reason),
         null,
         { mentions: [user] }
       );
     }
 
   } catch (e) {
-    console.error("Error en auto-kick al entrar (blacklist):", e);
+    console.error("Error autokick join blacklist:", e);
   }
 };
 
-export default plugin; 
+export default plugin;
