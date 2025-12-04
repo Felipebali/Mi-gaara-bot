@@ -2,7 +2,6 @@ import { cpus, totalmem, freemem, platform, hostname } from 'os'
 import { performance } from 'perf_hooks'
 import { sizeFormatter } from 'human-readable'
 
-
 let format = sizeFormatter({
   std: 'JEDEC',
   decimalPlaces: 2,
@@ -12,45 +11,33 @@ let format = sizeFormatter({
 
 let handler = async (m, { conn, usedPrefix }) => {
   try {
-    
     let botname = conn.user.name || "Bot"
     let _uptime = process.uptime() * 1000
     let uptime = clockString(_uptime)
-    
-    
+
     let totalreg = Object.keys(global.db?.data?.users || {}).length || 0
     let totalchats = Object.keys(global.db?.data?.chats || {}).length || 0
     let totalStats = Object.values(global.db?.data?.stats || {}).reduce((total, stat) => total + (stat.total || 0), 0) || 0
-    
-    
     let totalf = Object.values(global.plugins || {}).filter((v) => v.help && v.tags).length || 0
-    
-    // Obtener información de chats
+
     const chats = Object.entries(conn.chats || {}).filter(([id, data]) => id && data && !id.endsWith('broadcast'))
     const groupsIn = chats.filter(([id]) => id.endsWith('@g.us'))
     const privados = chats.filter(([id]) => id.endsWith('@s.whatsapp.net'))
-    
-    
+
     let sistemaPlatform = platform()
     let sistemaHostname = hostname()
     let ramTotal = totalmem()
     let ramLibre = freemem()
     let ramUsada = ramTotal - ramLibre
-    
-    
+
     let timestamp = performance.now()
-    // Pequeña operación para medir
     let sum = 0
     for (let i = 0; i < 1000000; i++) sum += i
     let latensi = performance.now() - timestamp
-    
-    
+
     const used = process.memoryUsage()
-    let memoryInfo = Object.keys(used).map((key) => {
-      return `┃ ➪ ${key.padEnd(10)}: ${format(used[key])}`
-    }).join('\n')
-    
-    
+    let memoryInfo = Object.keys(used).map((key) => `┃ ➪ ${key.padEnd(10)}: ${format(used[key])}`).join('\n')
+
     let botMode = '🔒 Desconocido'
     try {
       if (global.db.data.settings && conn.user.jid && global.db.data.settings[conn.user.jid]) {
@@ -59,17 +46,22 @@ let handler = async (m, { conn, usedPrefix }) => {
     } catch (e) {
       console.log('Error al obtener modo del bot:', e)
     }
-    
-    
-    let ownerInfo = '👑 Balkoszky🇵🇱'
+
+    // --- Owners adaptado ---
+    let ownerInfo = '👑 Desconocido'
     try {
       if (global.owner && Array.isArray(global.owner) && global.owner.length > 0) {
-        ownerInfo = `👑 @${global.owner[0].split('@')[0]}`
+        const ownersFormatted = global.owner.map(o => {
+          let num = Array.isArray(o) ? o[0] : o
+          num = num.toString().replace(/@s\.whatsapp\.net/, '')
+          return `@${num}`
+        })
+        ownerInfo = ownersFormatted.join(', ')
       }
     } catch (e) {
       console.log('Error al obtener info del owner:', e)
     }
-    
+
     let vegeta = `
 ╭━━━〔 🌪️ INFO DE ${botname} 〕━━━⬣
 ┃ ➪ ${ownerInfo}
@@ -100,7 +92,6 @@ ${memoryInfo}
 ╰━━━━━━━━━━━━━━━━━━━━━━⬣
 `.trim()
 
-    // Enviar mensaje
     await conn.sendMessage(m.chat, { 
       text: vegeta,
       mentions: conn.parseMention(vegeta)
@@ -126,15 +117,9 @@ function clockString(ms) {
 }
 
 function toNum(number) {
-  if (number >= 1000 && number < 1000000) {
-    return (number / 1000).toFixed(1) + 'k'
-  } else if (number >= 1000000) {
-    return (number / 1000000).toFixed(1) + 'M'
-  } else if (number <= -1000 && number > -1000000) {
-    return (number / 1000).toFixed(1) + 'k'
-  } else if (number <= -1000000) {
-    return (number / 1000000).toFixed(1) + 'M'
-  } else {
-    return number.toString()
-  }
+  if (number >= 1000 && number < 1000000) return (number / 1000).toFixed(1) + 'k'
+  if (number >= 1000000) return (number / 1000000).toFixed(1) + 'M'
+  if (number <= -1000 && number > -1000000) return (number / 1000).toFixed(1) + 'k'
+  if (number <= -1000000) return (number / 1000000).toFixed(1) + 'M'
+  return number.toString()
 }
