@@ -28,12 +28,12 @@ let handler = async (m, { conn, text }) => {
   let userJid = m.quoted?.sender || m.sender
   let nombre = m.quoted?.name || m.name || "Usuario"
 
-  // ✅ Foto del usuario correcto (citado o autor)
+  // ✅ Foto del usuario correcto
   const pp = await conn.profilePictureUrl(userJid, "image").catch(
     () => "https://i.ibb.co/dyk5QdQ/1212121212121212.png"
   )
 
-  // ✅ Objeto para la API (con datos del citado)
+  // ✅ Objeto para la API
   const obj = {
     type: "quote",
     format: "png",
@@ -77,7 +77,8 @@ let handler = async (m, { conn, text }) => {
 }
 
 handler.command = ["qc"]
-handler.admin = true       // ✅ SOLO ADMINS
+handler.admin = true      // ✅ ADMINS
+handler.owner = true     // ✅ OWNER TAMBIÉN
 handler.botAdmin = false
 
 export default handler
