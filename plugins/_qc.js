@@ -1,13 +1,21 @@
 import { sticker } from "../lib/sticker.js"
 import axios from "axios"
 
-let handler = async (m, { conn, text }) => {
+const owners = global.owner?.map(o => o[0] + "@s.whatsapp.net") || []
+
+let handler = async (m, { conn, text, isAdmin }) => {
   try {
+    // ✅ PERMISO: SOLO ADMIN O OWNER
+    const isOwner = owners.includes(m.sender)
+    if (!isAdmin && !isOwner) {
+      return conn.sendMessage(m.chat, {
+        text: "❌ Este comando es solo para administradores y propietarios."
+      }, { quoted: m })
+    }
+
     // ✅ Texto desde comando o citado
     let frase = text
-    if (!frase && m.quoted?.text) {
-      frase = m.quoted.text
-    }
+    if (!frase && m.quoted?.text) frase = m.quoted.text
 
     if (!frase)
       return conn.sendMessage(m.chat, {
@@ -44,14 +52,14 @@ let handler = async (m, { conn, text }) => {
         from: {
           id: 1,
           name: nombre,
-          photo: { url: pp } // ✅ STRING GARANTIZADO
+          photo: { url: pp }
         },
         text: frase,
         replyMessage: {}
       }]
     }
 
-    // ✅ INTENTO CON TIMEOUT
+    // ✅ REQUEST CON TIMEOUT
     const json = await axios.post(
       "https://bot.lyo.su/quote/generate",
       obj,
@@ -71,16 +79,14 @@ let handler = async (m, { conn, text }) => {
 
   } catch (e) {
     console.error("QC ERROR:", e)
-
     return conn.sendMessage(m.chat, {
       text: "⚠️ El generador de stickers está temporalmente caído.\nProbá de nuevo en unos minutos."
     }, { quoted: m })
   }
 }
 
+// ✅ SOLO DEFINÍ EL COMANDO
 handler.command = ["qc"]
-handler.admin = true
-handler.owner = true
 handler.botAdmin = false
 
 export default handler
