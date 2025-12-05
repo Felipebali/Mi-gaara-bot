@@ -1,4 +1,5 @@
-// 📂 plugins/propietario-listanegra.js — FINAL DEFINITIVO REAL (NUM LISTA + AUTOKICK GLOBAL + AVISO)
+// 📂 plugins/propietario-listanegra.js — FINAL DEFINITIVO REAL
+// (NUM LISTA + AUTOKICK GLOBAL + AVISO SI HABLA + AVISO SI ENTRA)
 
 // ================= UTILIDADES =================
 
@@ -59,13 +60,17 @@ const handler = async (m, { conn, command, text }) => {
     userJid = bannedList[index][0]
   }
 
-  else if (m.quoted) userJid = normalizeJid(m.quoted.sender || m.quoted.participant)
-  else if (m.mentionedJid?.length) userJid = normalizeJid(m.mentionedJid[0])
+  else if (m.quoted)
+    userJid = normalizeJid(m.quoted.sender || m.quoted.participant)
+
+  else if (m.mentionedJid?.length)
+    userJid = normalizeJid(m.mentionedJid[0])
+
   else if (text) {
     const num = extractPhoneNumber(text)
     if (num) {
       numberDigits = num
-      userJid = normalizeJid(num + '@s.whatsapp.net')
+      userJid = normalizeJid(num)
     }
   }
 
@@ -100,11 +105,12 @@ const handler = async (m, { conn, command, text }) => {
         if (!member) continue
 
         const memberId = member.id || member
+
         await conn.groupParticipantsUpdate(jid, [memberId], 'remove')
         await sleep(800)
 
         await conn.sendMessage(jid, {
-          text: `🚫 @${memberId.split('@')[0]} eliminado por lista negra.\n📝 Motivo: ${reason}`,
+          text: `🚫 @${memberId.split('@')[0]} eliminado por estar en *lista negra*.\n📝 Motivo: ${reason}`,
           mentions: [memberId]
         })
       } catch {}
@@ -157,15 +163,25 @@ const handler = async (m, { conn, command, text }) => {
   if (global.db.write) await global.db.write()
 }
 
-// ================= AUTO-KICK SI HABLA =================
+// ================= AUTO-KICK SI HABLA + AVISO =================
 
 handler.all = async function (m) {
   try {
     if (!m.isGroup || !m.sender) return
+
     const db = global.db.data.users
     const sender = normalizeJid(m.sender)
+
     if (db[sender]?.banned) {
+      const reason = db[sender].banReason || 'No especificado'
+
       await this.groupParticipantsUpdate(m.chat, [sender], 'remove')
+      await sleep(800)
+
+      await this.sendMessage(m.chat, {
+        text: `🚫 @${sender.split('@')[0]} fue eliminado por estar en *lista negra*.\n📝 Motivo: ${reason}`,
+        mentions: [sender]
+      })
     }
   } catch {}
 }
@@ -189,7 +205,7 @@ handler.before = async function (m) {
         await sleep(800)
 
         await conn.sendMessage(m.chat, {
-          text: `🚫 @${u.split('@')[0]} fue eliminado automáticamente al ingresar.\n📝 Motivo: ${reason}`,
+          text: `🚫 @${u.split('@')[0]} fue eliminado automáticamente por estar en *lista negra*.\n📝 Motivo: ${reason}`,
           mentions: [u]
         })
       }
