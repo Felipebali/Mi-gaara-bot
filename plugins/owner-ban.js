@@ -1,5 +1,5 @@
 // 📂 plugins/propietario-listanegra.js — FINAL DEFINITIVO REAL
-// (NUM LISTA + AUTOKICK GLOBAL + AVISO SI HABLA + AVISO SI ENTRA)
+// (NUM LISTA + AUTOKICK GLOBAL + AVISO SI HABLA + AVISO SI ENTRA + AUTO-KICK POR CITA)
 
 // ================= UTILIDADES =================
 
@@ -42,6 +42,25 @@ const handler = async (m, { conn, command, text }) => {
   const emoji = '🚫'
   const done = '✅'
   const dbUsers = global.db.data.users || (global.db.data.users = {})
+
+  // ✅ AUTO-KICK INMEDIATO SI SOLO LO CITAN
+  if (m.isGroup && m.quoted) {
+    const quotedJid = normalizeJid(m.quoted.sender || m.quoted.participant)
+    if (dbUsers[quotedJid]?.banned) {
+      try {
+        const reason = dbUsers[quotedJid].banReason || 'No especificado'
+
+        await conn.groupParticipantsUpdate(m.chat, [quotedJid], 'remove')
+        await sleep(800)
+
+        await conn.sendMessage(m.chat, {
+          text: `🚫 @${quotedJid.split('@')[0]} fue eliminado inmediatamente por estar en *lista negra*.\n📝 Motivo: ${reason}`,
+          mentions: [quotedJid]
+        })
+        return
+      } catch (e) {}
+    }
+  }
 
   const reactions = { addn: '✅', remn: '☢️', clrn: '🧹', listn: '📜' }
   if (reactions[command])
