@@ -68,7 +68,9 @@ let handler = async (m, { conn }) => {
 ┃ 🎥 *.play2* – Alternativa de video
 ┗━━━━━━━━━━━━━━━━━━━━━┛
 
-┏━━━ 🔍 *BUSCADOR* ━━━┓
+┏━━━ 🖼️ *STICKERS & MULTIMEDIA* ━━━┓
+┃ 💬 *.qc <texto>* – Frase a sticker
+┃ ✂️ *.s* – Imagen/video a sticker
 ┃ 🖼️ *.imagen* – Buscar imágenes
 ┃ 🌐 *.google* – Buscar en Google
 ┗━━━━━━━━━━━━━━━━━━━━━┛
