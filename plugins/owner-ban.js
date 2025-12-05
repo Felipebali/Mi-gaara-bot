@@ -1,8 +1,11 @@
-// 📂 plugins/propietario-listanegra.js — FINAL DEFINITIVO REAL (NUM LISTA + AUTOKICK GLOBAL + AVISO)
+// 📂 plugins/propietario-listanegra.js — FINAL DEFINITIVO REAL
+// (NUM LISTA + AUTOKICK GLOBAL + AUTOKICK AL HABLAR + AVISO)
 
 // ================= UTILIDADES =================
 
-function sleep(ms) { return new Promise(r => setTimeout(r, ms)) }
+function sleep(ms) {
+  return new Promise(r => setTimeout(r, ms))
+}
 
 function normalizeJid(jid = '') {
   if (!jid) return null
@@ -29,8 +32,13 @@ function findMemberByNumber(group, numberDigits) {
     const pid = (p.id || p).toString()
     const pd = digitsOnly(pid)
     if (!pd) continue
-    if (pd === numberDigits || pd.endsWith(numberDigits) || numberDigits.endsWith(pd)) return p.id || p
-    if (pd.includes(numberDigits) || numberDigits.includes(pd)) return p.id || p
+    if (
+      pd === numberDigits ||
+      pd.endsWith(numberDigits) ||
+      numberDigits.endsWith(pd) ||
+      pd.includes(numberDigits) ||
+      numberDigits.includes(pd)
+    ) return p.id || p
   }
   return null
 }
@@ -59,13 +67,18 @@ const handler = async (m, { conn, command, text }) => {
     userJid = bannedList[index][0]
   }
 
-  else if (m.quoted) userJid = normalizeJid(m.quoted.sender || m.quoted.participant)
-  else if (m.mentionedJid?.length) userJid = normalizeJid(m.mentionedJid[0])
+  else if (m.quoted)
+    userJid = normalizeJid(m.quoted.sender || m.quoted.participant)
+
+  else if (m.mentionedJid?.length)
+    userJid = normalizeJid(m.mentionedJid[0])
+
+  // ✅ FIX DEFINITIVO PARA NÚMEROS
   else if (text) {
     const num = extractPhoneNumber(text)
     if (num) {
       numberDigits = num
-      userJid = normalizeJid(num + '@s.whatsapp.net')
+      userJid = normalizeJid(num) // 👈 CLAVE ABSOLUTA
     }
   }
 
@@ -96,7 +109,10 @@ const handler = async (m, { conn, command, text }) => {
       try {
         const group = await conn.groupMetadata(jid)
         let member = group.participants.find(p => normalizeJid(p.id) === userJid)
-        if (!member && numberDigits) member = findMemberByNumber(group, numberDigits)
+
+        if (!member && numberDigits)
+          member = findMemberByNumber(group, numberDigits)
+
         if (!member) continue
 
         const memberId = member.id || member
@@ -164,21 +180,23 @@ handler.all = async function (m) {
     if (!m.isGroup || !m.sender) return
     const db = global.db.data.users
     const sender = normalizeJid(m.sender)
+
     if (db[sender]?.banned) {
       await this.groupParticipantsUpdate(m.chat, [sender], 'remove')
     }
   } catch {}
 }
 
-// ================= AUTO-KICK AL ENTRAR + AVISO =================
+// ================= AUTO-KICK AL ENTRAR + AVISO (FIX MD) =================
 
 handler.before = async function (m) {
   try {
-    if (![27, 31].includes(m.messageStubType)) return
+    if (!m.messageStubType || !m.messageStubParameters) return
+
     const db = global.db.data.users
     const conn = this
 
-    for (const user of m.messageStubParameters || []) {
+    for (const user of m.messageStubParameters) {
       const u = normalizeJid(user)
 
       if (db[u]?.banned) {
