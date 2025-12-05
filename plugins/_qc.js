@@ -2,7 +2,7 @@ import { sticker } from "../lib/sticker.js"
 import axios from "axios"
 
 let handler = async (m, { conn, text }) => {
-  // ✅ Si no hay texto escrito, tomar el texto del mensaje citado
+  // ✅ Si no hay texto escrito, tomar el del citado
   let frase = text
   if (!frase && m.quoted && m.quoted.text) {
     frase = m.quoted.text
@@ -24,12 +24,16 @@ let handler = async (m, { conn, text }) => {
       { quoted: m }
     )
 
-  // ✅ Foto de perfil
-  const pp = await conn.profilePictureUrl(m.sender, "image").catch(
+  // ✅ Detectar si es citado o no
+  let userJid = m.quoted?.sender || m.sender
+  let nombre = m.quoted?.name || m.name || "Usuario"
+
+  // ✅ Foto del usuario correcto (citado o autor)
+  const pp = await conn.profilePictureUrl(userJid, "image").catch(
     () => "https://i.ibb.co/dyk5QdQ/1212121212121212.png"
   )
 
-  // ✅ Objeto para la API
+  // ✅ Objeto para la API (con datos del citado)
   const obj = {
     type: "quote",
     format: "png",
@@ -43,7 +47,7 @@ let handler = async (m, { conn, text }) => {
         avatar: true,
         from: {
           id: 1,
-          name: m.name || "Usuario",
+          name: nombre,
           photo: { url: pp },
         },
         text: frase,
