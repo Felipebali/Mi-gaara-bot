@@ -1,9 +1,21 @@
-// 📂 plugins/log-add-user.js
-// ✅ LOG GLOBAL: QUIÉN AGREGA A QUIÉN
-// ✅ Sistema por METADATA (igual que tu welcome)
+// 📂 plugins/welcome.js
+// ✅ Welcome + Leave + LOG quién agrega a quién (FINAL FUNCIONAL)
 
-let handler = async (m, { conn }) => {
-  // Este handler no usa comandos
+let handler = async (m, { conn, isAdmin }) => {
+  if (!m.isGroup)
+    return conn.sendMessage(m.chat, { text: "❌ Solo funciona en grupos." })
+
+  if (!isAdmin)
+    return conn.sendMessage(m.chat, { text: "⚠️ Solo los administradores pueden usar este comando." })
+
+  if (!global.db.data.chats[m.chat]) global.db.data.chats[m.chat] = {}
+
+  let chat = global.db.data.chats[m.chat]
+  chat.welcome = !chat.welcome
+
+  await conn.sendMessage(m.chat, {
+    text: `✨ *Welcome ${chat.welcome ? "ACTIVADO" : "DESACTIVADO"}*`
+  })
 }
 
 // --- BEFORE ---
@@ -14,38 +26,44 @@ handler.before = async function (m, { conn }) {
     if (!global.db.data.chats[m.chat]) global.db.data.chats[m.chat] = {}
     let chat = global.db.data.chats[m.chat]
 
-    // Si no existe la lista previa, la creamos
-    if (!chat.logParticipants) {
+    if (!chat.welcome) return
+
+    // ✅ Inicializar lista
+    if (!chat.participants) {
       const meta = await conn.groupMetadata(m.chat)
-      chat.logParticipants = meta.participants.map(p => p.id)
+      chat.participants = meta.participants.map(p => p.id)
       return
     }
 
-    // Metadata actual
     const meta = await conn.groupMetadata(m.chat)
     const current = meta.participants.map(p => p.id)
-    const old = chat.logParticipants
+    const old = chat.participants
 
     const added = current.filter(x => !old.includes(x))
-
+    const removed = old.filter(x => !current.includes(x))
     const groupName = meta.subject
 
-    // Autor aproximado (igual que tu welcome)
-    const autor = m.sender
+    const autor = m.sender || null
+    const fecha = new Date().toLocaleString("es-UY")
 
-    // ✅ LOG DE INGRESO
+    // ✅ BIENVENIDA + LOG
     for (let user of added) {
-      const metodo = autor === user
-        ? "🔗 Ingresó por enlace"
-        : "➕ Fue agregado por un administrador"
+      const metodo = autor && autor !== user
+        ? "➕ Fue agregado por un administrador"
+        : "🔗 Ingresó por enlace"
 
-      const fecha = new Date().toLocaleString("es-UY")
+      // 🎉 Welcome
+      await conn.sendMessage(m.chat, {
+        text: `🎉 ¡Bienvenido/a *@${user.split("@")[0]}* al grupo *${groupName}*!`,
+        mentions: [user]
+      })
 
-      let mensaje = `
+      // 📥 LOG
+      let log = `
 📥 *NUEVO INGRESO AL GRUPO*
 ━━━━━━━━━━━━━━━━━━━━
 👤 *Nuevo:* @${user.split("@")[0]}
-🧑‍💼 *Agregado por:* @${autor.split("@")[0]}
+🧑‍💼 *Agregado por:* ${autor ? `@${autor.split("@")[0]}` : "Desconocido"}
 🏷 *Grupo:* ${groupName}
 🕒 *Fecha:* ${fecha}
 📌 *Método:* ${metodo}
@@ -53,21 +71,28 @@ handler.before = async function (m, { conn }) {
 `.trim()
 
       await conn.sendMessage(m.chat, {
-        text: mensaje,
-        mentions: [user, autor]
+        text: log,
+        mentions: autor ? [user, autor] : [user]
       })
     }
 
-    // Actualizar lista
-    chat.logParticipants = current
+    // 👋 DESPEDIDA
+    for (let user of removed) {
+      await conn.sendMessage(m.chat, {
+        text: `👋 *@${user.split("@")[0]}* salió del grupo *${groupName}*.`,
+        mentions: [user]
+      })
+    }
+
+    chat.participants = current
 
   } catch (e) {
-    console.error("❌ LOG ADD ERROR:", e)
+    console.error("❌ WELCOME/LOG ERROR:", e)
   }
 }
 
-// ✅ OBLIGATORIO PARA QUE EL LOADER LO LEA
-handler.before = true
+handler.command = ["welcome", "welc", "wl"]
 handler.group = true
+handler.admin = true
 
 export default handler
