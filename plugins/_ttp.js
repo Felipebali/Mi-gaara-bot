@@ -19,7 +19,7 @@ let handler = async (m, { conn, text }) => {
 
     await conn.sendMessage(m.chat, {
       image: Buffer.from(res.data),
-      caption: "🖼️ TTP en imagen (modo sin APIs rotas)"
+      caption: "🖼️ TTP en imagen."
     }, { quoted: m })
 
   } catch (e) {
