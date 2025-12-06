@@ -14,27 +14,28 @@ let handler = async (m, { conn, text }) => {
       }, { quoted: m })
     }
 
-    // ✅ API COMPATIBLE CON TERMUX (NO SSL ROTO)
-    const url = `https://api.botcahx.eu.org/api/attp?text=${encodeURIComponent(text)}`
+    // ✅ API ESTABLE QUE DEVUELVE WEBP DIRECTO
+    const url = `https://api.xteam.xyz/attp?file&text=${encodeURIComponent(text)}`
 
     const res = await axios.get(url, {
       responseType: "arraybuffer",
       timeout: 20000
     })
 
+    if (!res.data || res.data.length < 1000)
+      throw "Respuesta inválida de la API"
+
     const buffer = Buffer.from(res.data)
 
-    // ✅ ENVIAR COMO STICKER REAL
     await conn.sendMessage(m.chat, {
-      sticker: buffer,
-      mimetype: "image/webp"
+      sticker: buffer
     }, { quoted: m })
 
   } catch (e) {
     console.error("❌ TTP ERROR:", e)
 
     return conn.sendMessage(m.chat, {
-      text: "⚠️ Error al generar el sticker.\nLa API puede estar caída."
+      text: "⚠️ El generador de TTP está temporalmente fuera de servicio.\nProbá más tarde."
     }, { quoted: m })
   }
 }
