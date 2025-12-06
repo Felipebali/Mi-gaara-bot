@@ -1,19 +1,19 @@
 // 📂 plugins/log-add-user.js
-// ✅ LOG: QUIÉN AGREGA A QUIÉN
-// ✅ Compatible con Baileys MD (loader moderno)
+// ✅ LOG GLOBAL: QUIÉN AGREGA A QUIÉN
+// ✅ Compatible con loaders que usan GROUP_PARTICIPANT_ADD
 
-let handler = async () => {}
-
-handler.participantsUpdate = async (m, { conn }) => {
+let handler = async (m, { conn }) => {
   try {
-    const { id, participants, action, author } = m
+    // ✅ Filtrar solo eventos de entrada
+    if (!m.messageStubType || m.messageStubType !== 27) return 
+    // 27 = GROUP_PARTICIPANT_ADD
 
-    // ✅ Solo cuando alguien entra
-    if (action !== 'add') return
+    const chat = m.chat
+    const nuevo = m.messageStubParameters?.[0]
 
-    const chat = id
-    const nuevo = participants[0]
-    const autor = author || nuevo // si viene por link, author no existe
+    if (!nuevo) return
+
+    const autor = m.sender || nuevo
 
     const groupMetadata = await conn.groupMetadata(chat)
     const grupo = groupMetadata.subject
@@ -45,5 +45,9 @@ handler.participantsUpdate = async (m, { conn }) => {
     console.error("❌ LOG ADD ERROR:", e)
   }
 }
+
+// ⚠️ ESTO ES OBLIGATORIO PARA QUE EL LOADER LO LEA
+handler.before = true
+handler.group = true
 
 export default handler
