@@ -1,18 +1,8 @@
 import { sticker } from "../lib/sticker.js"
 import axios from "axios"
 
-const owners = global.owner?.map(o => o[0] + "@s.whatsapp.net") || []
-
-let handler = async (m, { conn, text, isAdmin }) => {
+let handler = async (m, { conn, text }) => {
   try {
-    // ✅ PERMISO: SOLO ADMIN O OWNER
-    const isOwner = owners.includes(m.sender)
-    if (!isAdmin && !isOwner) {
-      return conn.sendMessage(m.chat, {
-        text: "❌ Este comando es solo para administradores y propietarios."
-      }, { quoted: m })
-    }
-
     // ✅ Texto desde comando o citado
     let frase = text
     if (!frase && m.quoted?.text) frase = m.quoted.text
@@ -85,7 +75,7 @@ let handler = async (m, { conn, text, isAdmin }) => {
   }
 }
 
-// ✅ SOLO DEFINÍ EL COMANDO
+// ✅ COMANDO PÚBLICO
 handler.command = ["qc"]
 handler.botAdmin = false
 
