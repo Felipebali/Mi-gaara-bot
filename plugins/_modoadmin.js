@@ -1,37 +1,41 @@
 // 📂 plugins/_modoadmin-filter.js
 
 let handler = async (m, { conn, isAdmin, isOwner }) => {
-  if (!m.isGroup) return
+  try {
+    if (!m.isGroup) return
 
-  const chat = global.db.data.chats[m.chat]
-  if (!chat || !chat.modoadmin) return // Si no está activado, no bloquea nada
+    const chat = global.db?.data?.chats?.[m.chat]
+    if (!chat || !chat.modoadmin) return
 
-  // Ignorar mensajes sin texto
-  if (!m.text) return
-  const body = m.text.trim()
+    if (!m.text) return
+    const body = m.text.trim()
 
-  // Si el mensaje empieza con el prefijo del bot (.)
-  if (body.startsWith('.')) {
+    if (!body.startsWith('.')) return
+
     const command = body.slice(1).split(' ')[0].toLowerCase()
 
-    // Excepciones permitidas incluso en modo admin
+    // ✅ Comandos permitidos aunque esté activo
     const permitidos = ['modoadmin', 'menu']
 
     if (permitidos.includes(command)) return
 
-    // Si no es admin ni owner → bloquea el comando
+    // ⛔ Si no es admin ni owner → BLOQUEO REAL
     if (!(isAdmin || isOwner)) {
       await conn.reply(
         m.chat,
-        `🚫 *Modo Admin Activado*\nSolo los administradores pueden usar comandos mientras este modo esté activo.\n\n⛔ Comando bloqueado: *.${command}*`,
+        `🚫 *MODO ADMIN ACTIVADO*\n\nSolo los administradores pueden usar comandos.\n\n⛔ Bloqueado: *.${command}*`,
         m
       )
-      return true // ⛔ Detiene ejecución real
+
+      return true // 🔥 ESTE return es el bloqueo real
     }
+
+  } catch (e) {
+    console.error('Error en _modoadmin-filter:', e)
   }
 }
 
-// 🔥 ESTA LÍNEA ES LA QUE TE FALTABA
-handler.before = true
+// ✅ ESTO ES LO QUE TU LOADER SÍ SOPORTA
+handler.all = true
 
 export default handler
