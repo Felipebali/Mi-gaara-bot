@@ -1,23 +1,24 @@
 // 📂 plugins/log-add-user.js
 // ✅ LOG: QUIÉN AGREGA A QUIÉN
-// ✅ Compatible con Baileys MD
+// ✅ Compatible con Baileys MD (loader moderno)
 
-let handler = async (m, { conn, participants, action }) => {
+let handler = async () => {}
+
+handler.participantsUpdate = async (m, { conn }) => {
   try {
-    // Solo cuando alguien entra
+    const { id, participants, action, author } = m
+
+    // ✅ Solo cuando alguien entra
     if (action !== 'add') return
 
-    const chat = m.chat
+    const chat = id
+    const nuevo = participants[0]
+    const autor = author || nuevo // si viene por link, author no existe
+
     const groupMetadata = await conn.groupMetadata(chat)
     const grupo = groupMetadata.subject
 
-    // Usuario que fue agregado
-    const nuevo = participants[0]
-
-    // El que lo agregó
-    const autor = m.sender
-
-    // Si entró solo por link, WhatsApp pone el mismo número
+    // ✅ Detectar método real
     let metodo = autor === nuevo
       ? "🔗 Ingresó por enlace"
       : "➕ Fue agregado por un administrador"
@@ -41,12 +42,8 @@ let handler = async (m, { conn, participants, action }) => {
     })
 
   } catch (e) {
-    console.error("LOG ADD ERROR:", e)
+    console.error("❌ LOG ADD ERROR:", e)
   }
 }
-
-handler.group = true
-handler.admin = false
-handler.botAdmin = false
 
 export default handler
