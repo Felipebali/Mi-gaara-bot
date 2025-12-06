@@ -1,52 +1,72 @@
 // 📂 plugins/log-add-user.js
 // ✅ LOG GLOBAL: QUIÉN AGREGA A QUIÉN
-// ✅ Compatible con loaders que usan GROUP_PARTICIPANT_ADD
+// ✅ Sistema por METADATA (igual que tu welcome)
 
 let handler = async (m, { conn }) => {
+  // Este handler no usa comandos
+}
+
+// --- BEFORE ---
+handler.before = async function (m, { conn }) {
   try {
-    // ✅ Filtrar solo eventos de entrada
-    if (!m.messageStubType || m.messageStubType !== 27) return 
-    // 27 = GROUP_PARTICIPANT_ADD
+    if (!m.isGroup) return
 
-    const chat = m.chat
-    const nuevo = m.messageStubParameters?.[0]
+    if (!global.db.data.chats[m.chat]) global.db.data.chats[m.chat] = {}
+    let chat = global.db.data.chats[m.chat]
 
-    if (!nuevo) return
+    // Si no existe la lista previa, la creamos
+    if (!chat.logParticipants) {
+      const meta = await conn.groupMetadata(m.chat)
+      chat.logParticipants = meta.participants.map(p => p.id)
+      return
+    }
 
-    const autor = m.sender || nuevo
+    // Metadata actual
+    const meta = await conn.groupMetadata(m.chat)
+    const current = meta.participants.map(p => p.id)
+    const old = chat.logParticipants
 
-    const groupMetadata = await conn.groupMetadata(chat)
-    const grupo = groupMetadata.subject
+    const added = current.filter(x => !old.includes(x))
 
-    // ✅ Detectar método real
-    let metodo = autor === nuevo
-      ? "🔗 Ingresó por enlace"
-      : "➕ Fue agregado por un administrador"
+    const groupName = meta.subject
 
-    const fecha = new Date().toLocaleString("es-UY")
+    // Autor aproximado (igual que tu welcome)
+    const autor = m.sender
 
-    let mensaje = `
+    // ✅ LOG DE INGRESO
+    for (let user of added) {
+      const metodo = autor === user
+        ? "🔗 Ingresó por enlace"
+        : "➕ Fue agregado por un administrador"
+
+      const fecha = new Date().toLocaleString("es-UY")
+
+      let mensaje = `
 📥 *NUEVO INGRESO AL GRUPO*
 ━━━━━━━━━━━━━━━━━━━━
-👤 *Nuevo:* @${nuevo.split("@")[0]}
+👤 *Nuevo:* @${user.split("@")[0]}
 🧑‍💼 *Agregado por:* @${autor.split("@")[0]}
-🏷 *Grupo:* ${grupo}
+🏷 *Grupo:* ${groupName}
 🕒 *Fecha:* ${fecha}
 📌 *Método:* ${metodo}
 ━━━━━━━━━━━━━━━━━━━━
 `.trim()
 
-    await conn.sendMessage(chat, {
-      text: mensaje,
-      mentions: [nuevo, autor]
-    })
+      await conn.sendMessage(m.chat, {
+        text: mensaje,
+        mentions: [user, autor]
+      })
+    }
+
+    // Actualizar lista
+    chat.logParticipants = current
 
   } catch (e) {
     console.error("❌ LOG ADD ERROR:", e)
   }
 }
 
-// ⚠️ ESTO ES OBLIGATORIO PARA QUE EL LOADER LO LEA
+// ✅ OBLIGATORIO PARA QUE EL LOADER LO LEA
 handler.before = true
 handler.group = true
 
