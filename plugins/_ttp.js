@@ -2,40 +2,30 @@ import axios from "axios"
 
 let handler = async (m, { conn, text }) => {
   try {
-    if (!text) {
+    if (!text)
       return conn.sendMessage(m.chat, {
         text: "❌ Usá así:\n\n.ttp Hola mundo"
       }, { quoted: m })
-    }
 
-    if (text.length > 50) {
+    if (text.length > 80)
       return conn.sendMessage(m.chat, {
-        text: "❌ Máximo 50 caracteres."
+        text: "❌ Máximo 80 caracteres."
       }, { quoted: m })
-    }
 
-    // ✅ API ESTABLE QUE DEVUELVE WEBP DIRECTO
-    const url = `https://api.xteam.xyz/attp?file&text=${encodeURIComponent(text)}`
+    // ✅ GENERADOR DE IMÁGENES DE TEXTO 100% ESTABLE
+    const url = `https://dummyimage.com/600x400/000/fff.png&text=${encodeURIComponent(text)}`
 
-    const res = await axios.get(url, {
-      responseType: "arraybuffer",
-      timeout: 20000
-    })
-
-    if (!res.data || res.data.length < 1000)
-      throw "Respuesta inválida de la API"
-
-    const buffer = Buffer.from(res.data)
+    const res = await axios.get(url, { responseType: "arraybuffer" })
 
     await conn.sendMessage(m.chat, {
-      sticker: buffer
+      image: Buffer.from(res.data),
+      caption: "🖼️ TTP en imagen (modo sin APIs rotas)"
     }, { quoted: m })
 
   } catch (e) {
-    console.error("❌ TTP ERROR:", e)
-
+    console.error("❌ TTP IMG ERROR:", e)
     return conn.sendMessage(m.chat, {
-      text: "⚠️ El generador de TTP está temporalmente fuera de servicio.\nProbá más tarde."
+      text: "⚠️ Error al generar la imagen."
     }, { quoted: m })
   }
 }
