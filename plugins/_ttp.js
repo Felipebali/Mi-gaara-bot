@@ -12,21 +12,25 @@ let handler = async (m, { conn, text }) => {
         text: "❌ Máximo 50 caracteres."
       }, { quoted: m })
 
-    // ✅ API QUE DEVUELVE STICKER YA FORMATEADO
-    const url = `https://api.alyachan.dev/api/attp?text=${encodeURIComponent(text)}`
+    // ✅ API STICKER (DEVUELVE WEBP REAL)
+    const url = `https://api.zenzapis.xyz/api/attp?text=${encodeURIComponent(text)}`
 
-    const res = await axios.get(url, { responseType: "arraybuffer" })
+    const res = await axios.get(url, {
+      responseType: "arraybuffer"
+    })
 
-    if (!res.data) throw "No se generó el sticker"
+    const buffer = Buffer.from(res.data)
 
+    // ✅ FORZAR FORMATO STICKER
     await conn.sendMessage(m.chat, {
-      sticker: Buffer.from(res.data)
+      sticker: buffer,
+      mimetype: "image/webp"
     }, { quoted: m })
 
   } catch (e) {
     console.error("❌ TTP ERROR:", e)
     return conn.sendMessage(m.chat, {
-      text: "⚠️ Error al generar el sticker. Probá más tarde."
+      text: "⚠️ Error al generar el sticker.\nLa API puede estar caída."
     }, { quoted: m })
   }
 }
