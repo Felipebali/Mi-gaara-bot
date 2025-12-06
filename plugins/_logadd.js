@@ -1,5 +1,5 @@
 // 📂 plugins/welcome.js
-// ✅ Welcome + Leave + LOG quién agrega a quién (FINAL FUNCIONAL)
+// ✅ Welcome + Leave + LOG con detección REAL de quién agrega
 
 let handler = async (m, { conn, isAdmin }) => {
   if (!m.isGroup)
@@ -43,14 +43,26 @@ handler.before = async function (m, { conn }) {
     const removed = old.filter(x => !current.includes(x))
     const groupName = meta.subject
 
-    const autor = m.sender || null
+    // ✅ AUTOR REAL SI EXISTE (stub del sistema)
+    let autorReal = null
+    if (m.messageStubType === 27 && m.messageStubParameters?.length) {
+      autorReal = m.sender
+    }
+
     const fecha = new Date().toLocaleString("es-UY")
 
-    // ✅ BIENVENIDA + LOG
+    // ✅ BIENVENIDA + LOG REAL
     for (let user of added) {
-      const metodo = autor && autor !== user
-        ? "➕ Fue agregado por un administrador"
-        : "🔗 Ingresó por enlace"
+      let metodo = "❓ Desconocido"
+      let agregadoPor = "Desconocido"
+
+      if (autorReal && autorReal !== user) {
+        metodo = "➕ Agregado por usuario"
+        agregadoPor = `@${autorReal.split("@")[0]}`
+      } else {
+        metodo = "🔗 Ingresó por enlace"
+        agregadoPor = "Ingresó solo"
+      }
 
       // 🎉 Welcome
       await conn.sendMessage(m.chat, {
@@ -58,21 +70,25 @@ handler.before = async function (m, { conn }) {
         mentions: [user]
       })
 
-      // 📥 LOG
+      // 📥 LOG REAL
       let log = `
 📥 *NUEVO INGRESO AL GRUPO*
 ━━━━━━━━━━━━━━━━━━━━
 👤 *Nuevo:* @${user.split("@")[0]}
-🧑‍💼 *Agregado por:* ${autor ? `@${autor.split("@")[0]}` : "Desconocido"}
+🧑‍💼 *Agregado por:* ${agregadoPor}
 🏷 *Grupo:* ${groupName}
 🕒 *Fecha:* ${fecha}
 📌 *Método:* ${metodo}
 ━━━━━━━━━━━━━━━━━━━━
 `.trim()
 
+      let mentions = autorReal && autorReal !== user
+        ? [user, autorReal]
+        : [user]
+
       await conn.sendMessage(m.chat, {
         text: log,
-        mentions: autor ? [user, autor] : [user]
+        mentions
       })
     }
 
