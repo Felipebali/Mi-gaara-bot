@@ -2,18 +2,44 @@ import yts from "yt-search"
 import { exec } from "child_process"
 import { promisify } from "util"
 import path from "path"
-import { existsSync, promises } from "fs"
+import fs, { existsSync, promises } from "fs"
 import { updateUser } from "../databaseFunctions.js"
 
 const execAsync = promisify(exec)
 const ytDlpPath = path.resolve("node_modules", "gs", "ygs")
 
-let handler = async (m, { conn, args, text, isOwner, command, user }) => {
+// ✅ TEXTOS DE SEGURIDAD
+const txt = {
+  banSpam: "⛔ Fuiste baneado por usar demasiado rápido este comando.",
+  advSpam: (time, atts) =>
+    `⚠️ Esperá ${time} antes de volver a usar el comando.\nIntentos: ${atts}/4`,
+  ingresarTitulo: "🎵 Escribí el nombre del video a buscar.",
+  sendPreview: (isAudio, title) =>
+    `${isAudio ? "🎧 Audio" : "🎬 Video"} encontrado:\n\n${title}\n\n⏳ Descargando...`,
+}
+
+// ✅ CREAR TMP SI NO EXISTE
+if (!fs.existsSync("./tmp")) {
+  fs.mkdirSync("./tmp")
+}
+
+let handler = async (m, { conn, args, text, isOwner, command }) => {
+
+  // ✅ CREAR USUARIO SI NO EXISTE
+  let user = global.db?.users?.[m.sender]
+  if (!user) {
+    user = updateUser(m.sender, {
+      lastmining: 0,
+      commandAttempts: 0,
+      banned: false
+    })
+  }
+
   const waitTime = 210000
   let time = user.lastmining + waitTime
   let remainingTime = Math.ceil((time - new Date()) / 1000)
 
-  // ✅ SISTEMA ANTISPAM
+  // ✅ ANTISPAM
   if (new Date() - user.lastmining < waitTime && !isOwner) {
     updateUser(m.sender, { commandAttempts: user.commandAttempts + 1 })
     const newAttempts = user.commandAttempts + 1
@@ -77,7 +103,7 @@ let handler = async (m, { conn, args, text, isOwner, command, user }) => {
       m
     )
 
-    // ✅ DESCARGA CON YT-DLP
+    // ✅ DESCARGA
     const commandStr = `${ytDlpPath} -f "${format}" --no-warnings -o "${outputPath}" ${url}`
 
     const { stderr } = await execAsync(commandStr).catch((error) => ({
@@ -88,8 +114,7 @@ let handler = async (m, { conn, args, text, isOwner, command, user }) => {
     const esWarning =
       lower.includes("warning:") ||
       lower.includes("signature extraction failed") ||
-      lower.includes("sabr streaming") ||
-      lower.includes("some web_safari")
+      lower.includes("sabr streaming")
 
     if (!esWarning && stderr) return console.error(stderr)
 
