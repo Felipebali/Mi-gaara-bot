@@ -157,7 +157,6 @@ let handler = async (m, { conn, args, text, isOwner, command }) => {
 
 // ✅ COMANDOS
 handler.command = ["play", "audio", "video", "vídeo"]
-handler.botAdmin = true
 
 export default handler
 
