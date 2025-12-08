@@ -1,4 +1,7 @@
-import { getUser, updateUser } from "../databaseFunctions.js";
+// ⚠️ AJUSTÁ ESTA RUTA SEGÚN TU PROYECTO REAL
+import { getUser, updateUser } from "../lib/databaseFunctions.js"; 
+// 👆 Si esto falla, probá con:
+// "../database/databaseFunctions.js"
 
 let handler = async (m, { client, text, args, user }) => {
   if (!m.isGroup) return
@@ -10,10 +13,13 @@ let handler = async (m, { client, text, args, user }) => {
     text = m.quoted.text
   } else return
 
+  // ✅ Seguridad si no existe inGroup
+  let inGroupData = user.inGroup || {}
+
   const newInGroup = {
-    ...user.inGroup,
+    ...inGroupData,
     [m.chat]: {
-      ...user.inGroup[m.chat],
+      ...(inGroupData[m.chat] || {}),
       afk: Date.now(),
       afkReason: text,
     },
@@ -38,7 +44,7 @@ handler.botAdmin = true
 // ✅ DETECTOR AUTOMÁTICO (SALIDA AFK + AVISO SI LO MENCIONAN)
 handler.before = async function (m, { client, user }) {
   if (!m.isGroup) return
-  if (user.banned) return
+  if (user?.banned) return
 
   const who =
     (m.mentionedJid && m.mentionedJid[0]) ||
@@ -79,7 +85,7 @@ handler.before = async function (m, { client, user }) {
       let tiempoInactivo = (new Date() - afkTime) / 1000
       if (tiempoInactivo < 10) return
 
-      let reason = whoAfk.afkReason || ""
+      let reason = whoAfk?.afkReason || ""
       await client.sendText(
         m.chat,
         txt.afkOn(reason, whoAfk.afk),
@@ -89,4 +95,4 @@ handler.before = async function (m, { client, user }) {
   }
 }
 
-export default handler 
+export default handler
