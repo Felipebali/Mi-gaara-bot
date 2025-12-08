@@ -1,34 +1,33 @@
-let handler = async (m, { client, text, args, user }) => {
+let handler = async (m, { conn, text, args, user }) => {
   if (!m.isGroup) return
-  if (!text) return client.sendText(m.chat, txt.afk, m)
+  if (!text) return m.reply(txt?.afk || "🛌 Escribí un motivo para tu AFK.")
 
   if (args.length >= 1) {
     text = args.join(" ")
-  } else if (m.quoted && m.quoted.text) {
+  } else if (m.quoted?.text) {
     text = m.quoted.text
   } else return
 
-  // ✅ Inicializa estructuras si no existen
   if (!user.inGroup) user.inGroup = {}
   if (!user.inGroup[m.chat]) user.inGroup[m.chat] = {}
 
   user.inGroup[m.chat].afk = Date.now()
   user.inGroup[m.chat].afkReason = text
 
-  await client.sendText(
-    m.chat,
-    txt.afkSuccess(m.sender, text),
-    fkontak
+  await m.reply(
+    txt?.afkSuccess
+      ? txt.afkSuccess(m.sender, text)
+      : `🛌 AFK activado\nMotivo: ${text}`
   )
 }
 
-// ✅ ASÍ SE DEFINE EL COMANDO EN TU BOT
-handler.command = /^(afk)$/i
+// ✅ TU LOADER USA ESTO:
+handler.command = ["afk"]
 handler.group = true
 handler.botAdmin = true
 
-// ✅ DETECTOR AUTOMÁTICO
-handler.before = async function (m, { client, user }) {
+// ✅ DETECTOR AUTOMÁTICO AFK
+handler.before = async function (m, { conn, user }) {
   if (!m.isGroup) return
   if (!user) return
   if (user.banned) return
@@ -41,21 +40,21 @@ handler.before = async function (m, { client, user }) {
   const who =
     (m.mentionedJid && m.mentionedJid[0]) ||
     (m.quoted && m.quoted.sender) ||
-    m.sender
+    null
 
-  // ✅ Sale del AFK cuando habla
+  // ✅ Sale del AFK al hablar
   if (inGroup.afk > 0) {
-    await client.sendText(
-      m.chat,
-      txt.afkOff(m.sender, inGroup.afkReason, inGroup.afk),
-      null
+    await m.reply(
+      txt?.afkOff
+        ? txt.afkOff(m.sender, inGroup.afkReason, inGroup.afk)
+        : `✅ Dejaste de estar AFK`
     )
 
     inGroup.afk = -1
     inGroup.afkReason = ""
   }
 
-  // ✅ Aviso si mencionan a alguien AFK
+  // ✅ Aviso si mencionan AFK
   if (who && who !== m.sender) {
     const hap = global.db?.data?.users?.[who]
     const whoAfk = hap?.inGroup?.[m.chat]
@@ -63,13 +62,14 @@ handler.before = async function (m, { client, user }) {
 
     if (afkTime > 0) {
       let tiempoInactivo = (Date.now() - afkTime) / 1000
-      if (tiempoInactivo < 10) return
+      if (tiempoInactivo < 5) return
 
-      let reason = whoAfk.afkReason || ""
-      await client.sendText(
-        m.chat,
-        txt.afkOn(reason, whoAfk.afk),
-        m
+      let reason = whoAfk?.afkReason || "Sin motivo"
+
+      await m.reply(
+        txt?.afkOn
+          ? txt.afkOn(reason, whoAfk.afk)
+          : `🛌 El usuario está AFK\n⏱ Motivo: ${reason}`
       )
     }
   }
