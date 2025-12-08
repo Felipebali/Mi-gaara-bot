@@ -1,6 +1,6 @@
 let handler = async (m, { conn, text, args, user }) => {
   if (!m.isGroup) return
-  if (!text) return m.reply(txt?.afk || "🛌 Escribí un motivo para tu AFK.")
+  if (!text) return m.reply("🛌 Usá así:\n.afk motivo")
 
   if (args.length >= 1) {
     text = args.join(" ")
@@ -8,20 +8,17 @@ let handler = async (m, { conn, text, args, user }) => {
     text = m.quoted.text
   } else return
 
+  // ✅ Inicializar estructuras
   if (!user.inGroup) user.inGroup = {}
   if (!user.inGroup[m.chat]) user.inGroup[m.chat] = {}
 
   user.inGroup[m.chat].afk = Date.now()
   user.inGroup[m.chat].afkReason = text
 
-  await m.reply(
-    txt?.afkSuccess
-      ? txt.afkSuccess(m.sender, text)
-      : `🛌 AFK activado\nMotivo: ${text}`
-  )
+  await m.reply(`🛌 AFK activado\n📝 Motivo: ${text}`)
 }
 
-// ✅ TU LOADER USA ESTO:
+// ✅ ASÍ LO QUIERE TU LOADER (ARRAY, NO REGEX)
 handler.command = ["afk"]
 handler.group = true
 handler.botAdmin = true
@@ -42,19 +39,17 @@ handler.before = async function (m, { conn, user }) {
     (m.quoted && m.quoted.sender) ||
     null
 
-  // ✅ Sale del AFK al hablar
+  // ✅ Sale del AFK cuando habla
   if (inGroup.afk > 0) {
     await m.reply(
-      txt?.afkOff
-        ? txt.afkOff(m.sender, inGroup.afkReason, inGroup.afk)
-        : `✅ Dejaste de estar AFK`
+      `✅ Ya no estás AFK\n📝 Motivo anterior: ${inGroup.afkReason || "Sin motivo"}`
     )
 
     inGroup.afk = -1
     inGroup.afkReason = ""
   }
 
-  // ✅ Aviso si mencionan AFK
+  // ✅ Aviso si mencionan a alguien AFK
   if (who && who !== m.sender) {
     const hap = global.db?.data?.users?.[who]
     const whoAfk = hap?.inGroup?.[m.chat]
@@ -67,9 +62,9 @@ handler.before = async function (m, { conn, user }) {
       let reason = whoAfk?.afkReason || "Sin motivo"
 
       await m.reply(
-        txt?.afkOn
-          ? txt.afkOn(reason, whoAfk.afk)
-          : `🛌 El usuario está AFK\n⏱ Motivo: ${reason}`
+        `🛌 El usuario está AFK\n📝 Motivo: ${reason}\n⏱ Desde: ${new Date(
+          whoAfk.afk
+        ).toLocaleTimeString()}`
       )
     }
   }
