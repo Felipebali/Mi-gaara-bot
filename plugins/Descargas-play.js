@@ -3,37 +3,35 @@ import { exec } from "child_process"
 import { promisify } from "util"
 import path from "path"
 import fs, { existsSync, promises } from "fs"
-import { updateUser } from "../databaseFunctions.js"
 
 const execAsync = promisify(exec)
 const ytDlpPath = path.resolve("node_modules", "gs", "ygs")
 
-// ✅ TEXTOS DE SEGURIDAD
+// ✅ TEXTOS
 const txt = {
-  banSpam: "⛔ Fuiste baneado por usar demasiado rápido este comando.",
+  banSpam: "⛔ Fuiste baneado por spam.",
   advSpam: (time, atts) =>
     `⚠️ Esperá ${time} antes de volver a usar el comando.\nIntentos: ${atts}/4`,
-  ingresarTitulo: "🎵 Escribí el nombre del video a buscar.",
+  ingresarTitulo: "🎵 Escribí el nombre del video.",
   sendPreview: (isAudio, title) =>
-    `${isAudio ? "🎧 Audio" : "🎬 Video"} encontrado:\n\n${title}\n\n⏳ Descargando...`,
+    `${isAudio ? "🎧 Audio" : "🎬 Video"}:\n\n${title}\n\n⏳ Descargando...`,
 }
 
-// ✅ CREAR TMP SI NO EXISTE
-if (!fs.existsSync("./tmp")) {
-  fs.mkdirSync("./tmp")
-}
+// ✅ CREAR CARPETA TMP
+if (!fs.existsSync("./tmp")) fs.mkdirSync("./tmp")
 
 let handler = async (m, { conn, args, text, isOwner, command }) => {
 
-  // ✅ CREAR USUARIO SI NO EXISTE
-  let user = global.db?.users?.[m.sender]
-  if (!user) {
-    user = updateUser(m.sender, {
+  // ✅ SISTEMA DE USUARIOS LOCAL
+  if (!global.db.users[m.sender]) {
+    global.db.users[m.sender] = {
       lastmining: 0,
       commandAttempts: 0,
-      banned: false
-    })
+      banned: false,
+    }
   }
+
+  let user = global.db.users[m.sender]
 
   const waitTime = 210000
   let time = user.lastmining + waitTime
@@ -41,34 +39,32 @@ let handler = async (m, { conn, args, text, isOwner, command }) => {
 
   // ✅ ANTISPAM
   if (new Date() - user.lastmining < waitTime && !isOwner) {
-    updateUser(m.sender, { commandAttempts: user.commandAttempts + 1 })
-    const newAttempts = user.commandAttempts + 1
+    user.commandAttempts++
 
-    if (newAttempts > 4) {
-      updateUser(m.sender, { banned: true })
+    if (user.commandAttempts > 4) {
+      user.banned = true
       return conn.sendMessage(m.chat, { text: txt.banSpam }, { quoted: m })
     }
 
     const minutes = Math.floor(remainingTime / 60)
     const seconds = remainingTime % 60
     const formattedTime =
-      minutes > 0 ? `${minutes} min ${seconds} segundos` : `${seconds} segundos`
+      minutes > 0 ? `${minutes} min ${seconds} seg` : `${seconds} seg`
 
     return conn.sendMessage(
       m.chat,
-      { text: txt.advSpam(formattedTime, newAttempts) },
+      { text: txt.advSpam(formattedTime, user.commandAttempts) },
       { quoted: m }
     )
   }
 
-  if (!text)
-    return conn.sendMessage(
-      m.chat,
-      { text: txt.ingresarTitulo },
-      { quoted: m }
-    )
+  if (!text) {
+    return conn.sendMessage(m.chat, { text: txt.ingresarTitulo }, { quoted: m })
+  }
 
-  updateUser(m.sender, { lastmining: new Date() * 1, commandAttempts: 0 })
+  user.lastmining = new Date() * 1
+  user.commandAttempts = 0
+
   await m.react("⌛")
 
   try {
@@ -76,10 +72,9 @@ let handler = async (m, { conn, args, text, isOwner, command }) => {
 
     const prohibido = ["anuel"]
     if (
-      prohibido.some((p) =>
-        yt_play[0].title.toLowerCase().includes(p.toLowerCase())
-      ) &&
-      !isOwner
+      prohibido.some(p =>
+        yt_play[0].title.toLowerCase().includes(p)
+      ) && !isOwner
     )
       return m.react("🤢")
 
@@ -106,28 +101,21 @@ let handler = async (m, { conn, args, text, isOwner, command }) => {
     // ✅ DESCARGA
     const commandStr = `${ytDlpPath} -f "${format}" --no-warnings -o "${outputPath}" ${url}`
 
-    const { stderr } = await execAsync(commandStr).catch((error) => ({
-      stderr: error.stderr || error.message || "",
+    const { stderr } = await execAsync(commandStr).catch(err => ({
+      stderr: err.stderr || err.message || "",
     }))
 
     const lower = stderr.toLowerCase()
-    const esWarning =
-      lower.includes("warning:") ||
-      lower.includes("signature extraction failed") ||
-      lower.includes("sabr streaming")
+    if (stderr && !lower.includes("warning")) return console.error(stderr)
 
-    if (!esWarning && stderr) return console.error(stderr)
-
-    // ✅ BUSCAR ARCHIVO FINAL
+    // ✅ BUSCAR ARCHIVO REAL
     const tmpFiles = await promises.readdir("./tmp")
-    const foundFile = tmpFiles.find((f) => f.startsWith(randomFileName))
+    const foundFile = tmpFiles.find(f => f.startsWith(randomFileName))
     const finalPath = foundFile
       ? path.join("./tmp", foundFile)
       : outputPath
 
-    if (!existsSync(finalPath)) {
-      return console.error("Archivo no encontrado")
-    }
+    if (!existsSync(finalPath)) return console.error("Archivo no encontrado")
 
     const mediaBuffer = await promises.readFile(finalPath)
 
@@ -138,11 +126,11 @@ let handler = async (m, { conn, args, text, isOwner, command }) => {
     )
 
     await promises.unlink(finalPath)
-  } catch (error) {
-    console.error("Error en plugin de youtube:", error)
+  } catch (e) {
+    console.error("Error play:", e)
     return conn.sendMessage(
       m.chat,
-      { text: "⚠️ Ocurrió un error al procesar el video." },
+      { text: "⚠️ Error al descargar el video." },
       { quoted: m }
     )
   }
