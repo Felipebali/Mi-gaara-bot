@@ -7,6 +7,10 @@ import fs, { existsSync, promises } from "fs"
 const execAsync = promisify(exec)
 const ytDlpPath = path.resolve("node_modules", "gs", "ygs")
 
+// ✅ SEGURIDAD TOTAL DE BASE DE DATOS
+global.db = global.db || {}
+global.db.users = global.db.users || {}
+
 // ✅ TEXTOS
 const txt = {
   banSpam: "⛔ Fuiste baneado por spam.",
@@ -22,7 +26,7 @@ if (!fs.existsSync("./tmp")) fs.mkdirSync("./tmp")
 
 let handler = async (m, { conn, args, text, isOwner, command }) => {
 
-  // ✅ SISTEMA DE USUARIOS LOCAL
+  // ✅ CREAR USUARIO SI NO EXISTE
   if (!global.db.users[m.sender]) {
     global.db.users[m.sender] = {
       lastmining: 0,
@@ -32,6 +36,11 @@ let handler = async (m, { conn, args, text, isOwner, command }) => {
   }
 
   let user = global.db.users[m.sender]
+
+  // ✅ BLOQUEO DE BANEADOS
+  if (user.banned && !isOwner) {
+    return conn.sendMessage(m.chat, { text: txt.banSpam }, { quoted: m })
+  }
 
   const waitTime = 210000
   let time = user.lastmining + waitTime
@@ -70,13 +79,16 @@ let handler = async (m, { conn, args, text, isOwner, command }) => {
   try {
     const yt_play = await search(args.join(" "))
 
+    if (!yt_play || !yt_play[0]) {
+      return conn.sendMessage(m.chat, { text: "❌ No se encontró ningún resultado." }, { quoted: m })
+    }
+
     const prohibido = ["anuel"]
     if (
       prohibido.some(p =>
         yt_play[0].title.toLowerCase().includes(p)
       ) && !isOwner
-    )
-      return m.react("🤢")
+    ) return m.react("🤢")
 
     const url = yt_play[0].url
     const randomFileName = Math.random().toString(36).substring(2, 15)
@@ -126,6 +138,7 @@ let handler = async (m, { conn, args, text, isOwner, command }) => {
     )
 
     await promises.unlink(finalPath)
+
   } catch (e) {
     console.error("Error play:", e)
     return conn.sendMessage(
