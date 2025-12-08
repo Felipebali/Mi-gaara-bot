@@ -1,213 +1,141 @@
-import fetch from "node-fetch";
-import yts from "yt-search";
-import { spawn } from "child_process";
-import fs from "fs";
+import yts from "yt-search"
+import { exec } from "child_process"
+import { promisify } from "util"
+import path from "path"
+import { existsSync, promises } from "fs"
+import { updateUser } from "../databaseFunctions.js"
 
-const youtubeRegexID = /(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/))([a-zA-Z0-9_-]{11})/;
+const execAsync = promisify(exec)
+const ytDlpPath = path.resolve("node_modules", "gs", "ygs")
 
-const cooldowns = {};
-const warnings = {};
-const warningTimers = {};
-const owners = ["59896026646@s.whatsapp.net", "59898719147@s.whatsapp.net"];
+let handler = async (m, { conn, args, text, isOwner, command, user }) => {
+  const waitTime = 210000
+  let time = user.lastmining + waitTime
+  let remainingTime = Math.ceil((time - new Date()) / 1000)
 
-// ⬇️ NUEVO: yt-dlp estable y sin errores
-async function downloadYTDLP(url, output, mode) {
-  return new Promise((resolve, reject) => {
-    let args = [];
+  // ✅ SISTEMA ANTISPAM
+  if (new Date() - user.lastmining < waitTime && !isOwner) {
+    updateUser(m.sender, { commandAttempts: user.commandAttempts + 1 })
+    const newAttempts = user.commandAttempts + 1
 
-    if (mode === "audio") {
-      args = [
-        "-f", "bestaudio",
-        "--extract-audio",
-        "--audio-format", "mp3",
-        "-o", output,
-        url
-      ];
-    } else if (mode === "video") {
-      args = [
-        "-f", "bestvideo+bestaudio/best",
-        "-o", output,
-        url
-      ];
+    if (newAttempts > 4) {
+      updateUser(m.sender, { banned: true })
+      return conn.sendMessage(m.chat, { text: txt.banSpam }, { quoted: m })
     }
 
-    const ytdlp = spawn("yt-dlp", args);
+    const minutes = Math.floor(remainingTime / 60)
+    const seconds = remainingTime % 60
+    const formattedTime =
+      minutes > 0 ? `${minutes} min ${seconds} segundos` : `${seconds} segundos`
 
-    ytdlp.stderr.on("data", () => {});
+    return conn.sendMessage(
+      m.chat,
+      { text: txt.advSpam(formattedTime, newAttempts) },
+      { quoted: m }
+    )
+  }
 
-    ytdlp.on("close", (code) => {
-      if (code === 0 && fs.existsSync(output)) resolve(output);
-      else reject("Error al ejecutar yt-dlp");
-    });
-  });
-}
+  if (!text)
+    return conn.sendMessage(
+      m.chat,
+      { text: txt.ingresarTitulo },
+      { quoted: m }
+    )
 
-const handler = async (m, { conn, text, command }) => {
+  updateUser(m.sender, { lastmining: new Date() * 1, commandAttempts: 0 })
+  await m.react("⌛")
+
   try {
+    const yt_play = await search(args.join(" "))
 
-    if (!text?.trim()) {
-      return conn.reply(m.chat, `⚽ *Por favor, ingresa el nombre o enlace del video.*`, m);
+    const prohibido = ["anuel"]
+    if (
+      prohibido.some((p) =>
+        yt_play[0].title.toLowerCase().includes(p.toLowerCase())
+      ) &&
+      !isOwner
+    )
+      return m.react("🤢")
+
+    const url = yt_play[0].url
+    const randomFileName = Math.random().toString(36).substring(2, 15)
+
+    const isAudio = command === "play" || command === "audio"
+    const format = isAudio ? "bestaudio[ext=m4a]" : "worst"
+    const messageType = isAudio ? "audio" : "video"
+    const mimeType = isAudio ? "audio/mp4" : undefined
+    const fileExtension = isAudio ? ".m4a" : ".mp4"
+
+    const outputPath = path.join("./tmp", `${randomFileName}${fileExtension}`)
+
+    // ✅ PREVIEW
+    await conn.sendFile(
+      m.chat,
+      yt_play[0].thumbnail,
+      undefined,
+      txt.sendPreview(isAudio, yt_play[0].title),
+      m
+    )
+
+    // ✅ DESCARGA CON YT-DLP
+    const commandStr = `${ytDlpPath} -f "${format}" --no-warnings -o "${outputPath}" ${url}`
+
+    const { stderr } = await execAsync(commandStr).catch((error) => ({
+      stderr: error.stderr || error.message || "",
+    }))
+
+    const lower = stderr.toLowerCase()
+    const esWarning =
+      lower.includes("warning:") ||
+      lower.includes("signature extraction failed") ||
+      lower.includes("sabr streaming") ||
+      lower.includes("some web_safari")
+
+    if (!esWarning && stderr) return console.error(stderr)
+
+    // ✅ BUSCAR ARCHIVO FINAL
+    const tmpFiles = await promises.readdir("./tmp")
+    const foundFile = tmpFiles.find((f) => f.startsWith(randomFileName))
+    const finalPath = foundFile
+      ? path.join("./tmp", foundFile)
+      : outputPath
+
+    if (!existsSync(finalPath)) {
+      return console.error("Archivo no encontrado")
     }
 
-    const now = Date.now();
-    const lastUsed = cooldowns[m.sender] || 0;
-    const waitTime = 2 * 60 * 1000;
-    const isOwnerUser = owners.includes(m.sender);
-
-    if (!isOwnerUser) {
-      if (now - lastUsed < waitTime) {
-
-        warnings[m.sender] = (warnings[m.sender] || 0) + 1;
-
-        if (warningTimers[m.sender]) clearTimeout(warningTimers[m.sender]);
-        warningTimers[m.sender] = setTimeout(() => {
-          warnings[m.sender] = 0;
-        }, 3 * 60 * 1000);
-
-        const remaining = Math.ceil((waitTime - (now - lastUsed)) / 1000);
-
-        if (warnings[m.sender] >= 5) {
-          if (m.isGroup) {
-            try {
-              await conn.sendMessage(m.chat, {
-                text: `🚫 *${warnings[m.sender]} advertencias acumuladas.*\n🔨 @${m.sender.split("@")[0]} será expulsado.`,
-                mentions: [m.sender]
-              });
-              await conn.groupParticipantsUpdate(m.chat, [m.sender], "remove");
-            } catch {
-              return m.reply("❌ No pude expulsarlo. ¿Soy admin?");
-            }
-          }
-
-          warnings[m.sender] = 0;
-          clearTimeout(warningTimers[m.sender]);
-          return;
-        }
-
-        return conn.reply(
-          m.chat,
-          `⚠ *Advertencia ${warnings[m.sender]}/5*\n⏳ Aún debes esperar *${remaining} segundos*.`,
-          m
-        );
-      }
-
-      cooldowns[m.sender] = now;
-      warnings[m.sender] = 0;
-      if (warningTimers[m.sender]) clearTimeout(warningTimers[m.sender]);
-    }
-
-    if (/rammstein/i.test(text)) {
-      await m.react("🔥");
-      await conn.reply(m.chat, "🇩🇪 *Deutschland über alles* ⚡", m);
-    }
-
-    await m.react("🔎");
-
-    const videoIdMatch = text.match(youtubeRegexID);
-    const search = await yts(videoIdMatch ? "https://youtu.be/" + videoIdMatch[1] : text);
-
-    const video = videoIdMatch
-      ? search.all.find(v => v.videoId === videoIdMatch[1]) ||
-        search.videos.find(v => v.videoId === videoIdMatch[1])
-      : search.videos?.[0];
-
-    if (!video) {
-      return conn.reply(m.chat, "✧ No se encontraron resultados para tu búsqueda.", m);
-    }
-
-    const { title, thumbnail, timestamp, views, ago, url, author } = video;
-
-    const infoMessage = `
-🕸️ Titulo: ${title}
-🌿 Canal: ${author?.name || "Desconocido"}
-🍋 Vistas: ${formatViews(views)}
-🍃 Duración: ${timestamp || "Desconocido"}
-📆 Publicado: ${ago || "Desconocido"}
-🚀 Enlace: ${url}
-`.trim();
+    const mediaBuffer = await promises.readFile(finalPath)
 
     await conn.sendMessage(
       m.chat,
-      {
-        image: { url: thumbnail },
-        caption: infoMessage,
-        contextInfo: {
-          externalAdReply: {
-            title,
-            thumbnailUrl: thumbnail,
-            sourceUrl: url
-          }
-        }
-      },
+      { [messageType]: mediaBuffer, mimetype: mimeType },
       { quoted: m }
-    );
+    )
 
-    // 🔊 AUDIO — AHORA FUNCIONA SIEMPRE
-    if (command === "play" || command === "audio") {
-      try {
-        const output = `/sdcard/${title}.mp3`;
-
-        await downloadYTDLP(url, output, "audio");
-
-        await conn.sendMessage(
-          m.chat,
-          {
-            audio: fs.readFileSync(output),
-            mimetype: "audio/mpeg",
-            fileName: `${title}.mp3`
-          },
-          { quoted: m }
-        );
-
-        fs.unlinkSync(output);
-        await m.react("🎶");
-
-      } catch (e) {
-        console.log(e);
-        return conn.reply(m.chat, "⚠ Error al descargar el audio.", m);
-      }
-    }
-
-    // 🎥 VIDEO — SIN ERRORES DE FORMATO
-    else if (command === "video" || command === "play2") {
-      try {
-        const output = `/sdcard/${title}.mp4`;
-
-        await downloadYTDLP(url, output, "video");
-
-        await conn.sendMessage(
-          m.chat,
-          {
-            video: fs.readFileSync(output),
-            mimetype: "video/mp4"
-          },
-          { quoted: m }
-        );
-
-        fs.unlinkSync(output);
-        await m.react("🎥");
-
-      } catch (e) {
-        console.log(e);
-        return conn.reply(m.chat, "⚠ Error al descargar el video.", m);
-      }
-    }
-
-  } catch (err) {
-    console.log(err);
-    return m.reply("⚠ Ocurrió un error.");
+    await promises.unlink(finalPath)
+  } catch (error) {
+    console.error("Error en plugin de youtube:", error)
+    return conn.sendMessage(
+      m.chat,
+      { text: "⚠️ Ocurrió un error al procesar el video." },
+      { quoted: m }
+    )
   }
-};
+}
 
-handler.command = ["play", "audio", "video", "play2"];
-handler.tags = ["descargas"];
+// ✅ COMANDOS
+handler.command = ["play", "audio", "video", "vídeo"]
+handler.botAdmin = true
 
-export default handler;
+export default handler
 
-function formatViews(views) {
-  if (!views) return "No disponible";
-  if (views >= 1e9) return `${(views / 1e9).toFixed(1)}B`;
-  if (views >= 1e6) return `${(views / 1e6).toFixed(1)}M`;
-  if (views >= 1e3) return `${(views / 1e3).toFixed(1)}K`;
-  return views.toString();
+// ✅ FUNCIÓN SEARCH
+async function search(query, options = {}) {
+  const search = await yts.search({
+    query,
+    hl: "es",
+    gl: "ES",
+    ...options,
+  })
+  return search.videos
 }
