@@ -3,7 +3,7 @@ let lastRequestTime = {} // antispam por usuario
 
 let handler = async (m, { conn, text, isOwner }) => {
 
-  // ❌ Evitar uso por privado (solo grupos)
+  // ❌ SOLO GRUPOS
   if (!m.isGroup) {
     return conn.sendMessage(
       m.chat,
@@ -40,7 +40,7 @@ let handler = async (m, { conn, text, isOwner }) => {
 
   await conn.sendPresenceUpdate("composing", m.chat)
 
-  // ✅ MENSAJE A LA IA CON IDENTIFICADOR
+  // ✅ PROMPT CON IDENTIFICADOR
   const sendMsg = `prompt: cada mensaje que se te envía pertenece a un identificador único. En absolutamente todas tus respuestas, pondrás al comienzo de tu respuesta: identificador: y aqui el identificador.
 
 Mensaje del identificador: ${m.key.id}
@@ -65,8 +65,11 @@ Mensaje: ${text}`
     }
   }, 120000)
 
-  // ✅ ENVIAR A NÚMERO IA
-  await conn.sendMessage("18002428478@s.whatsapp.net", { text: sendMsg })
+  // ✅ ENVIAR A LA IA
+  await conn.sendMessage(
+    "18002428478@s.whatsapp.net",
+    { text: sendMsg }
+  )
 }
 
 // ✅ COMANDOS
@@ -81,19 +84,22 @@ handler.command = [
 
 handler.botAdmin = true
 
-
-// ✅✅✅ INTERCEPTAR RESPUESTAS DE LA IA (ARREGLADO DEFINITIVO)
+// ✅✅✅ INTERCEPTOR DEFINITIVO DE RESPUESTAS
 handler.before = async function (m, { conn }) {
+
   if (m.sender !== "18002428478@s.whatsapp.net") return
 
+  // ✅ LECTOR UNIVERSAL DE TEXTO (ANTI UNDEFINED TOTAL)
   let text =
     m.text ||
     m.message?.conversation ||
     m.message?.extendedTextMessage?.text ||
+    m.message?.ephemeralMessage?.message?.extendedTextMessage?.text ||
     ""
 
   if (!text) return
 
+  // ✅ EXTRAER IDENTIFICADOR
   let match = text.match(/^identificador:\s*([^\n]+)\n([\s\S]+)/i)
   if (!match) return
 
@@ -104,11 +110,13 @@ handler.before = async function (m, { conn }) {
 
   let { chat, originalMessage } = requests[requestId]
 
-  // ✅ BLINDAJE TOTAL CONTRA RESPUESTA EN PRIVADO
+  // ✅ BLINDAJE TOTAL PARA QUE JAMÁS RESPONDA EN PRIVADO
   let destination =
-    originalMessage.chat ||
-    originalMessage.key?.remoteJid ||
+    originalMessage?.chat ||
+    originalMessage?.key?.remoteJid ||
     chat
+
+  if (!destination) return
 
   await conn.sendMessage(
     destination,
