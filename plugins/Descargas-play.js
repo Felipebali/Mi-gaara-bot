@@ -5,7 +5,9 @@ import path from "path"
 import fs, { existsSync, promises } from "fs"
 
 const execAsync = promisify(exec)
-const ytDlpPath = path.resolve("node_modules", "gs", "ygs")
+
+// ✅ RUTA CORRECTA A yt-dlp EN TERMUX
+const ytDlpPath = "yt-dlp"
 
 // ✅ SEGURIDAD TOTAL DE BASE DE DATOS
 global.db = global.db || {}
@@ -80,7 +82,11 @@ let handler = async (m, { conn, args, text, isOwner, command }) => {
     const yt_play = await search(args.join(" "))
 
     if (!yt_play || !yt_play[0]) {
-      return conn.sendMessage(m.chat, { text: "❌ No se encontró ningún resultado." }, { quoted: m })
+      return conn.sendMessage(
+        m.chat,
+        { text: "❌ No se encontró ningún resultado." },
+        { quoted: m }
+      )
     }
 
     const prohibido = ["anuel"]
@@ -110,8 +116,8 @@ let handler = async (m, { conn, args, text, isOwner, command }) => {
       m
     )
 
-    // ✅ DESCARGA
-    const commandStr = `${ytDlpPath} -f "${format}" --no-warnings -o "${outputPath}" ${url}`
+    // ✅ DESCARGA REAL CON yt-dlp
+    const commandStr = `${ytDlpPath} -f "${format}" --no-playlist --no-warnings -o "${outputPath}" ${url}`
 
     const { stderr } = await execAsync(commandStr).catch(err => ({
       stderr: err.stderr || err.message || "",
