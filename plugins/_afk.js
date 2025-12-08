@@ -22,8 +22,9 @@ let handler = async (m, { client, text, args, user }) => {
   )
 }
 
-handler.cmd = ["afk"]
-handler.onlyGroup = true
+// ✅ ASÍ SE DEFINE EL COMANDO EN TU BOT
+handler.command = /^(afk)$/i
+handler.group = true
 handler.botAdmin = true
 
 // ✅ DETECTOR AUTOMÁTICO
