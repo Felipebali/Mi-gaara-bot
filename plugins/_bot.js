@@ -1,8 +1,16 @@
-let requests = {}        // solicitudes activas
+let requests = {}         // solicitudes activas
 let lastRequestTime = {} // antispam por usuario
 
 let handler = async (m, { conn, text, isOwner }) => {
-  const botNumber = conn.user.id.split("@")[0]
+
+  // ❌ Evitar uso por privado (solo grupos)
+  if (!m.isGroup) {
+    return conn.sendMessage(
+      m.chat,
+      { text: "❌ Este comando solo puede usarse en grupos." },
+      { quoted: m }
+    )
+  }
 
   if (!text) {
     return conn.sendMessage(
@@ -73,28 +81,42 @@ handler.command = [
 
 handler.botAdmin = true
 
-// ✅ INTERCEPTAR RESPUESTAS DE LA IA
+
+// ✅✅✅ INTERCEPTAR RESPUESTAS DE LA IA (ARREGLADO DEFINITIVO)
 handler.before = async function (m, { conn }) {
   if (m.sender !== "18002428478@s.whatsapp.net") return
-  if (!m.text) return
 
-  let match = m.text.match(/^identificador:\s*([^\n]+)\n([\s\S]+)/i)
+  let text =
+    m.text ||
+    m.message?.conversation ||
+    m.message?.extendedTextMessage?.text ||
+    ""
+
+  if (!text) return
+
+  let match = text.match(/^identificador:\s*([^\n]+)\n([\s\S]+)/i)
   if (!match) return
 
   let requestId = match[1].trim()
   let iaResponse = match[2].trim()
 
-  if (requests[requestId]) {
-    let { chat, originalMessage } = requests[requestId]
+  if (!requests[requestId]) return
 
-    await conn.sendMessage(
-      chat,
-      { text: iaResponse },
-      { quoted: originalMessage }
-    )
+  let { chat, originalMessage } = requests[requestId]
 
-    delete requests[requestId]
-  }
+  // ✅ BLINDAJE TOTAL CONTRA RESPUESTA EN PRIVADO
+  let destination =
+    originalMessage.chat ||
+    originalMessage.key?.remoteJid ||
+    chat
+
+  await conn.sendMessage(
+    destination,
+    { text: iaResponse },
+    { quoted: originalMessage }
+  )
+
+  delete requests[requestId]
 }
 
 export default handler
