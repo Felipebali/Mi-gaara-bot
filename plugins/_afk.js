@@ -2,14 +2,10 @@ let handler = async (m, { conn, text, args, user }) => {
   if (!m.isGroup) return
   if (!text) return m.reply("🛌 Usá así:\n.afk motivo")
 
-  // Motivo
-  if (args.length >= 1) {
-    text = args.join(" ")
-  } else if (m.quoted?.text) {
-    text = m.quoted.text
-  } else return
+  if (args.length >= 1) text = args.join(" ")
+  else if (m.quoted?.text) text = m.quoted.text
+  else return
 
-  // Inicializar estructura
   if (!user.inGroup) user.inGroup = {}
   if (!user.inGroup[m.chat]) user.inGroup[m.chat] = {}
 
@@ -25,36 +21,36 @@ handler.botAdmin = true
 
 
 // ============================================
-//             DETECTOR AUTOMÁTICO AFK
+//         DETECTOR AUTOMÁTICO AFK FINAL
 // ============================================
 
 handler.before = async function (m, { conn, user }) {
   if (!m.isGroup) return
-  if (!user) return
-  if (user.banned) return
+  if (!user || user.banned) return
 
-  // Inicializar BD del usuario
   if (!user.inGroup) user.inGroup = {}
   if (!user.inGroup[m.chat]) user.inGroup[m.chat] = {}
 
   const inGroup = user.inGroup[m.chat]
 
   // ============================================
-  //  🔍 DETECTOR UNIVERSAL DE MENCIÓN
+  //   🔍 DETECTOR UNIVERSAL DE MENCIÓN (REAL)
   // ============================================
   let who = null
 
-  // 1. Menciones directas: @usuario
-  if (m.mentionedJid && m.mentionedJid.length > 0) {
+  // 1. Mentions por contextInfo (tu loader usa esto)
+  if (m.msg?.contextInfo?.mentionedJid?.length > 0) {
+    who = m.msg.contextInfo.mentionedJid[0]
+  }
+
+  // 2. Menciones estándar
+  else if (m.mentionedJid?.length > 0) {
     who = m.mentionedJid[0]
   }
 
-  // 2. Mensaje citado
+  // 3. Mensaje citado
   else if (m.quoted) {
-    who =
-      m.quoted.sender ||      // loader A
-      m.quoted.participant || // loader B
-      null
+    who = m.quoted.sender || m.quoted.participant || null
   }
 
   // ============================================
@@ -74,7 +70,6 @@ handler.before = async function (m, { conn, user }) {
   // ============================================
   if (who && who !== m.sender) {
     const hap = global.db?.data?.users?.[who]
-
     if (!hap) return
 
     const whoAfk = hap?.inGroup?.[m.chat]
@@ -87,7 +82,7 @@ handler.before = async function (m, { conn, user }) {
       let reason = whoAfk?.afkReason || "Sin motivo"
 
       await m.reply(
-        `🛌 El usuario está AFK\n📝 Motivo: ${reason}\n⏱ Desde: ${new Date(
+        `🛌 *El usuario está AFK*\n📝 Motivo: ${reason}\n⏱ Desde: ${new Date(
           whoAfk.afk
         ).toLocaleTimeString()}`
       )
