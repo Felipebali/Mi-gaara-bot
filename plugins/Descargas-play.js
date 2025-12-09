@@ -15,7 +15,6 @@ global.db.users = global.db.users || {}
 
 // TEXTOS
 const txt = {
-  ownerFree: "👑 Solo el owner puede pedir música sin límite.",
   banSpam: "⛔ Fuiste baneado por spam.",
   advSpam: (time, atts) =>
     `⚠️ Esperá ${time} antes de volver a usar el comando.\nIntentos: ${atts}/4`,
@@ -50,10 +49,8 @@ let handler = async (m, { conn, args, text, isOwner, command }) => {
   let time = user.lastmining + waitTime
   let remainingTime = Math.ceil((time - new Date()) / 1000)
 
-  // OWNER SIN LÍMITE
-  if (isOwner) {
-    await conn.sendMessage(m.chat, { text: txt.ownerFree }, { quoted: m })
-  } else {
+  // 🔥 OWNER: NO TIENE SPAM, NO MENSAJE, SIN LÍMITES
+  if (!isOwner) {
     // ANTISPAM PARA USUARIOS NORMALES
     if (new Date() - user.lastmining < waitTime) {
       user.commandAttempts++
@@ -80,7 +77,7 @@ let handler = async (m, { conn, args, text, isOwner, command }) => {
     return conn.sendMessage(m.chat, { text: txt.ingresarTitulo }, { quoted: m })
   }
 
-  // Solo usuarios generan cooldown
+  // ⏱️ Solo usuarios generan cooldown (owner NO)
   if (!isOwner) {
     user.lastmining = new Date() * 1
     user.commandAttempts = 0
@@ -101,7 +98,7 @@ let handler = async (m, { conn, args, text, isOwner, command }) => {
 
     const titleLower = yt_play[0].title.toLowerCase()
 
-    // 🚫 ANTI-ANUEL FUNCIONAL
+    // 🚫 ANTI-ANUEL
     if (titleLower.includes("anuel") && !isOwner) {
       await m.react("🤢")
       return // NO ENVÍA NADA
