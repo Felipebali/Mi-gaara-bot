@@ -21,7 +21,7 @@ handler.botAdmin = true
 
 
 // =========================================================
-//     🔥 DETECTOR UNIVERSAL AFK — COMPATIBLE CON TODO 🔥
+//        🔥 DETECTOR UNIVERSAL PARA TU LOADER 🔥
 // =========================================================
 
 handler.before = async function (m, { conn, user }) {
@@ -33,46 +33,41 @@ handler.before = async function (m, { conn, user }) {
 
   const inGroup = user.inGroup[m.chat]
 
-  // ================================
-  // ✅ UNIVERSAL WHO DETECTOR
-  // ================================
   let who = null
 
-  // 1. Menciones reales por contextInfo
-  if (m?.msg?.contextInfo?.mentionedJid?.length > 0) {
-    who = m.msg.contextInfo.mentionedJid[0]
-  }
+  // ============================================
+  // ✔ 1. Menciones reales — TU LOADER USA ESTO
+  // ============================================
+  try {
+    const context = m.message?.extendedTextMessage?.contextInfo
 
-  // 2. Menciones estándar
-  else if (m.mentionedJid?.length > 0) {
-    who = m.mentionedJid[0]
-  }
+    if (context?.mentionedJid?.length > 0) {
+      who = context.mentionedJid[0]
+    }
 
-  // 3. Citar mensaje — compatible con TODOS los loaders
-  else if (m.quoted) {
-    who =
-      m.quoted.sender ||
-      m.quoted.participant ||
-      m.quoted.key?.participant || // loader nuevo
-      m.quoted.key?.remoteJid ||   // algunos forks
-      null
-  }
+    // ============================================
+    // ✔ 2. Acceso a usuario citado — TU LOADER USA ESTO
+    // ============================================
+    else if (context?.participant) {
+      who = context.participant
+    }
 
-  // ================================
+  } catch (e) {}
+
+  // ============================================
   // 🚪 SALE DEL AFK SI HABLA
-  // ================================
+  // ============================================
   if (inGroup.afk > 0) {
     await m.reply(
       `✅ Ya no estás AFK\n📝 Motivo anterior: ${inGroup.afkReason || "Sin motivo"}`
     )
-
     inGroup.afk = -1
     inGroup.afkReason = ""
   }
 
-  // ================================
+  // ============================================
   // 📣 AVISO SI MENCIONAN / CITAN AFK
-  // ================================
+  // ============================================
   if (who && who !== m.sender) {
     const hap = global.db?.data?.users?.[who]
     if (!hap) return
@@ -80,9 +75,7 @@ handler.before = async function (m, { conn, user }) {
     const whoAfk = hap?.inGroup?.[m.chat]
     const afkTime = whoAfk?.afk || 0
 
-    if (afkTime > 0) {
-      if (Date.now() - afkTime < 5000) return
-
+    if (afkTime > 0 && Date.now() - afkTime > 5000) {
       await m.reply(
         `🛌 *El usuario está AFK*\n📝 Motivo: ${whoAfk.afkReason || "Sin motivo"}\n⏱ Desde: ${new Date(
           afkTime
