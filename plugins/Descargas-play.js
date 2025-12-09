@@ -6,15 +6,16 @@ import fs, { existsSync, promises } from "fs"
 
 const execAsync = promisify(exec)
 
-// ✅ RUTA CORRECTA A yt-dlp EN TERMUX
+// RUTA CORRECTA A yt-dlp EN TERMUX
 const ytDlpPath = "yt-dlp"
 
-// ✅ SEGURIDAD TOTAL DE BASE DE DATOS
+// BASE DE DATOS
 global.db = global.db || {}
 global.db.users = global.db.users || {}
 
-// ✅ TEXTOS
+// TEXTOS
 const txt = {
+  ownerFree: "👑 Solo el owner puede pedir música sin límite.",
   banSpam: "⛔ Fuiste baneado por spam.",
   advSpam: (time, atts) =>
     `⚠️ Esperá ${time} antes de volver a usar el comando.\nIntentos: ${atts}/4`,
@@ -23,12 +24,12 @@ const txt = {
     `${isAudio ? "🎧 Audio" : "🎬 Video"}:\n\n${title}\n\n⏳ Descargando...`,
 }
 
-// ✅ CREAR CARPETA TMP
+// CREAR CARPETA TMP
 if (!fs.existsSync("./tmp")) fs.mkdirSync("./tmp")
 
 let handler = async (m, { conn, args, text, isOwner, command }) => {
 
-  // ✅ CREAR USUARIO SI NO EXISTE
+  // Crear usuario si no existe
   if (!global.db.users[m.sender]) {
     global.db.users[m.sender] = {
       lastmining: 0,
@@ -39,42 +40,51 @@ let handler = async (m, { conn, args, text, isOwner, command }) => {
 
   let user = global.db.users[m.sender]
 
-  // ✅ BLOQUEO DE BANEADOS
+  // Bloqueo baneados
   if (user.banned && !isOwner) {
     return conn.sendMessage(m.chat, { text: txt.banSpam }, { quoted: m })
   }
 
-  const waitTime = 210000
+  // TIEMPO DE ESPERA PARA USUARIOS → 2 MINUTOS
+  const waitTime = 120000
   let time = user.lastmining + waitTime
   let remainingTime = Math.ceil((time - new Date()) / 1000)
 
-  // ✅ ANTISPAM
-  if (new Date() - user.lastmining < waitTime && !isOwner) {
-    user.commandAttempts++
+  // OWNER SIN LÍMITE
+  if (isOwner) {
+    await conn.sendMessage(m.chat, { text: txt.ownerFree }, { quoted: m })
+  } else {
+    // ANTISPAM PARA USUARIOS NORMALES
+    if (new Date() - user.lastmining < waitTime) {
+      user.commandAttempts++
 
-    if (user.commandAttempts > 4) {
-      user.banned = true
-      return conn.sendMessage(m.chat, { text: txt.banSpam }, { quoted: m })
+      if (user.commandAttempts > 4) {
+        user.banned = true
+        return conn.sendMessage(m.chat, { text: txt.banSpam }, { quoted: m })
+      }
+
+      const minutes = Math.floor(remainingTime / 60)
+      const seconds = remainingTime % 60
+      const formattedTime =
+        minutes > 0 ? `${minutes} min ${seconds} seg` : `${seconds} seg`
+
+      return conn.sendMessage(
+        m.chat,
+        { text: txt.advSpam(formattedTime, user.commandAttempts) },
+        { quoted: m }
+      )
     }
-
-    const minutes = Math.floor(remainingTime / 60)
-    const seconds = remainingTime % 60
-    const formattedTime =
-      minutes > 0 ? `${minutes} min ${seconds} seg` : `${seconds} seg`
-
-    return conn.sendMessage(
-      m.chat,
-      { text: txt.advSpam(formattedTime, user.commandAttempts) },
-      { quoted: m }
-    )
   }
 
   if (!text) {
     return conn.sendMessage(m.chat, { text: txt.ingresarTitulo }, { quoted: m })
   }
 
-  user.lastmining = new Date() * 1
-  user.commandAttempts = 0
+  // Solo usuarios generan cooldown
+  if (!isOwner) {
+    user.lastmining = new Date() * 1
+    user.commandAttempts = 0
+  }
 
   await m.react("⌛")
 
@@ -89,12 +99,13 @@ let handler = async (m, { conn, args, text, isOwner, command }) => {
       )
     }
 
-    const prohibido = ["anuel"]
-    if (
-      prohibido.some(p =>
-        yt_play[0].title.toLowerCase().includes(p)
-      ) && !isOwner
-    ) return m.react("🤢")
+    const titleLower = yt_play[0].title.toLowerCase()
+
+    // 🚫 ANTI-ANUEL FUNCIONAL
+    if (titleLower.includes("anuel") && !isOwner) {
+      await m.react("🤢")
+      return // NO ENVÍA NADA
+    }
 
     const url = yt_play[0].url
     const randomFileName = Math.random().toString(36).substring(2, 15)
@@ -107,7 +118,7 @@ let handler = async (m, { conn, args, text, isOwner, command }) => {
 
     const outputPath = path.join("./tmp", `${randomFileName}${fileExtension}`)
 
-    // ✅ PREVIEW
+    // PREVIEW
     await conn.sendFile(
       m.chat,
       yt_play[0].thumbnail,
@@ -116,7 +127,7 @@ let handler = async (m, { conn, args, text, isOwner, command }) => {
       m
     )
 
-    // ✅ DESCARGA REAL CON yt-dlp
+    // DESCARGA REAL
     const commandStr = `${ytDlpPath} -f "${format}" --no-playlist --no-warnings -o "${outputPath}" ${url}`
 
     const { stderr } = await execAsync(commandStr).catch(err => ({
@@ -126,7 +137,6 @@ let handler = async (m, { conn, args, text, isOwner, command }) => {
     const lower = stderr.toLowerCase()
     if (stderr && !lower.includes("warning")) return console.error(stderr)
 
-    // ✅ BUSCAR ARCHIVO REAL
     const tmpFiles = await promises.readdir("./tmp")
     const foundFile = tmpFiles.find(f => f.startsWith(randomFileName))
     const finalPath = foundFile
@@ -155,12 +165,12 @@ let handler = async (m, { conn, args, text, isOwner, command }) => {
   }
 }
 
-// ✅ COMANDOS
+// COMANDOS
 handler.command = ["play", "audio", "video", "vídeo"]
 
 export default handler
 
-// ✅ FUNCIÓN SEARCH
+// BÚSQUEDA EN YOUTUBE
 async function search(query, options = {}) {
   const search = await yts.search({
     query,
