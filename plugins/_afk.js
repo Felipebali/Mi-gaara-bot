@@ -1,3 +1,7 @@
+// -------------------------------
+// AFK COMMAND
+// -------------------------------
+
 let handler = async (m, { conn, text, args, user }) => {
   if (!m.isGroup) return
   if (!text) return m.reply("🛌 Usá así:\n.afk motivo")
@@ -20,9 +24,9 @@ handler.group = true
 handler.botAdmin = true
 
 
-// =========================================================
-//        🔥 DETECTOR UNIVERSAL PARA TU LOADER 🔥
-// =========================================================
+// --------------------------------------------------------
+// 🔥 DETECTOR UNIVERSAL AFK (FUNCIONA EN TODAS LAS RUTAS)
+// --------------------------------------------------------
 
 handler.before = async function (m, { conn, user }) {
   if (!m.isGroup) return
@@ -33,30 +37,39 @@ handler.before = async function (m, { conn, user }) {
 
   const inGroup = user.inGroup[m.chat]
 
+  // -----------------------------------------
+  // UNIVERSAL WHO DETECTOR 🔥
+  // -----------------------------------------
   let who = null
+  let context = null
 
-  // ============================================
-  // ✔ 1. Menciones reales — TU LOADER USA ESTO
-  // ============================================
+  // 1️⃣ Buscar contextInfo en TODAS las posibles rutas
   try {
-    const context = m.message?.extendedTextMessage?.contextInfo
-
-    if (context?.mentionedJid?.length > 0) {
-      who = context.mentionedJid[0]
-    }
-
-    // ============================================
-    // ✔ 2. Acceso a usuario citado — TU LOADER USA ESTO
-    // ============================================
-    else if (context?.participant) {
-      who = context.participant
-    }
-
+    context =
+      m.msg?.contextInfo ||
+      m.message?.extendedTextMessage?.contextInfo ||
+      m.message?.conversation?.contextInfo ||
+      m.message?.imageMessage?.contextInfo ||
+      m.message?.videoMessage?.contextInfo ||
+      m.message?.buttonsMessage?.contextInfo ||
+      m.message?.interactiveResponseMessage?.contextInfo ||
+      m.message?.templateButtonReplyMessage?.contextInfo ||
+      null
   } catch (e) {}
 
-  // ============================================
-  // 🚪 SALE DEL AFK SI HABLA
-  // ============================================
+  // 2️⃣ Detectar menciones reales
+  if (context?.mentionedJid?.length > 0) {
+    who = context.mentionedJid[0]
+  }
+
+  // 3️⃣ Detectar usuario citado
+  else if (context?.participant) {
+    who = context.participant
+  }
+
+  // ---------------------
+  // 🚪 SALIR DE AFK
+  // ---------------------
   if (inGroup.afk > 0) {
     await m.reply(
       `✅ Ya no estás AFK\n📝 Motivo anterior: ${inGroup.afkReason || "Sin motivo"}`
@@ -65,9 +78,9 @@ handler.before = async function (m, { conn, user }) {
     inGroup.afkReason = ""
   }
 
-  // ============================================
-  // 📣 AVISO SI MENCIONAN / CITAN AFK
-  // ============================================
+  // ---------------------
+  // 📣 AVISAR AFK
+  // ---------------------
   if (who && who !== m.sender) {
     const hap = global.db?.data?.users?.[who]
     if (!hap) return
