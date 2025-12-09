@@ -21,6 +21,7 @@ let handler = async (m, { conn }) => {
 ╰━━━━━━━━━━━━━━━━━━━━━━━╯
 
 🌦️ *Consultas rápidas:*
+┃ 🔮 *.horoscopo <signo>* – Tu destino felino del día
 ┃ 🚨 *.reportar <motivo>* – Reporta algo indebido
 ┃ 🌍 *.clima <ciudad>* – Ver clima actual
 ┃ 🕐 *.hora* – Ver hora actual en el mundo
