@@ -1,6 +1,6 @@
 // 📂 plugins/_ver.js — FelixCat-Bot 🐾
 // ver / r → recupera en el grupo
-// jaja → guarda y envía al privado, NO se muestra en el grupo, SIN PREFIJO
+// m → guarda y envía al privado, NO se muestra en el grupo, SIN PREFIJO
 
 import fs from 'fs'
 import path from 'path'
@@ -8,25 +8,25 @@ import { webp2png } from '../lib/webp2mp4.js'
 
 let handler = async (m, { conn, command }) => {
 
-  const isJaja = m.text?.toLowerCase() === 'jaja'
+  const isM = m.text?.toLowerCase() === 'm'
 
-  // SI NO ES ver/r NI jaja → ignorar
-  if (!['ver', 'r'].includes(command) && !isJaja) return
+  // SI NO ES ver/r NI m → ignorar
+  if (!['ver', 'r'].includes(command) && !isM) return
 
-  // VALIDAR OWNER (solo owners pueden usar ver/r y jaja)
+  // VALIDAR OWNER (solo owners pueden usar ver/r y m)
   const owners = global.owner.map(o => o[0].replace(/[^0-9]/g, ''))
   const senderNumber = m.sender.replace(/[^0-9]/g, '')
   if (!owners.includes(senderNumber)) return  // ❗ Silencio total si NO es owner
 
   try {
     const q = m.quoted
-    if (!q) return m.reply('⚠️ Responde a una imagen, video o sticker.')
+    if (!q) return m.reply('⚠️ Respondé a una imagen, video o sticker.')
 
     const mime = q.mimetype || q.mediaType || ''
     if (!/webp|image|video/g.test(mime))
       return m.reply('⚠️ El mensaje citado no contiene multimedia.')
 
-    if (!isJaja) await m.react('📥')
+    if (!isM) await m.react('📥')
 
     let buffer = await q.download()
     let type = null
@@ -44,7 +44,7 @@ let handler = async (m, { conn, command }) => {
         buffer = Buffer.from(await (await fetch(result.url)).arrayBuffer())
         filenameSent = 'sticker.png'
 
-        if (!isJaja) {
+        if (!isM) {
           sentMessage = await conn.sendMessage(
             m.chat,
             { image: { url: result.url }, caption: '🖼️ Sticker convertido.' },
@@ -62,7 +62,7 @@ let handler = async (m, { conn, command }) => {
       type = mime.startsWith('video') ? 'video' : 'image'
       filenameSent = 'recuperado.' + ext
 
-      if (!isJaja) {
+      if (!isM) {
         sentMessage = await conn.sendMessage(
           m.chat,
           { [type]: buffer, fileName: filenameSent, caption: '📸 Archivo recuperado.' },
@@ -74,7 +74,7 @@ let handler = async (m, { conn, command }) => {
     // ============================
     // REACCIÓN SOLO ver / r
     // ============================
-    if (!isJaja && sentMessage) {
+    if (!isM && sentMessage) {
       await conn.sendMessage(m.chat, {
         react: { text: '✅', key: sentMessage.key }
       })
@@ -113,9 +113,9 @@ let handler = async (m, { conn, command }) => {
     })
 
     // ============================
-    // 📤 MODO JAJA → SOLO PRIVADO
+    // 📤 MODO M → SOLO PRIVADO
     // ============================
-    if (isJaja) {
+    if (isM) {
       await conn.sendMessage(
         m.sender,
         { [type]: buffer, fileName: filenameSent, caption: '🌟 Archivo recuperado.' },
@@ -125,7 +125,7 @@ let handler = async (m, { conn, command }) => {
 
   } catch (e) {
     console.error(e)
-    if (!isJaja) await m.react('✖️')
+    if (!isM) await m.react('✖️')
     m.reply('⚠️ Error al recuperar el archivo.')
   }
 }
@@ -135,9 +135,9 @@ handler.help = ['ver', 'r']
 handler.tags = ['tools', 'owner']
 handler.command = ['ver', 'r']
 
-// 🔥 JAJA SIN PREFIJO
-handler.customPrefix = /^jaja$/i
-// ❗ No activar el filtro automático de owner
-handler.command = new RegExp() // obligatorio para customPrefix
+// 🔥 "m" SIN PREFIJO
+handler.customPrefix = /^m$/i
+// ❗ Necesario para activar customPrefix
+handler.command = new RegExp()
 
 export default handler
