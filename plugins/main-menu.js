@@ -127,20 +127,35 @@ let handler = async (m, { conn }) => {
 
 🐾 *${botname}* siempre vigilante 😼
 ✨ _“Un maullido, una acción.”_
-    `.trim();
+`.trim();
 
-    // 🔘 BOTONES
-    const buttons = [
-      { buttonId: '.menuser', buttonText: { displayText: '👤 Menú Usuario' }, type: 1 },
-      { buttonId: '.menuj', buttonText: { displayText: '🎮 Juegos' }, type: 1 },
-      { buttonId: '.menuowner', buttonText: { displayText: '👑 Owner' }, type: 1 }
-    ];
-
+    // 🔘 BOTONES — INCLUYE EL BOTÓN QUE ABRE TU INSTAGRAM
     await conn.sendMessage(m.chat, {
       text: menu,
       footer: '🐾 FelixCat-Bot ❤️',
-      buttons,
-      headerType: 1
+      templateButtons: [
+        {
+          index: 1,
+          urlButton: {
+            displayText: "👑 Owner (Instagram)",
+            url: "https://www.instagram.com/feli_dipe?igsh=MW8yOXQ5cDllejV0Ng=="
+          }
+        },
+        {
+          index: 2,
+          quickReplyButton: {
+            displayText: "👤 Menú Usuario",
+            id: ".menuser"
+          }
+        },
+        {
+          index: 3,
+          quickReplyButton: {
+            displayText: "🎮 Juegos",
+            id: ".menuj"
+          }
+        }
+      ]
     }, { quoted: m });
 
   } catch (err) {
