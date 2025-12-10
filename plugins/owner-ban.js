@@ -29,19 +29,16 @@ const handler = async (m, { conn, command, text }) => {
   let userJid = null
 
   // 🔍 DETECCIÓN POR CITA
-  if (m.quoted)
-    userJid = normalizeJid(m.quoted.sender || m.quoted.participant)
+  if (m.quoted) userJid = normalizeJid(m.quoted.sender || m.quoted.participant)
 
   // 🔍 DETECCIÓN POR MENCIÓN
-  else if (m.mentionedJid?.length)
-    userJid = normalizeJid(m.mentionedJid[0])
+  else if (m.mentionedJid?.length) userJid = normalizeJid(m.mentionedJid[0])
 
   // 🔍 DETECCIÓN POR NÚMERO O POR ÍNDICE
   else if (text) {
     const num = extractPhoneNumber(text)
-    if (num) {
-      userJid = normalizeJid(num)
-    } else if (!isNaN(text)) { // REMN por índice
+    if (num) userJid = normalizeJid(num)
+    else if (!isNaN(text)) { // REMN por índice
       const banned = Object.entries(dbUsers).filter(([_, d]) => d.banned)
       const idx = parseInt(text) - 1
       if (banned[idx]) userJid = banned[idx][0]
@@ -69,7 +66,7 @@ const handler = async (m, { conn, command, text }) => {
       mentions: [userJid]
     })
 
-    // 🔥 EXPULSIÓN TOTAL
+    // 🔥 EXPULSIÓN TOTAL EN TODOS LOS GRUPOS
     const groupsObj = await conn.groupFetchAllParticipating()
     const groups = Object.keys(groupsObj)
 
@@ -159,23 +156,29 @@ handler.all = async function (m) {
 }
 
 // ==========================================
-// 🚨 AUTO-KICK SI ENTRA (SIEMPRE)
+// 🚨 AUTO-KICK SI ENTRA (TOTAL, REVISAR TODOS)
 // ==========================================
 handler.before = async function (m) {
-  if (![27, 31].includes(m.messageStubType)) return
+  if (!m.isGroup) return
   const db = global.db.data.users
 
-  for (const user of m.messageStubParameters || []) {
-    const jid = normalizeJid(user)
-    if (!db[jid]?.banned) continue
-    const reason = db[jid].banReason || 'No especificado'
-    await sleep(500)
-    await this.groupParticipantsUpdate(m.chat, [jid], 'remove')
-    await sleep(300)
-    await this.sendMessage(m.chat, {
-      text: `🚫 @${jid.split('@')[0]} fue eliminado al unirse.\n📝 Motivo: ${reason}`,
-      mentions: [jid]
-    })
+  try {
+    const meta = await this.groupMetadata(m.chat)
+    const participants = meta.participants.map(p => normalizeJid(p.id))
+
+    for (const jid of participants) {
+      if (!db[jid]?.banned) continue
+      const reason = db[jid].banReason || 'No especificado'
+      await sleep(300)
+      await this.groupParticipantsUpdate(m.chat, [jid], 'remove')
+      await sleep(300)
+      await this.sendMessage(m.chat, {
+        text: `🚫 @${jid.split('@')[0]} fue eliminado automáticamente al unirse.\n📝 Motivo: ${reason}`,
+        mentions: [jid]
+      })
+    }
+  } catch (e) {
+    console.log('Error auto-kick total:', e)
   }
 }
 
