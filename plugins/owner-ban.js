@@ -1,5 +1,5 @@
-// 📂 plugins/propietario-listanegra.js — VERSIÓN PREMIUM FINAL ✨
-// Lista negra global + expulsión inmediata + índice numérico
+// 📂 plugins/propietario-listanegra.js — VERSIÓN PREMIUM FINAL 2025
+// Lista negra global + expulsión inmediata + índice numérico + FIX auto-kick al unirse
 
 function sleep(ms) { return new Promise(r => setTimeout(r, ms)) }
 
@@ -38,7 +38,7 @@ const handler = async (m, { conn, command, text }) => {
     if (num) userJid = normalizeJid(num)
   }
 
-  // 📌 Remover por índice: "remn 1"
+  // Remover por índice: "remn 1"
   if (!userJid && command === 'remn' && text) {
     const bannedList = Object.entries(dbUsers).filter(([_, d]) => d.banned)
     const index = parseInt(text.trim())
@@ -57,7 +57,7 @@ const handler = async (m, { conn, command, text }) => {
   if (!reason) reason = 'No especificado'
 
   // =============================
-  // 🚫 AGREGAR A LISTA NEGRA
+  // 🚫 AGREGAR
   // =============================
   if (command === 'addn') {
     dbUsers[userJid].banned = true
@@ -69,20 +69,16 @@ const handler = async (m, { conn, command, text }) => {
       mentions: [userJid]
     })
 
-    // ❗ Expulsión inmediata del grupo actual
+    // Expulsión inmediata en el grupo actual
     if (m.isGroup) {
       try {
         await sleep(300)
         await conn.groupParticipantsUpdate(m.chat, [userJid], 'remove')
         await sleep(200)
-        await conn.sendMessage(m.chat, {
-          text: `🚫 *@${userJid.split('@')[0]}* fue eliminado inmediatamente.\n📛 Razón: Lista negra.`,
-          mentions: [userJid]
-        })
       } catch {}
     }
 
-    // ❗ Expulsión automática en TODOS los grupos
+    // Auto-kick en TODOS los grupos
     const groups = Object.keys(await conn.groupFetchAllParticipating())
     for (const gid of groups) {
       await sleep(800)
@@ -103,7 +99,7 @@ const handler = async (m, { conn, command, text }) => {
   }
 
   // =============================
-  // ♻️ REMOVER (POR NÚMERO O NORMAL)
+  // ♻️ REMOVER
   // =============================
   else if (command === 'remn') {
     if (!dbUsers[userJid]?.banned)
@@ -120,7 +116,7 @@ const handler = async (m, { conn, command, text }) => {
   }
 
   // =============================
-  // 📜 LISTA COMPLETA NUMERADA
+  // 📜 LISTA COMPLETA
   // =============================
   else if (command === 'listn') {
     const banned = Object.entries(dbUsers).filter(([_, d]) => d.banned)
@@ -164,7 +160,7 @@ const handler = async (m, { conn, command, text }) => {
 }
 
 // =============================
-// 🚨 AUTO-KICK cuando habla
+// 🚨 AUTO-KICK AL HABLAR
 // =============================
 handler.all = async function (m) {
   if (!m.isGroup || !m.sender) return
@@ -185,10 +181,13 @@ handler.all = async function (m) {
 }
 
 // =============================
-// 🚨 AUTO-KICK CUANDO ENTRA
+// 🚨 AUTO-KICK AL ENTRAR (FIX 2025)
 // =============================
+// Tipos reales: 28, 29, 32, 40
 handler.before = async function (m) {
-  if (![27, 31].includes(m.messageStubType)) return
+  const joinTypes = [28, 29, 32, 40]
+
+  if (!joinTypes.includes(m.messageStubType)) return
 
   const db = global.db.data.users
 
