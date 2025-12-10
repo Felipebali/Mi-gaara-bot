@@ -1,5 +1,5 @@
-// 📂 plugins/propietario-listanegra.js — VERSIÓN PREMIUM ARREGLADA 2025
-// Lista negra global + avisos bonitos + expulsión inmediata + FIX entradas
+// 📂 plugins/propietario-listanegra.js — VERSIÓN PREMIUM ARREGLADA 2025 CON ÍNDICE
+// Lista negra global + avisos bonitos + expulsión inmediata + índice numérico
 
 function sleep(ms) { return new Promise(r => setTimeout(r, ms)) }
 
@@ -27,6 +27,7 @@ const handler = async (m, { conn, command, text }) => {
 
   let userJid = null
 
+  // === Ver si es por cita o mención ===
   if (m.quoted)
     userJid = normalizeJid(m.quoted.sender || m.quoted.participant)
   else if (m.mentionedJid?.length)
@@ -36,8 +37,17 @@ const handler = async (m, { conn, command, text }) => {
     if (num) userJid = normalizeJid(num)
   }
 
+  // === Remover por índice ===
+  if (!userJid && command === 'remn' && text) {
+    const bannedList = Object.entries(dbUsers).filter(([_, d]) => d.banned)
+    const index = parseInt(text.trim())
+    if (!isNaN(index) && bannedList[index - 1]) {
+      userJid = bannedList[index - 1][0]
+    }
+  }
+
   if (!userJid && !['listn', 'clrn'].includes(command))
-    return conn.reply(m.chat, "⚠️ *Debes responder, mencionar o escribir un número.*", m)
+    return conn.reply(m.chat, "⚠️ *Debes responder, mencionar, escribir un número o usar índice.*", m)
 
   if (userJid && !dbUsers[userJid]) dbUsers[userJid] = {}
 
@@ -104,7 +114,7 @@ const handler = async (m, { conn, command, text }) => {
   }
 
   // =============================
-  // 📜 LISTA COMPLETA
+  // 📜 LISTA COMPLETA NUMERADA
   // =============================
   else if (command === 'listn') {
     const banned = Object.entries(dbUsers).filter(([_, d]) => d.banned)
@@ -114,10 +124,10 @@ const handler = async (m, { conn, command, text }) => {
     let msg = "🚫 *Lista negra global:*\n\n"
     const mentions = []
 
-    for (const [jid, data] of banned) {
-      msg += `• *@${jid.split('@')[0]}*\n  📝 Motivo: ${data.banReason}\n\n`
+    banned.forEach(([jid, data], i) => {
+      msg += `${i + 1}. *@${jid.split('@')[0]}*\n   📝 Motivo: ${data.banReason}\n\n`
       mentions.push(jid)
-    }
+    })
 
     await conn.sendMessage(m.chat, { text: msg.trim(), mentions })
   }
@@ -168,10 +178,9 @@ handler.all = async function (m) {
 // =============================
 handler.before = async function (m) {
   const joinTypes = [28, 29, 32, 40] // cubre todos los casos de ingreso
-
   if (!joinTypes.includes(m.messageStubType)) return
-  const db = global.db.data.users
 
+  const db = global.db.data.users
   for (const user of m.messageStubParameters || []) {
     const jid = normalizeJid(user)
     if (!db[jid]?.banned) continue
