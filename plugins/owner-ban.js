@@ -1,5 +1,5 @@
-// 📂 plugins/propietario-listanegra.js — VERSIÓN PREMIUM CON NÚMEROS
-// Lista negra global numerada + auto-kick + remn por índice
+// 📂 plugins/propietario-listanegra.js — VERSIÓN PREMIUM ULTRA ESTABLE
+// Lista negra global numerada + auto-kick + remn por índice + no aviso si no está en el grupo
 
 function sleep(ms) { return new Promise(r => setTimeout(r, ms)) }
 
@@ -26,7 +26,7 @@ const handler = async (m, { conn, command, text }) => {
   let userJid = null
   let index = null
 
-  // Si se usa remn con número
+  // REMN por número de lista
   if (command === 'remn' && text && !isNaN(text)) {
     const bannedList = Object.entries(dbUsers).filter(([_, d]) => d.banned)
     index = parseInt(text) - 1
@@ -65,16 +65,20 @@ const handler = async (m, { conn, command, text }) => {
       mentions: [userJid]
     })
 
-    // Expulsión inmediata en grupo actual
+    // Expulsión inmediata en grupo actual si está
     if (m.isGroup) {
       try {
-        await sleep(300)
-        await conn.groupParticipantsUpdate(m.chat, [userJid], 'remove')
-        await sleep(200)
-        await conn.sendMessage(m.chat, {
-          text: `🚫 *@${userJid.split('@')[0]}* fue eliminado inmediatamente.\n📛 *Razón:* Lista negra.`,
-          mentions: [userJid]
-        })
+        const meta = await conn.groupMetadata(m.chat)
+        const participant = meta.participants.find(p => normalizeJid(p.id) === userJid)
+        if (participant) {
+          await sleep(300)
+          await conn.groupParticipantsUpdate(m.chat, [userJid], 'remove')
+          await sleep(200)
+          await conn.sendMessage(m.chat, {
+            text: `🚫 *@${userJid.split('@')[0]}* fue eliminado inmediatamente.\n📛 *Razón:* Lista negra.`,
+            mentions: [userJid]
+          })
+        }
       } catch {}
     }
 
@@ -84,8 +88,8 @@ const handler = async (m, { conn, command, text }) => {
       await sleep(800)
       try {
         const meta = await conn.groupMetadata(gid)
-        const found = meta.participants.find(p => normalizeJid(p.id) === userJid)
-        if (!found) continue
+        const participant = meta.participants.find(p => normalizeJid(p.id) === userJid)
+        if (!participant) continue
         await conn.groupParticipantsUpdate(gid, [userJid], 'remove')
         await sleep(200)
         await conn.sendMessage(gid, {
@@ -97,7 +101,7 @@ const handler = async (m, { conn, command, text }) => {
   }
 
   // =============================
-  // ♻️ REMOVER DE LISTA NEGRA (por índice o usuario)
+  // ♻️ REMOVER DE LISTA NEGRA
   // =============================
   else if (command === 'remn') {
     if (!dbUsers[userJid]?.banned)
@@ -158,15 +162,21 @@ handler.all = async function (m) {
   if (!m.isGroup || !m.sender) return
   const sender = normalizeJid(m.sender)
   const db = global.db.data.users
-  if (db[sender]?.banned) {
-    const reason = db[sender].banReason || 'No especificado'
-    await this.groupParticipantsUpdate(m.chat, [sender], 'remove')
-    await sleep(250)
-    await this.sendMessage(m.chat, {
-      text: `🚫 *@${sender.split('@')[0]}* fue eliminado por enviar un mensaje.\n📝 Motivo: ${reason}`,
-      mentions: [sender]
-    })
-  }
+  if (!db[sender]?.banned) return
+
+  try {
+    const meta = await this.groupMetadata(m.chat)
+    const participant = meta.participants.find(p => normalizeJid(p.id) === sender)
+    if (!participant) return // No está en el grupo, ignorar
+  } catch { return }
+
+  const reason = db[sender].banReason || 'No especificado'
+  await this.groupParticipantsUpdate(m.chat, [sender], 'remove')
+  await sleep(250)
+  await this.sendMessage(m.chat, {
+    text: `🚫 *@${sender.split('@')[0]}* fue eliminado por enviar un mensaje.\n📝 Motivo: ${reason}`,
+    mentions: [sender]
+  })
 }
 
 // =============================
@@ -178,6 +188,13 @@ handler.before = async function (m) {
   for (const user of m.messageStubParameters || []) {
     const jid = normalizeJid(user)
     if (!db[jid]?.banned) continue
+
+    try {
+      const meta = await this.groupMetadata(m.chat)
+      const participant = meta.participants.find(p => normalizeJid(p.id) === jid)
+      if (!participant) continue // No está en el grupo
+    } catch { continue }
+
     const reason = db[jid].banReason || 'No especificado'
     await sleep(400)
     await this.groupParticipantsUpdate(m.chat, [jid], 'remove')
