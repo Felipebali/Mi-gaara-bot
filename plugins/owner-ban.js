@@ -111,7 +111,7 @@ const handler = async (m, { conn, command, text }) => {
       mentions: [userJid]
     })
 
-    // 🔥 EXPULSIÓN INMEDIATA SI ES EN GRUPO O SI SE UNE DESPUÉS
+    // 🔥 EXPULSIÓN GLOBAL INMEDIATA
     const groupsObj = await conn.groupFetchAllParticipating()
     const groups = Object.keys(groupsObj)
 
@@ -184,34 +184,21 @@ handler.all = async function (m) {
   } catch {}
 }
 
-// ================= AUTO-KICK AL ENTRAR =================
-handler.before = async function (m) {
+// ================= AUTO-KICK AL UNIRSE =================
+handler.groupUpdate = async function (update) {
   try {
+    if (!update.participants || !update.action) return
     const db = global.db.data.users
     const conn = this
 
-    const possibleSources = [
-      m.messageStubParameters,
-      m.participants,
-      (m.update && m.update.participants) || null,
-      (m.message && m.message.participant) ? [m.message.participant] : null
-    ].filter(Boolean)
-
-    const candidates = new Set()
-    for (const src of possibleSources) {
-      if (Array.isArray(src)) src.forEach(it => it && candidates.add(normalizeJid(it)))
-      else candidates.add(normalizeJid(src))
-    }
-
-    if (candidates.size === 0) return
-
-    for (const u of Array.from(candidates)) {
-      if (!u) continue
-      if (db[u]?.banned)
-        await kickUser(conn, m.chat, u, db[u].banReason)
+    for (const participant of update.participants) {
+      const jid = normalizeJid(participant)
+      if (!jid) continue
+      if (db[jid]?.banned)
+        await kickUser(conn, update.id, jid, db[jid].banReason)
     }
   } catch (e) {
-    console.error('Error en auto-kick al entrar:', e)
+    console.error('Error en auto-kick al unirse:', e)
   }
 }
 
