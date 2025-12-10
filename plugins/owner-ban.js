@@ -1,5 +1,5 @@
-// 📂 plugins/propietario-listanegra.js — VERSIÓN PREMIUM ✨
-// Lista negra global + avisos bonitos + expulsión inmediata
+// 📂 plugins/propietario-listanegra.js — VERSIÓN PREMIUM ARREGLADA 2025
+// Lista negra global + avisos bonitos + expulsión inmediata + FIX entradas
 
 function sleep(ms) { return new Promise(r => setTimeout(r, ms)) }
 
@@ -63,16 +63,11 @@ const handler = async (m, { conn, command, text }) => {
         await sleep(300)
         await conn.groupParticipantsUpdate(m.chat, [userJid], 'remove')
         await sleep(200)
-        await conn.sendMessage(m.chat, {
-          text: `🚫 *@${userJid.split('@')[0]}* fue eliminado inmediatamente.\n📛 *Razón:* Lista negra.`,
-          mentions: [userJid]
-        })
       } catch {}
     }
 
     // Expulsión en todos los grupos
     const groups = Object.keys(await conn.groupFetchAllParticipating())
-
     for (const gid of groups) {
       await sleep(800)
       try {
@@ -92,7 +87,7 @@ const handler = async (m, { conn, command, text }) => {
   }
 
   // =============================
-  // ♻️ REMOVER DE LISTA NEGRA (estilo bonito)
+  // ♻️ REMOVER DE LISTA NEGRA
   // =============================
   else if (command === 'remn') {
     if (!dbUsers[userJid]?.banned)
@@ -169,10 +164,12 @@ handler.all = async function (m) {
 }
 
 // =============================
-// 🚨 AUTO-KICK CUANDO ENTRA
+// 🚨 AUTO-KICK CUANDO ENTRA (FIX 2025)
 // =============================
 handler.before = async function (m) {
-  if (![27, 31].includes(m.messageStubType)) return
+  const joinTypes = [28, 29, 32, 40] // cubre todos los casos de ingreso
+
+  if (!joinTypes.includes(m.messageStubType)) return
   const db = global.db.data.users
 
   for (const user of m.messageStubParameters || []) {
