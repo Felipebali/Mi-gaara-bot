@@ -12,6 +12,9 @@ let handler = async (m, { conn, isAdmin }) => {
 
     let chat = global.db.data.chats[m.chat];
 
+    // Si no existe, por defecto desactivado
+    if (typeof chat.welcome === 'undefined') chat.welcome = false;
+
     chat.welcome = !chat.welcome;
 
     await conn.sendMessage(m.chat, {
