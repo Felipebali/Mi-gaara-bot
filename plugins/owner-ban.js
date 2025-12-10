@@ -12,9 +12,7 @@ function normalizeJid(jid = '') {
   return jid.replace(/[^0-9]/g, '') + '@s.whatsapp.net'
 }
 
-function digitsOnly(t = '') {
-  return t.toString().replace(/[^0-9]/g, '')
-}
+function digitsOnly(t = '') { return t.toString().replace(/[^0-9]/g, '') }
 
 function extractPhoneNumber(t = '') {
   const d = digitsOnly(t)
@@ -27,17 +25,24 @@ const handler = async (m, { conn, command, text }) => {
 
   let userJid = null
 
-  if (m.quoted)
-    userJid = normalizeJid(m.quoted.sender || m.quoted.participant)
-  else if (m.mentionedJid?.length)
-    userJid = normalizeJid(m.mentionedJid[0])
+  if (m.quoted) userJid = normalizeJid(m.quoted.sender || m.quoted.participant)
+  else if (m.mentionedJid?.length) userJid = normalizeJid(m.mentionedJid[0])
   else if (text) {
     const num = extractPhoneNumber(text)
     if (num) userJid = normalizeJid(num)
   }
 
+  // 🆕 REMN permite índice (remn 1)
+  if (!userJid && command === 'remn' && text) {
+    const bannedList = Object.entries(dbUsers).filter(([_, data]) => data.banned)
+    const index = parseInt(text.trim())
+    if (!isNaN(index) && bannedList[index - 1]) {
+      userJid = bannedList[index - 1][0]
+    }
+  }
+
   if (!userJid && !['listn', 'clrn'].includes(command))
-    return conn.reply(m.chat, "⚠️ *Debes responder, mencionar o escribir un número.*", m)
+    return conn.reply(m.chat, "⚠️ *Debes responder, mencionar, escribir un número o índice.*", m)
 
   if (userJid && !dbUsers[userJid]) dbUsers[userJid] = {}
 
@@ -92,11 +97,11 @@ const handler = async (m, { conn, command, text }) => {
   }
 
   // =============================
-  // ♻️ REMOVER DE LISTA NEGRA (estilo bonito)
+  // ♻️ REMOVER DE LISTA NEGRA (mejorado + índice)
   // =============================
   else if (command === 'remn') {
     if (!dbUsers[userJid]?.banned)
-      return conn.sendMessage(m.chat, { text: "⚠️ *Ese usuario no está en la lista negra.*" })
+      return conn.sendMessage(m.chat, { text: "⚠️ *Ese usuario no está en la lista negra.*" }, { quoted: m })
 
     dbUsers[userJid].banned = false
     dbUsers[userJid].banReason = ''
@@ -109,7 +114,7 @@ const handler = async (m, { conn, command, text }) => {
   }
 
   // =============================
-  // 📜 LISTA COMPLETA
+  // 📜 LISTA COMPLETA (NUMERADA)
   // =============================
   else if (command === 'listn') {
     const banned = Object.entries(dbUsers).filter(([_, d]) => d.banned)
@@ -119,10 +124,11 @@ const handler = async (m, { conn, command, text }) => {
     let msg = "🚫 *Lista negra global:*\n\n"
     const mentions = []
 
-    for (const [jid, data] of banned) {
-      msg += `• *@${jid.split('@')[0]}*\n  📝 Motivo: ${data.banReason}\n\n`
+    banned.forEach(([jid, data], i) => {
+      msg += `${i + 1}. *@${jid.split('@')[0]}*\n`
+      msg += `   📝 Motivo: ${data.banReason}\n\n`
       mentions.push(jid)
-    }
+    })
 
     await conn.sendMessage(m.chat, { text: msg.trim(), mentions })
   }
@@ -175,7 +181,7 @@ handler.before = async function (m) {
   if (![27, 31].includes(m.messageStubType)) return
   const db = global.db.data.users
 
-  for (const user of m.messageStubParameters || []) {
+  for (const user of (m.messageStubParameters || [])) {
     const jid = normalizeJid(user)
     if (!db[jid]?.banned) continue
 
