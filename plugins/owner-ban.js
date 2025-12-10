@@ -1,5 +1,5 @@
-// 📂 plugins/propietario-listanegra.js — VERSIÓN PREMIUM ULTRA ESTABLE
-// Lista negra global numerada + auto-kick + remn por índice + no aviso si no está en el grupo
+// 📂 plugins/propietario-listanegra.js — VERSIÓN PREMIUM ULTRA ESTABLE CORREGIDA
+// Lista negra global numerada + auto-kick al hablar + remn por índice + no aviso si no está en el grupo
 
 function sleep(ms) { return new Promise(r => setTimeout(r, ms)) }
 
@@ -159,16 +159,22 @@ const handler = async (m, { conn, command, text }) => {
 // 🚨 AUTO-KICK CUANDO HABLA
 // =============================
 handler.all = async function (m) {
-  if (!m.isGroup || !m.sender) return
-  const sender = normalizeJid(m.sender)
+  if (!m.isGroup) return
   const db = global.db.data.users
+
+  // Obtener JID real del mensaje
+  const sender = normalizeJid(m.sender || m.key?.participant)
+  if (!sender) return
   if (!db[sender]?.banned) return
 
+  // Revisar si realmente está en el grupo
+  let inGroup = false
   try {
     const meta = await this.groupMetadata(m.chat)
-    const participant = meta.participants.find(p => normalizeJid(p.id) === sender)
-    if (!participant) return // No está en el grupo, ignorar
+    inGroup = meta.participants.some(p => normalizeJid(p.id) === sender)
   } catch { return }
+
+  if (!inGroup) return
 
   const reason = db[sender].banReason || 'No especificado'
   await this.groupParticipantsUpdate(m.chat, [sender], 'remove')
@@ -189,11 +195,14 @@ handler.before = async function (m) {
     const jid = normalizeJid(user)
     if (!db[jid]?.banned) continue
 
+    // Revisar si realmente está en el grupo
+    let inGroup = false
     try {
       const meta = await this.groupMetadata(m.chat)
-      const participant = meta.participants.find(p => normalizeJid(p.id) === jid)
-      if (!participant) continue // No está en el grupo
+      inGroup = meta.participants.some(p => normalizeJid(p.id) === jid)
     } catch { continue }
+
+    if (!inGroup) continue
 
     const reason = db[jid].banReason || 'No especificado'
     await sleep(400)
