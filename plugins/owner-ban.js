@@ -8,18 +8,22 @@ import { JSONFile } from 'lowdb/node'
 
 // ==================== DATABASE ====================
 
-const dbPath = join(process.cwd(), 'database', 'Blacklist.json')
+const dbFolder = join(process.cwd(), 'database')
+const dbPath = join(dbFolder, 'Blacklist.json')
 
-// Crear carpeta si no existe
-if (!fs.existsSync(join(process.cwd(), 'database'))) {
-  fs.mkdirSync(join(process.cwd(), 'database'))
+// Crear carpeta /database si no existe
+if (!fs.existsSync(dbFolder)) {
+  fs.mkdirSync(dbFolder)
 }
 
 const adapter = new JSONFile(dbPath)
 const db = new Low(adapter, { blacklist: {} })
 
 await db.read()
-db.data.blacklist ||= {}
+
+// 🔥 COMPATIBILIDAD TOTAL (ACEPTADO POR TODOS LOS LOADERS)
+if (!db.data) db.data = {}
+if (!db.data.blacklist) db.data.blacklist = {}
 
 function saveDB() {
   return db.write()
@@ -72,7 +76,7 @@ const handler = async (m, { conn, command, text }) => {
 
   const entries = Object.entries(db.data.blacklist)
 
-  // --- Selección por número de lista ---
+  // --- Selección por número en la lista ---
   if (command === 'remn' && /^\d+$/.test(text?.trim())) {
     const index = parseInt(text.trim()) - 1
     if (!entries[index])
@@ -103,11 +107,12 @@ const handler = async (m, { conn, command, text }) => {
   if (!reason) reason = 'No especificado'
 
   if (!userJid && !['listn', 'clrn'].includes(command))
-    return conn.reply(m.chat, '🚫 Debes mencionar, citar, o escribir número.', m)
+    return conn.reply(m.chat, '🚫 Debes mencionar, citar o escribir un número.', m)
 
   // ================= ADD =================
 
   if (command === 'addn') {
+
     db.data.blacklist[userJid] = {
       banned: true,
       reason,
@@ -135,7 +140,7 @@ const handler = async (m, { conn, command, text }) => {
       } catch {}
     }
 
-    // AutoKick global
+    // AutoKick global en todos los grupos
     const groups = Object.keys(await conn.groupFetchAllParticipating())
 
     for (const gid of groups) {
@@ -176,6 +181,7 @@ const handler = async (m, { conn, command, text }) => {
   // ================= LIST =================
 
   else if (command === 'listn') {
+
     if (entries.length === 0)
       return conn.reply(m.chat, '📜 Lista negra vacía.', m)
 
