@@ -114,21 +114,32 @@ const handler = async (m, { conn, command, text }) => {
   }
 
   // =============================
-  // 📜 LISTA COMPLETA (NUMERADA)
+  // 📜 LISTA COMPLETA (VERSIÓN PREMIUM)
   // =============================
   else if (command === 'listn') {
     const banned = Object.entries(dbUsers).filter(([_, d]) => d.banned)
     if (banned.length === 0)
       return conn.sendMessage(m.chat, { text: "🟢 *No hay usuarios en la lista negra.*" })
 
-    let msg = "🚫 *Lista negra global:*\n\n"
+    let msg = "╔════════════════════╗\n"
+    msg += "     🚫 *LISTA NEGRA GLOBAL* 🚫\n"
+    msg += "╚════════════════════╝\n\n"
+
     const mentions = []
 
     banned.forEach(([jid, data], i) => {
-      msg += `${i + 1}. *@${jid.split('@')[0]}*\n`
-      msg += `   📝 Motivo: ${data.banReason}\n\n`
+      const num = i + 1
+      const user = jid.split('@')[0]
+      const motivo = data.banReason || 'No especificado'
+
+      msg += `*${num}. @${user}*\n`
+      msg += `   📛 *Motivo:* ${motivo}\n`
+      msg += "   ────────────────────────\n"
+
       mentions.push(jid)
     })
+
+    msg += `\n🔢 *Total bloqueados:* ${banned.length}`
 
     await conn.sendMessage(m.chat, { text: msg.trim(), mentions })
   }
