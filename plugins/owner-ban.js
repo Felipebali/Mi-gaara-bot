@@ -1,24 +1,23 @@
-// 📂 plugins/propietario-listanegra.js — ULTRA FINAL 2025 SANO
-// Lista negra global + auto-kick TOTAL + remn por índice + normalizeJid robusto
+// 📂 plugins/propietario-listanegra.js — VERSIÓN PREMIUM ULTRA ESTABLE CORREGIDA
+// Lista negra global numerada + auto-kick al hablar + remn por índice + no aviso si no está en el grupo
 
 function sleep(ms) { return new Promise(r => setTimeout(r, ms)) }
 
-// ========================
-// Normalización JID robusta
-// ========================
 function normalizeJid(jid = '') {
   if (!jid) return null
-  jid = jid.toString().trim()
-  if (jid.includes('@')) jid = jid.split('@')[0]
-  jid = jid.replace(/[^0-9]/g, '')
-  if (!jid) return null
-  return jid + '@s.whatsapp.net'
+  jid = jid.toString().trim().replace(/^\+/, '')
+  if (jid.endsWith('@c.us') || jid.endsWith('@s.whatsapp.net'))
+    return jid.replace(/@c.us$/, '@s.whatsapp.net')
+  if (jid.includes('@')) return jid
+  return jid.replace(/[^0-9]/g, '') + '@s.whatsapp.net'
 }
 
 function digitsOnly(t = '') { return t.toString().replace(/[^0-9]/g, '') }
+
 function extractPhoneNumber(t = '') {
   const d = digitsOnly(t)
-  return d && d.length >= 5 ? d : null
+  if (!d || d.length < 5) return null
+  return d
 }
 
 const handler = async (m, { conn, command, text }) => {
@@ -27,9 +26,7 @@ const handler = async (m, { conn, command, text }) => {
   let userJid = null
   let index = null
 
-  // -------------------------
-  // remn por índice
-  // -------------------------
+  // REMN por número de lista
   if (command === 'remn' && text && !isNaN(text)) {
     const bannedList = Object.entries(dbUsers).filter(([_, d]) => d.banned)
     index = parseInt(text) - 1
@@ -37,8 +34,10 @@ const handler = async (m, { conn, command, text }) => {
       return conn.sendMessage(m.chat, { text: `⚠️ No existe usuario con ese número.` })
     userJid = bannedList[index][0]
   } else {
-    if (m.quoted) userJid = normalizeJid(m.quoted.sender || m.quoted.participant)
-    else if (m.mentionedJid?.length) userJid = normalizeJid(m.mentionedJid[0])
+    if (m.quoted)
+      userJid = normalizeJid(m.quoted.sender || m.quoted.participant)
+    else if (m.mentionedJid?.length)
+      userJid = normalizeJid(m.mentionedJid[0])
     else if (text) {
       const num = extractPhoneNumber(text)
       if (num) userJid = normalizeJid(num)
@@ -50,156 +49,170 @@ const handler = async (m, { conn, command, text }) => {
 
   if (userJid && !dbUsers[userJid]) dbUsers[userJid] = {}
 
-  let reason = text?.replace(/@/g, '')?.replace(/\d{5,}/g, '')?.trim()
+  let reason = text?.replace(/@/g, '').replace(/\d{5,}/g, '').trim()
   if (!reason) reason = 'No especificado'
 
-  // ==========================================
-  // 🚫 AÑADIR A LA LISTA NEGRA
-  // ==========================================
+  // =============================
+  // 🚫 AGREGAR A LISTA NEGRA
+  // =============================
   if (command === 'addn') {
     dbUsers[userJid].banned = true
     dbUsers[userJid].banReason = reason
+    dbUsers[userJid].bannedBy = m.sender
 
     await conn.sendMessage(m.chat, {
-      text: `🚫 *Usuario añadido a la lista negra*\n\n👤 *@${userJid.split('@')[0]}*\n📛 Motivo: ${reason}`,
+      text: `✨ *Usuario añadido a lista negra*\n\n🚫 *@${userJid.split('@')[0]}*\n📝 *Motivo:* ${reason}`,
       mentions: [userJid]
     })
 
-    // Intento expulsión inmediata solo si está en este grupo
+    // Expulsión inmediata en grupo actual si está
     if (m.isGroup) {
       try {
-        await conn.groupParticipantsUpdate(m.chat, [userJid], 'remove')
-        await sleep(120)
-        await conn.sendMessage(m.chat, {
-          text: `🚫 *@${userJid.split('@')[0]}* fue expulsado inmediatamente.\n📛 Motivo: Lista negra.`,
+        const meta = await conn.groupMetadata(m.chat)
+        const participant = meta.participants.find(p => normalizeJid(p.id) === userJid)
+        if (participant) {
+          await sleep(300)
+          await conn.groupParticipantsUpdate(m.chat, [userJid], 'remove')
+          await sleep(200)
+          await conn.sendMessage(m.chat, {
+            text: `🚫 *@${userJid.split('@')[0]}* fue eliminado inmediatamente.\n📛 *Razón:* Lista negra.`,
+            mentions: [userJid]
+          })
+        }
+      } catch {}
+    }
+
+    // Expulsión en todos los grupos
+    const groups = Object.keys(await conn.groupFetchAllParticipating())
+    for (const gid of groups) {
+      await sleep(800)
+      try {
+        const meta = await conn.groupMetadata(gid)
+        const participant = meta.participants.find(p => normalizeJid(p.id) === userJid)
+        if (!participant) continue
+        await conn.groupParticipantsUpdate(gid, [userJid], 'remove')
+        await sleep(200)
+        await conn.sendMessage(gid, {
+          text: `🚫 *Miembro eliminado automáticamente*\n\n@${userJid.split('@')[0]} está en *lista negra*.\n📝 Motivo: ${reason}`,
           mentions: [userJid]
         })
       } catch {}
     }
   }
 
-  // ==========================================
-  // ♻️ Quitar de lista negra
-  // ==========================================
+  // =============================
+  // ♻️ REMOVER DE LISTA NEGRA
+  // =============================
   else if (command === 'remn') {
     if (!dbUsers[userJid]?.banned)
       return conn.sendMessage(m.chat, { text: "⚠️ *Ese usuario no está en la lista negra.*" })
 
     dbUsers[userJid].banned = false
     dbUsers[userJid].banReason = ''
+    dbUsers[userJid].bannedBy = null
 
     await conn.sendMessage(m.chat, {
-      text: `🟢 *Usuario removido de la lista negra*\n\n👤 *@${userJid.split('@')[0]}*\n✔️ Ya no es peligroso.`,
+      text: `✨ *Usuario removido de lista negra*\n\n🟢 *@${userJid.split('@')[0]}*\n✔️ Ya no será expulsado automáticamente.`,
       mentions: [userJid]
     })
   }
 
-  // ==========================================
-  // 📜 Mostrar lista negra
-  // ==========================================
+  // =============================
+  // 📜 LISTA COMPLETA NUMERADA
+  // =============================
   else if (command === 'listn') {
     const banned = Object.entries(dbUsers).filter(([_, d]) => d.banned)
-    if (!banned.length)
+    if (banned.length === 0)
       return conn.sendMessage(m.chat, { text: "🟢 *No hay usuarios en la lista negra.*" })
 
-    let msg = "🚫 *LISTA NEGRA GLOBAL*\n\n"
+    let msg = "🚫 *Lista negra global:*\n\n"
     const mentions = []
-    for (let i = 0; i < banned.length; i++) {
-      const [jid, data] = banned[i]
-      msg += `${i + 1}. *@${jid.split('@')[0]}*\n   📛 Motivo: ${data.banReason}\n\n`
+
+    banned.forEach(([jid, data], i) => {
+      msg += `${i + 1}. *@${jid.split('@')[0]}*\n   📝 Motivo: ${data.banReason}\n\n`
       mentions.push(jid)
-    }
+    })
 
     await conn.sendMessage(m.chat, { text: msg.trim(), mentions })
   }
 
-  // ==========================================
-  // 🧹 Limpiar lista negra
-  // ==========================================
+  // =============================
+  // 🧹 LIMPIAR TODO
+  // =============================
   else if (command === 'clrn') {
-    Object.keys(dbUsers).forEach(jid => {
+    for (const jid in dbUsers) {
       if (dbUsers[jid].banned) {
         dbUsers[jid].banned = false
         dbUsers[jid].banReason = ''
+        dbUsers[jid].bannedBy = null
       }
+    }
+    await conn.sendMessage(m.chat, {
+      text: "✨ *Lista negra completamente vaciada.*"
     })
-
-    await conn.sendMessage(m.chat, { text: "✨ *Lista negra vaciada.*" })
   }
 
   if (global.db.write) await global.db.write()
 }
 
-// =====================================================
-// 🚨 AUTO-KICK AL HABLAR
-// =====================================================
+// =============================
+// 🚨 AUTO-KICK CUANDO HABLA
+// =============================
 handler.all = async function (m) {
   if (!m.isGroup) return
   const db = global.db.data.users
 
+  // Obtener JID real del mensaje
   const sender = normalizeJid(m.sender || m.key?.participant)
   if (!sender) return
   if (!db[sender]?.banned) return
 
+  // Revisar si realmente está en el grupo
+  let inGroup = false
   try {
     const meta = await this.groupMetadata(m.chat)
-    const inside = meta.participants.some(p => normalizeJid(p.id) === sender)
-    if (!inside) return
+    inGroup = meta.participants.some(p => normalizeJid(p.id) === sender)
   } catch { return }
 
+  if (!inGroup) return
+
   const reason = db[sender].banReason || 'No especificado'
-
-  try {
-    await this.groupParticipantsUpdate(m.chat, [sender], 'remove')
-  } catch {}
-
-  await sleep(120)
-
+  await this.groupParticipantsUpdate(m.chat, [sender], 'remove')
+  await sleep(250)
   await this.sendMessage(m.chat, {
-    text: `🚫 *@${sender.split('@')[0]}* fue expulsado por hablar.\n📛 Motivo: ${reason}`,
+    text: `🚫 *@${sender.split('@')[0]}* fue eliminado por enviar un mensaje.\n📝 Motivo: ${reason}`,
     mentions: [sender]
   })
 }
 
-// =====================================================
-// 🚨 AUTO-KICK AL ENTRAR **VERSIÓN SANA**
-// Detecta nuevos miembros sin spamear ni duplicar expulsiones
-// =====================================================
+// =============================
+// 🚨 AUTO-KICK CUANDO ENTRA
+// =============================
 handler.before = async function (m) {
-  if (!m.isGroup) return
-  if (![27, 28, 29, 31, 32].includes(m.messageStubType)) return
-
+  if (![27, 31].includes(m.messageStubType)) return
   const db = global.db.data.users
-  const gid = m.chat
+  for (const user of m.messageStubParameters || []) {
+    const jid = normalizeJid(user)
+    if (!db[jid]?.banned) continue
 
-  try {
-    // antes
-    const before = (await this.groupMetadata(gid)).participants.map(p => normalizeJid(p.id))
-    await sleep(350)
-    // después
-    const after = (await this.groupMetadata(gid)).participants.map(p => normalizeJid(p.id))
+    // Revisar si realmente está en el grupo
+    let inGroup = false
+    try {
+      const meta = await this.groupMetadata(m.chat)
+      inGroup = meta.participants.some(p => normalizeJid(p.id) === jid)
+    } catch { continue }
 
-    // nuevos
-    const nuevos = after.filter(j => !before.includes(j))
-    if (!nuevos.length) return
+    if (!inGroup) continue
 
-    for (const jid of nuevos) {
-      if (!db[jid]?.banned) continue
-
-      const reason = db[jid].banReason || 'No especificado'
-
-      try {
-        await this.groupParticipantsUpdate(gid, [jid], 'remove')
-      } catch {}
-
-      await sleep(120)
-
-      await this.sendMessage(gid, {
-        text: `🚫 *@${jid.split('@')[0]}* fue expulsado al entrar.\n📛 Motivo: ${reason}`,
-        mentions: [jid]
-      })
-    }
-  } catch {}
+    const reason = db[jid].banReason || 'No especificado'
+    await sleep(400)
+    await this.groupParticipantsUpdate(m.chat, [jid], 'remove')
+    await sleep(200)
+    await this.sendMessage(m.chat, {
+      text: `🚫 *@${jid.split('@')[0]}* fue eliminado al unirse.\n📝 Motivo: ${reason}`,
+      mentions: [jid]
+    })
+  }
 }
 
 handler.help = ['addn', 'remn', 'clrn', 'listn']
