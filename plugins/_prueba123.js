@@ -1,13 +1,17 @@
 const handler = async (m, { conn, text, command }) => {
     if (!m.isGroup) return conn.reply(m.chat, '❌ Este comando solo funciona en grupos.', m)
 
-    // Obtener administradores del grupo
+    // Obtener administradores del grupo de manera segura
     const metadata = await conn.groupMetadata(m.chat)
     const participants = metadata.participants
-    const admins = participants.filter(p => p.admin || p.admin === 'superadmin').map(p => p.id)
 
-    const botAdmin = admins.includes(conn.user.jid)
-    const isAdmin = admins.includes(m.sender)
+    function isAdminJid(jid) {
+        const p = participants.find(p => p.id === jid || p.jid === jid)
+        return p && (p.admin === 'admin' || p.admin === 'superadmin')
+    }
+
+    const isAdmin = isAdminJid(m.sender)
+    const botAdmin = isAdminJid(conn.user.jid)
 
     if (!isAdmin) return conn.reply(m.chat, '❌ Debes ser admin para usar este comando.', m)
     if (!botAdmin) return conn.reply(m.chat, '❌ El bot debe ser admin para ejecutar esta acción.', m)
@@ -33,6 +37,7 @@ const handler = async (m, { conn, text, command }) => {
     if (!global.db.data.users[who]) global.db.data.users[who] = { inGroup: {} }
     const userData = global.db.data.users[who]
 
+    // Determinar si es mute o unmute
     const mute = ["silenciar", "mute", "silencio", "hacesilencio"].includes(command)
 
     // Actualizar estado mute en el grupo
