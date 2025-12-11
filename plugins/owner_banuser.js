@@ -1,8 +1,6 @@
-// 📂 plugins/propietario-banuser.js — FELI 2025 FINAL BLOQUEO REAL
-// Ban global + unban + listado + bloqueo automático
-// TODAS las menciones usan: @${jid.split("@")[0]}
+// 📂 plugins/propietario-banuser.js — FELI 2025 BLOQUEO TOTAL
+// Ban global + unban + listado + bloqueo real de todos los comandos
 
-// ================= UTILIDADES =================
 function normalizeJid(jid = '') {
   if (!jid) return null;
   jid = jid.toString().trim().replace(/^\+/, '');
@@ -14,7 +12,6 @@ function normalizeJid(jid = '') {
   return cleaned + '@s.whatsapp.net';
 }
 
-// Obtener un usuario REAL (mención, cita o texto)
 function getRealUser(m, text) {
   let user = m?.mentionedJid?.[0] || m?.quoted?.sender;
   if (!user && text) user = normalizeJid(text);
@@ -25,34 +22,16 @@ function getRealUser(m, text) {
   return user;
 }
 
-// ================= DUEÑOS =================
 const OWNERS = ['59896026646@s.whatsapp.net','59898719147@s.whatsapp.net'];
 
-// ================= DETECTOR GLOBAL =================
-// BLOQUEO REAL de todos los comandos si está baneado
-export async function before(m) {
+// ================= BLOQUEO TOTAL =================
+let handler = async (m, { conn, command, text }) => {
   global.db.data = global.db.data || {};
   global.db.data.banned = global.db.data.banned || [];
 
-  if (OWNERS.includes(m.sender)) return;
-
-  if (global.db.data.banned.includes(m.sender)) {
-    // 🔥 BLOQUEO REAL: no puede usar NINGÚN comando
-    if (m.text && m.text.startsWith('.')) {
-      await m.reply('🚫 *No puedes usar el bot porque estás baneado.*');
-      return true;
-    }
-  }
-}
-
-// ================= HANDLER PRINCIPAL =================
-let handler = async (m, { conn, text, command }) => {
   const isBan = command === 'banuser';
   const isUnban = command === 'unbanuser';
   const isList = command === 'listban';
-
-  global.db.data = global.db.data || {};
-  global.db.data.banned = global.db.data.banned || [];
 
   // ===== SOLO DUEÑOS =====
   if (!OWNERS.includes(m.sender))
@@ -81,7 +60,7 @@ let handler = async (m, { conn, text, command }) => {
 
     global.db.data.banned.push(who);
     return conn.sendMessage(m.chat, {
-      text: `🚫 *Usuario baneado globalmente*\n\n👤 *Usuario:* @${who.split("@")[0]}\n🔒 No podrá usar *ningún* comando del bot.`,
+      text: `🚫 *Usuario baneado globalmente*\n\n👤 @${who.split("@")[0]}\n🔒 No podrá usar ningún comando del bot.`,
       mentions: [who]
     });
   }
@@ -93,15 +72,33 @@ let handler = async (m, { conn, text, command }) => {
 
     global.db.data.banned = global.db.data.banned.filter(v => v !== who);
     return conn.sendMessage(m.chat, {
-      text: `✅ *Usuario desbaneado*\n\n👤 *Usuario:* @${who.split("@")[0]}\n🔓 Ya puede usar el bot normalmente.`,
+      text: `✅ *Usuario desbaneado*\n\n👤 @${who.split("@")[0]}\n🔓 Ya puede usar el bot normalmente.`,
       mentions: [who]
     });
   }
 };
 
+// ================= DETECTOR GLOBAL REAL =================
+handler.before = async function(m) {
+  global.db.data = global.db.data || {};
+  global.db.data.banned = global.db.data.banned || [];
+
+  if (OWNERS.includes(m.sender)) return;
+
+  if (global.db.data.banned.includes(m.sender)) {
+    if (m.text && m.text.startsWith('.')) {
+      await m.reply('🚫 *No puedes usar el bot porque estás baneado.*');
+      return true; // 🔥 Bloqueo real de cualquier comando
+    }
+  }
+}
+
 handler.help = ['banuser', 'unbanuser', 'listban'];
 handler.tags = ['owner'];
 handler.command = ['banuser', 'unbanuser', 'listban'];
 handler.rowner = true;
+
+// 🔥 Esto hace que el loader aplique before a todos los mensajes
+handler.all = true;
 
 export default handler;
