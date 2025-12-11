@@ -1,6 +1,6 @@
 // 📂 plugins/propietario-banuser.js — FELI 2025 FINAL
 // Ban global + desban + listado + bloqueo automático
-// TODAS las menciones usan: ${who.split("@")[0]}
+// TODAS las menciones usan: @${jid.split("@")[0]}
 
 // ================= UTILIDADES =================
 function normalizeJid(jid = '') {
@@ -55,8 +55,12 @@ let handler = async (m, { conn, text, command }) => {
     if (!list.length) return m.reply('📄 *Lista de baneados vacía.*');
 
     let msg = '🚫 *USUARIOS BANEADOS GLOBALMENTE*\n\n';
-    msg += list.map((u, i) => `${i + 1}. wa.me/${u.split('@')[0]}`).join('\n');
-    return m.reply(msg);
+    msg += list.map((u, i) => `${i + 1}. @${u.split('@')[0]}`).join('\n');
+
+    return conn.sendMessage(m.chat, {
+      text: msg,
+      mentions: list
+    });
   }
 
   // ===== OBTENER USUARIO =====
