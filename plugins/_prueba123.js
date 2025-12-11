@@ -1,5 +1,3 @@
-import { getUser, updateUser } from '../databaseFunctions.js'
-
 const handler = async (m, { conn, text, command }) => {
     if (!m.isGroup) return conn.reply(m.chat, '❌ Este comando solo funciona en grupos.', m)
 
@@ -31,20 +29,17 @@ const handler = async (m, { conn, text, command }) => {
     const ownerJids = globalThis.owners.map(o => o + "@s.whatsapp.net")
     if (ownerJids.includes(who)) return m.react("❌")
 
-    const whoData = getUser(who)
-    if (!whoData) return conn.reply(m.chat, '❌ No hay datos de este usuario. Puede que aún no haya enviado mensajes.', m)
+    // Obtener datos del usuario desde la base de datos global
+    if (!global.db.data.users[who]) global.db.data.users[who] = { inGroup: {} }
+    const userData = global.db.data.users[who]
 
     const mute = ["silenciar", "mute", "silencio", "hacesilencio"].includes(command)
 
-    const updateInGroup = {
-        ...whoData.inGroup,
-        [m.chat]: {
-            ...whoData.inGroup[m.chat],
-            mute: mute,
-        },
+    // Actualizar estado mute en el grupo
+    userData.inGroup[m.chat] = {
+        ...userData.inGroup[m.chat],
+        mute: mute,
     }
-
-    updateUser(who, { inGroup: JSON.stringify(updateInGroup) })
 
     await m.react("☑️")
     conn.reply(m.chat, `✅ Usuario ${await conn.getName(who)} ha sido ${mute ? "silenciado" : "desilenciado"} en este grupo.`, m)
