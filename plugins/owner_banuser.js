@@ -1,19 +1,29 @@
-// 📂 plugins/propietario-banuser.js — FELI 2025 FINAL
+// 📂 plugins/propietario-banuser.js — FELI 2025 FINAL ARREGLADO
 // Ban global + desban + listado + bloqueo automático
 // TODAS las menciones usan: @${jid.split("@")[0]}
 
 // ================= UTILIDADES =================
 function normalizeJid(jid = '') {
   if (!jid) return null;
-  jid = jid.toString().trim();
+  jid = jid.toString().trim().replace(/^\+/, '');
+  if (jid.endsWith('@c.us') || jid.endsWith('@s.whatsapp.net'))
+    return jid.replace(/@c.us$/, '@s.whatsapp.net');
+  if (jid.includes('@')) return jid;
+  const cleaned = jid.replace(/[^0-9]/g, '');
+  if (!cleaned) return null;
+  return cleaned + '@s.whatsapp.net';
+}
 
-  // Si viene +598..., 598..., etc.
-  jid = jid.replace(/[^0-9]/g, '');
-
-  if (/^\d{7,15}$/.test(jid)) jid = jid + '@s.whatsapp.net';
-
-  jid = jid.replace(/@c\.us$/, '@s.whatsapp.net');
-  return jid;
+// Obtener un usuario REAL (mención, cita o texto)
+function getRealUser(m, text) {
+  let user = m?.mentionedJid?.[0] || m?.quoted?.sender;
+  if (!user && text) user = normalizeJid(text);
+  user = normalizeJid(user);
+  if (!user) return null;
+  // Evitar basura
+  const digits = user.replace(/[^0-9]/g, '');
+  if (!digits || digits.length < 6) return null;
+  return user;
 }
 
 const OWNERS = [
@@ -22,7 +32,6 @@ const OWNERS = [
 ];
 
 // ================= DETECTOR AUTOMÁTICO =================
-// Bloquea todos los comandos si el user está baneado
 export async function before(m) {
   global.db.data = global.db.data || {};
   global.db.data.banned = global.db.data.banned || [];
@@ -51,36 +60,19 @@ let handler = async (m, { conn, text, command }) => {
 
   // ===== LISTADO =====
   if (isList) {
-    let list = global.db.data.banned;
+    const list = global.db.data.banned;
     if (!list.length) return m.reply('📄 *Lista de baneados vacía.*');
 
-    let msg = '🚫 *USUARIOS BANEADOS GLOBALMENTE*\n\n';
-    msg += list.map((u, i) => `${i + 1}. @${u.split('@')[0]}`).join('\n');
+    const msg = '🚫 *USUARIOS BANEADOS GLOBALMENTE*\n\n' +
+      list.map((u, i) => `${i + 1}. @${u.split('@')[0]}`).join('\n');
 
-    return conn.sendMessage(m.chat, {
-      text: msg,
-      mentions: list
-    });
+    return conn.sendMessage(m.chat, { text: msg, mentions: list });
   }
 
   // ===== OBTENER USUARIO =====
-  let who;
-
-  if (m.quoted) {
-    who = m.quoted.sender;
-  } else if (m.mentionedJid?.length) {
-    who = m.mentionedJid[0];
-  } else if (text) {
-    who = normalizeJid(text);
-  }
-
-  who = normalizeJid(who);
-
-  if (!who)
-    return m.reply('⚠️ *Debes mencionar, citar o escribir el número del usuario.*');
-
-  if (OWNERS.includes(who))
-    return m.reply('❌ *No puedo banear ni desbanear a un dueño.*');
+  const who = getRealUser(m, text);
+  if (!who) return m.reply('⚠️ *Debes mencionar, citar o escribir el número del usuario real.*');
+  if (OWNERS.includes(who)) return m.reply('❌ *No puedo banear ni desbanear a un dueño.*');
 
   // ===== BAN =====
   if (isBan) {
@@ -88,18 +80,10 @@ let handler = async (m, { conn, text, command }) => {
       return m.reply('⚠️ *Ese usuario ya está baneado.*');
 
     global.db.data.banned.push(who);
-
-    return conn.sendMessage(
-      m.chat,
-      {
-        text:
-`🚫 *Usuario baneado globalmente*
-
-👤 *Usuario:* @${who.split("@")[0]}
-🔒 No podrá usar *ningún* comando del bot.`,
-        mentions: [who]
-      }
-    );
+    return conn.sendMessage(m.chat, {
+      text: `🚫 *Usuario baneado globalmente*\n\n👤 *Usuario:* @${who.split("@")[0]}\n🔒 No podrá usar *ningún* comando del bot.`,
+      mentions: [who]
+    });
   }
 
   // ===== DESBAN =====
@@ -108,18 +92,10 @@ let handler = async (m, { conn, text, command }) => {
       return m.reply('⚠️ *Ese usuario no está baneado.*');
 
     global.db.data.banned = global.db.data.banned.filter(v => v !== who);
-
-    return conn.sendMessage(
-      m.chat,
-      {
-        text:
-`✅ *Usuario desbaneado*
-
-👤 *Usuario:* @${who.split("@")[0]}
-🔓 Ya puede usar el bot normalmente.`,
-        mentions: [who]
-      }
-    );
+    return conn.sendMessage(m.chat, {
+      text: `✅ *Usuario desbaneado*\n\n👤 *Usuario:* @${who.split("@")[0]}\n🔓 Ya puede usar el bot normalmente.`,
+      mentions: [who]
+    });
   }
 };
 
