@@ -1,16 +1,13 @@
-const ownerNumbers = ['59898719147@s.whatsapp.net', '59896026646@s.whatsapp.net']; // Dueños del bot
-
 const handler = async (m, { conn, participants }) => {
   if (!m.isGroup) return m.reply('❗ Este comando solo funciona en grupos.');
 
   const sender = m.sender;
-  const isOwner = ownerNumbers.includes(sender);
   const senderData = participants.find(p => p.id === sender);
   const isAdmin = senderData?.admin;
 
-  // 🚫 Solo dueños o administradores pueden usar el comando
-  if (!isOwner && !isAdmin) {
-    return m.reply('🚫 Solo los administradores o los dueños pueden consultar las reglas del grupo.');
+  // 🚫 Solo administradores pueden usar el comando
+  if (!isAdmin) {
+    return m.reply('🚫 Solo los administradores pueden consultar las reglas del grupo.');
   }
 
   try {
@@ -42,4 +39,4 @@ handler.tags = ['group'];
 handler.help = ['reglas'];
 handler.group = true;
 
-export default handler; 
+export default handler;
