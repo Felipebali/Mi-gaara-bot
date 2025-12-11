@@ -12,15 +12,20 @@ export default {
       // =========================
       if (command === "vln") {
         const entries = getBlacklist();
-        if (entries.length === 0) return await conn.sendText(remoteJid, "📋 *No hay usuarios en lista negra.*", m);
+        if (!entries || entries.length === 0) {
+          return await conn.sendText(remoteJid, "📋 *No hay usuarios en lista negra.*", m);
+        }
 
         let msg = `🚫 *LISTA NEGRA* (${entries.length} usuario${entries.length > 1 ? 's' : ''})\n\n`;
+        const jids = [];
+
         entries.forEach((entry, i) => {
           const num = entry.jid.split("@")[0];
           const fecha = new Date(entry.addedAt).toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' });
           msg += `${i + 1}. @${num}\n   📝 Razón: ${entry.reason}\n   📅 Desde: ${fecha}\n\n`;
+          jids.push(entry.jid);
         });
-        const jids = entries.map(e => e.jid);
+
         return await conn.sendMessage(remoteJid, { text: msg, mentions: jids }, { quoted: m });
       }
 
@@ -28,9 +33,9 @@ export default {
       // LN / UNLN / LN2
       // =========================
       let who, reason;
-
-      // LIMPIAR TEXTO
       let cleanText = text || "";
+
+      // Limpiar prefijo
       if (command === "ln") cleanText = cleanText.replace(/^\.ln\s+/, '').trim();
       else cleanText = cleanText.replace(/^\.(unln|ln2)\s+/, '').trim();
 
@@ -41,7 +46,6 @@ export default {
         reason = command === "ln" ? cleanText.replace(phoneMatches[0], "").trim() : "";
         who = cleanNumber + "@s.whatsapp.net";
 
-        // Intentar buscar en grupo
         if (isGroup) {
           try {
             const groupMetadata = await conn.groupMetadata(remoteJid);
@@ -96,16 +100,18 @@ export default {
         }
 
         addToBlacklist(who, reason, realPhoneNumber);
-        const actionMsg = exists ? `⚠️ *Usuario ya estaba en lista negra*\n✅ Razón actualizada a: ${reason}`
-                                 : `🚫 *Usuario agregado a lista negra*\n👤 Usuario: @${whoNumber}\n📝 Razón: ${reason}`;
+
+        const actionMsg = exists 
+          ? `⚠️ *Usuario ya estaba en lista negra*\n✅ Razón actualizada a: ${reason}`
+          : `🚫 *Usuario agregado a lista negra*\n👤 Usuario: @${whoNumber}\n📝 Razón: ${reason}`;
 
         await conn.sendMessage(remoteJid, { react: { text: '✅', key: m.key } });
         await conn.sendText(remoteJid, actionMsg, m, { mentions: [who] });
 
-        // Expulsar del grupo si aplica
         if (isGroup) {
           try { await conn.groupParticipantsUpdate(remoteJid, [who], "remove"); } catch {}
         }
+
       } else {
         // UNLN / LN2
         const allBlacklist = global.db.blacklist || {};
@@ -132,4 +138,4 @@ export default {
       await conn.sendText(remoteJid, '⚠️ *Error al procesar la lista negra.*', m);
     }
   }
-}; 
+};
