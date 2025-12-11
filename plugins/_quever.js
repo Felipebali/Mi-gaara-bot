@@ -23,9 +23,8 @@ let handler = async (m, { conn, command, usedPrefix, text }) => {
 
   let genero = text.toLowerCase().trim();
 
-  if (genero === "random") {
+  if (genero === "random")
     genero = generosDisponibles[Math.floor(Math.random() * generosDisponibles.length)];
-  }
 
   if (!generosDisponibles.includes(genero)) {
     return conn.sendMessage(m.chat, { text: "❗ *Categoría no válida.*" }, { quoted: m });
@@ -55,6 +54,11 @@ let handler = async (m, { conn, command, usedPrefix, text }) => {
   const reco = data.recommendation;
   const poster = `https://image.tmdb.org/t/p/w500${reco.urlImage}`;
 
+  // FIX: sinopsis garantizada
+  const sinopsis = reco.overview && reco.overview.trim().length > 0
+    ? reco.overview
+    : "⚠️ Sinopsis no disponible para este título.";
+
   let caption = 
 `🍿 *${reco.name}* 🍿
 
@@ -62,7 +66,7 @@ let handler = async (m, { conn, command, usedPrefix, text }) => {
 ⭐ *Puntuación:* ${reco.vote}
 📆 *Estreno:* ${reco.date}
 
-📝 *Sinopsis:* ${reco.overview}`;
+📝 *Sinopsis:* ${sinopsis}`;
 
   if (esSerie) {
     caption =
@@ -75,7 +79,7 @@ let handler = async (m, { conn, command, usedPrefix, text }) => {
 📺 *Episodios:* ${reco.number_of_episodes}
 📺 *Temporadas:* ${reco.number_of_seasons}
 
-📝 *Sinopsis:* ${reco.overview}`;
+📝 *Sinopsis:* ${sinopsis}`;
   }
 
   await conn.sendFile(m.chat, poster, "poster.jpg", caption, m);
