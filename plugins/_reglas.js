@@ -4,17 +4,18 @@ const handler = async (m, { conn, participants }) => {
   const sender = m.sender;
   const senderData = participants.find(p => p.id === sender);
 
-  // ✅ Comprobamos si es admin o superadmin
+  // ✅ Solo administradores pueden usarlo
   const isAdmin = senderData?.admin === 'admin' || senderData?.admin === 'superadmin';
-
   if (!isAdmin) {
     return m.reply('🚫 Solo los administradores pueden consultar las reglas del grupo.');
   }
 
   try {
+    // Obtener metadatos del grupo
     const groupMetadata = await conn.groupMetadata(m.chat);
     const descripcion = groupMetadata.desc || '❌ Este grupo no tiene reglas establecidas.';
 
+    // Frases militares aleatorias
     const frases = [
       '🪖 Todo soldado debe obedecer las reglas sin cuestionar.',
       '⚔️ La disciplina es la base del orden.',
@@ -36,7 +37,6 @@ const handler = async (m, { conn, participants }) => {
 handler.command = ['reglas'];
 handler.tags = ['group'];
 handler.help = ['reglas'];
-handler.admin = true;
 handler.group = true;
 
 export default handler;
