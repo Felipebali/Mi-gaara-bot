@@ -1,21 +1,22 @@
-const handler = async (m, { conn, participants }) => {
-  if (!m.isGroup) return m.reply('❗ Este comando solo funciona en grupos.');
+// 📂 plugins/reglas.js — FelixCat-Bot 🐾
+// Muestra las reglas del grupo — solo administradores
 
-  const sender = m.sender;
-  const senderData = participants.find(p => p.id === sender);
+let handler = async function (m, { conn, groupMetadata, isAdmin }) {
+  if (!m.isGroup) return m.reply('❌ Este comando solo funciona en grupos.');
 
   // ✅ Solo administradores pueden usarlo
-  const isAdmin = senderData?.admin === 'admin' || senderData?.admin === 'superadmin';
   if (!isAdmin) {
-    return m.reply('🚫 Solo los administradores pueden consultar las reglas del grupo.');
+    return await conn.sendMessage(m.chat, { 
+      text: '🚫 Solo los administradores pueden consultar las reglas del grupo.',
+      mentions: [m.sender]
+    });
   }
 
   try {
-    // Obtener metadatos del grupo
-    const groupMetadata = await conn.groupMetadata(m.chat);
-    const descripcion = groupMetadata.desc || '❌ Este grupo no tiene reglas establecidas.';
+    // Obtener descripción / reglas del grupo
+    const descripcion = groupMetadata?.desc || '❌ Este grupo no tiene reglas establecidas.';
 
-    // Frases militares aleatorias
+    // Frases aleatorias tipo militar
     const frases = [
       '🪖 Todo soldado debe obedecer las reglas sin cuestionar.',
       '⚔️ La disciplina es la base del orden.',
@@ -25,18 +26,30 @@ const handler = async (m, { conn, participants }) => {
     ];
     const fraseAleatoria = frases[Math.floor(Math.random() * frases.length)];
 
-    const texto = `🎖️ *REGLAMENTO OFICIAL DEL GRUPO*\n\n${fraseAleatoria}\n\n📋 *REGLAS:*\n${descripcion}\n\n⚠️ *El incumplimiento será castigado con advertencias o fusilamiento digital.*`;
+    // Mensaje final
+    const texto = [
+      '🎖️ *REGLAMENTO OFICIAL DEL GRUPO*',
+      '',
+      fraseAleatoria,
+      '',
+      `📋 *REGLAS:*\n${descripcion}`,
+      '',
+      '⚠️ *El incumplimiento será castigado con advertencias o fusilamiento digital.*'
+    ].join('\n');
 
     await conn.sendMessage(m.chat, { text: texto });
+
   } catch (err) {
     console.error(err);
-    m.reply('⚠️ No pude obtener las reglas. Asegúrate de que el bot sea administrador del grupo.');
+    await conn.sendMessage(m.chat, { text: '⚠️ No pude obtener las reglas. Asegúrate de que el bot sea administrador del grupo.' });
   }
 };
 
+// Comandos
 handler.command = ['reglas'];
-handler.tags = ['group'];
-handler.help = ['reglas'];
+handler.help = ['.reglas (solo admins)'];
+handler.tags = ['grupos'];
 handler.group = true;
+handler.admin = true;
 
 export default handler;
