@@ -60,7 +60,6 @@ const handler = async (m, { conn, command, text }) => {
       try {
         const reason = dbUsers[quotedJid].banReason || 'No especificado'
 
-        // verificar si está en el grupo
         const metadata = await conn.groupMetadata(m.chat)
         const inGroup = metadata.participants.some(p => normalizeJid(p.id) === quotedJid)
 
@@ -76,7 +75,8 @@ const handler = async (m, { conn, command, text }) => {
     }
   }
 
-  const reactions = { addn: '✅', remn: '☢️', clrn: '🧹', listn: '📜' }
+  // Reacciones SOLO en addn y remn
+  const reactions = { addn: '✅', remn: '☢️' }
   if (reactions[command])
     await conn.sendMessage(m.chat, { react: { text: reactions[command], key: m.key } })
 
@@ -115,7 +115,6 @@ const handler = async (m, { conn, command, text }) => {
 
   if (userJid && !dbUsers[userJid]) dbUsers[userJid] = {}
 
-  // BLOQUEAR agregar por +598 o 598
   const attemptedRawNumber = digitsOnly(text || '')
   const hasForbidden598 = attemptedRawNumber && (attemptedRawNumber.startsWith('598') || text?.includes('+598'))
 
@@ -131,7 +130,6 @@ const handler = async (m, { conn, command, text }) => {
 
   if (command === 'addn') {
 
-    // bloqueo total de agregar escribiendo número directo
     const addedByNumberInput =
       !!(userJid && numberDigits && (!m.mentionedJid || m.mentionedJid.length === 0) && !m.quoted)
 
@@ -143,12 +141,9 @@ const handler = async (m, { conn, command, text }) => {
     dbUsers[userJid].banReason = reason
     dbUsers[userJid].bannedBy = m.sender
 
-    await conn.sendMessage(m.chat, {
-      text: `${ok} *Agregado a LISTA NEGRA*\n${SEP}\n@${userJid.split('@')[0]} agregado.\n📝 Motivo: ${reason}\n${SEP}`,
-      mentions: [userJid]
-    })
+    // ❌ AVISO DE "AGREGADO" ELIMINADO
 
-    // FIX: EXPULSIÓN INMEDIATA SOLO SI REALMENTE ESTÁ EN EL GRUPO
+    // Expulsión inmediata si está en el grupo
     if (m.isGroup) {
       try {
         const metadata = await conn.groupMetadata(m.chat)
@@ -205,10 +200,7 @@ const handler = async (m, { conn, command, text }) => {
     dbUsers[userJid].banReason = ''
     dbUsers[userJid].bannedBy = null
 
-    await conn.sendMessage(m.chat, {
-      text: `${ok} *Removido de lista negra*\n${SEP}\n@${userJid.split('@')[0]} removido.`,
-      mentions: [userJid]
-    })
+    // ❌ AVISO DE "REMOVIDO" ELIMINADO
   }
 
   // =====================================================
@@ -264,7 +256,6 @@ handler.all = async function (m) {
     if (sender && db[sender]?.banned) {
       const reason = db[sender].banReason || 'No especificado'
 
-      // verificar si está en el grupo
       const metadata = await this.groupMetadata(m.chat)
       const inGroup = metadata.participants.some(p => normalizeJid(p.id) === sender)
 
