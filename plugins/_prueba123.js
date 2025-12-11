@@ -1,7 +1,20 @@
-const handler = async (m, { conn, text, usedPrefix, command }) => {
-    if (!m.isGroup) return conn.reply(m.chat, '❌ Este comando solo funciona en grupos.', m)
-    if (!m.isAdmin && !m.isBotAdmin) return conn.reply(m.chat, '❌ Debes ser admin para usar este comando.', m)
+import { getUser, updateUser } from '../databaseFunctions.js'
 
+const handler = async (m, { conn, text, command }) => {
+    if (!m.isGroup) return conn.reply(m.chat, '❌ Este comando solo funciona en grupos.', m)
+
+    // Obtener administradores del grupo
+    const metadata = await conn.groupMetadata(m.chat)
+    const participants = metadata.participants
+    const admins = participants.filter(p => p.admin || p.admin === 'superadmin').map(p => p.id)
+
+    const botAdmin = admins.includes(conn.user.jid)
+    const isAdmin = admins.includes(m.sender)
+
+    if (!isAdmin) return conn.reply(m.chat, '❌ Debes ser admin para usar este comando.', m)
+    if (!botAdmin) return conn.reply(m.chat, '❌ El bot debe ser admin para ejecutar esta acción.', m)
+
+    // Determinar quién silenciar/desilenciar
     let who
     const numberRegex = /@[0-9]+/g
     const numberMatches = text ? text.match(numberRegex) : null
@@ -14,17 +27,14 @@ const handler = async (m, { conn, text, usedPrefix, command }) => {
     if (!who) return conn.reply(m.chat, `❌ Por favor, menciona, cita o escribe el número del usuario a ${command}`, m)
     if (who === conn.user.jid) return conn.reply(m.chat, `❌ No puedes ${command} al bot.`, m)
 
-    // no afectar a owners del bot
+    // No afectar a owners del bot
     const ownerJids = globalThis.owners.map(o => o + "@s.whatsapp.net")
     if (ownerJids.includes(who)) return m.react("❌")
 
-    // obtener datos del usuario
-    const { getUser, updateUser } = await import('../databaseFunctions.js')
     const whoData = getUser(who)
     if (!whoData) return conn.reply(m.chat, '❌ No hay datos de este usuario. Puede que aún no haya enviado mensajes.', m)
 
-    // determinar mute/unmute
-    const mute = (command === "silenciar" || command === "mute" || command === "silencio" || command === "hacesilencio")
+    const mute = ["silenciar", "mute", "silencio", "hacesilencio"].includes(command)
 
     const updateInGroup = {
         ...whoData.inGroup,
@@ -34,7 +44,6 @@ const handler = async (m, { conn, text, usedPrefix, command }) => {
         },
     }
 
-    // actualizar datos de usuario
     updateUser(who, { inGroup: JSON.stringify(updateInGroup) })
 
     await m.react("☑️")
