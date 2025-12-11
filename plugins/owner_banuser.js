@@ -1,5 +1,5 @@
-// 📂 plugins/propietario-banuser.js — FELI 2025 FINAL ARREGLADO
-// Ban global + desban + listado + bloqueo automático
+// 📂 plugins/propietario-banuser.js — FELI 2025 FINAL ARREGLADO v2
+// Ban global + unban + listado + bloqueo automático
 // TODAS las menciones usan: @${jid.split("@")[0]}
 
 // ================= UTILIDADES =================
@@ -20,7 +20,6 @@ function getRealUser(m, text) {
   if (!user && text) user = normalizeJid(text);
   user = normalizeJid(user);
   if (!user) return null;
-  // Evitar basura
   const digits = user.replace(/[^0-9]/g, '');
   if (!digits || digits.length < 6) return null;
   return user;
@@ -32,6 +31,7 @@ const OWNERS = [
 ];
 
 // ================= DETECTOR AUTOMÁTICO =================
+// Bloquea TODOS los comandos si el usuario está baneado
 export async function before(m) {
   global.db.data = global.db.data || {};
   global.db.data.banned = global.db.data.banned || [];
@@ -39,16 +39,14 @@ export async function before(m) {
   if (OWNERS.includes(m.sender)) return;
 
   if (global.db.data.banned.includes(m.sender)) {
-    if (m.text && m.text.startsWith('.')) {
-      return m.reply('🚫 *No puedes usar el bot porque estás baneado.*');
-    }
+    return m.reply('🚫 *No puedes usar el bot porque estás baneado.*');
   }
 }
 
 // ================= HANDLER PRINCIPAL =================
 let handler = async (m, { conn, text, command }) => {
   const isBan = command === 'banuser';
-  const isUnban = command === 'desbanuser';
+  const isUnban = command === 'unbanuser';
   const isList = command === 'listban';
 
   global.db.data = global.db.data || {};
@@ -86,7 +84,7 @@ let handler = async (m, { conn, text, command }) => {
     });
   }
 
-  // ===== DESBAN =====
+  // ===== UNBAN =====
   if (isUnban) {
     if (!global.db.data.banned.includes(who))
       return m.reply('⚠️ *Ese usuario no está baneado.*');
@@ -99,9 +97,9 @@ let handler = async (m, { conn, text, command }) => {
   }
 };
 
-handler.help = ['banuser', 'desbanuser', 'listban'];
+handler.help = ['banuser', 'unbanuser', 'listban'];
 handler.tags = ['owner'];
-handler.command = ['banuser', 'desbanuser', 'listban'];
+handler.command = ['banuser', 'unbanuser', 'listban'];
 handler.rowner = true;
 
 export default handler;
