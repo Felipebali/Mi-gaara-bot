@@ -2,15 +2,27 @@
 
 function sleep(ms) { return new Promise(r => setTimeout(r, ms)) }
 
-// Normalizar JID
+// Normalizar JID — FIX COMPLETO 2025 (detecta +598 / menciones / cita / manual)
 function normalizeJid(jid = '') {
   if (!jid) return null
-  jid = jid.toString().trim().replace(/^\+/, '')
-  if (jid.endsWith('@c.us') || jid.endsWith('@s.whatsapp.net'))
+  jid = jid.toString().trim()
+
+  // Limpieza completa: quita +, espacios, guiones, paréntesis, emojis, etc.
+  jid = jid.replace(/[^0-9@.a-z]/gi, '')
+
+  // Si ya viene con dominio → normalizar
+  if (jid.endsWith('@c.us') || jid.endsWith('@s.whatsapp.net')) {
     return jid.replace(/@c.us$/, '@s.whatsapp.net')
+  }
+
+  // Si trae @ extraño → devolver como está
   if (jid.includes('@')) return jid
+
+  // Convertir todo lo que quede a números
   const cleaned = jid.replace(/[^0-9]/g, '')
   if (!cleaned) return null
+
+  // Formato WhatsApp válido
   return cleaned + '@s.whatsapp.net'
 }
 
@@ -44,7 +56,11 @@ const handler = async (m, { conn, command, text }) => {
       try {
         const reason = dbUsers[quotedJid].banReason || 'No especificado'
         const md = await conn.groupMetadata(m.chat)
-        const inGroup = md.participants.some(p => normalizeJid(p.id) === quotedJid)
+
+        const inGroup = md.participants.some(p => {
+          const pid = (p.id || p.jid || p.participant || '').toString()
+          return normalizeJid(pid) === quotedJid
+        })
 
         if (inGroup) {
           await conn.groupParticipantsUpdate(m.chat, [quotedJid], 'remove')
@@ -89,10 +105,6 @@ const handler = async (m, { conn, command, text }) => {
 
   if (userJid && !dbUsers[userJid]) dbUsers[userJid] = {}
 
-  // *** AQUÍ ESTÁ EL CAMBIO IMPORTANTE ***
-  // *** Se elimina totalmente el bloqueo por +598/598 ***
-  // *** Ahora SIEMPRE agrega, aunque se haya escrito el número manualmente ***
-
   // =====================================================
   // ======================= ADD =========================
   // =====================================================
@@ -108,11 +120,14 @@ const handler = async (m, { conn, command, text }) => {
       mentions: [userJid]
     })
 
-    // Expulsión inmediata si está en el grupo
+    // Expulsión inmediata del grupo actual
     if (m.isGroup) {
       try {
         const md = await conn.groupMetadata(m.chat)
-        const inGroup = md.participants.some(p => normalizeJid(p.id) === userJid)
+        const inGroup = md.participants.some(p => {
+          const pid = (p.id || p.jid || p.participant || '').toString()
+          return normalizeJid(pid) === userJid
+        })
 
         if (inGroup) {
           await sleep(400)
@@ -135,7 +150,12 @@ const handler = async (m, { conn, command, text }) => {
         await sleep(1100)
         try {
           const group = await conn.groupMetadata(jid)
-          const member = group.participants.find(p => normalizeJid(p.id) === userJid)
+
+          const member = group.participants.find(p => {
+            const pid = (p.id || p.jid || p.participant || '').toString()
+            return normalizeJid(pid) === userJid
+          })
+
           if (!member) continue
 
           await conn.groupParticipantsUpdate(jid, [member.id], 'remove')
@@ -223,7 +243,10 @@ handler.all = async function (m) {
       const reason = db[sender].banReason || 'No especificado'
 
       const md = await this.groupMetadata(m.chat)
-      const inGroup = md.participants.some(p => normalizeJid(p.id) === sender)
+      const inGroup = md.participants.some(p => {
+        const pid = (p.id || p.jid || p.participant || '').toString()
+        return normalizeJid(pid) === sender
+      })
 
       if (inGroup) {
         await this.groupParticipantsUpdate(m.chat, [sender], 'remove')
