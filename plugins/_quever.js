@@ -1,72 +1,88 @@
+import fetch from "node-fetch";
 
-// plugins/_quever.js
-// 🎬 .quever <género>
-// Ej: .quever terror | accion | comedia | drama | romance | ciencia-ficcion
+const generosDisponibles = [
+  "acción","accion","comedia","comedy","aventura","adventure","animación","animacion",
+  "kids","ciencia ficción","ciencia ficcion","sci-fi","misterio","terror","drama",
+  "romance","bélica","belica","crimen","familia","family","suspenso","suspense",
+  "documental","historia","history","horror"
+];
 
-let handler = async (m, { conn, args }) => {
-  if (!args[0]) {
-    return conn.reply(m.chat,
-`🎬 *¿Qué género querés ver?*
-Ejemplos:
-• .quever terror
-• .quever accion
-• .quever comedia
-• .quever drama
-• .quever romance
-• .quever ciencia-ficcion`, m)
+let handler = async (m, { conn, command, usedPrefix, text }) => {
+
+  if (!text) {
+    return await conn.sendMessage(m.chat, { 
+      text: `🍿 *¿Qué género querés ver?*\n\n` +
+            `Ejemplo:\n` +
+            `• ${usedPrefix}${command} acción\n` +
+            `• ${usedPrefix}${command} comedia\n` +
+            `• ${usedPrefix}${command} terror\n\n` +
+            `Usa *random* para elegir uno aleatorio.\n\n` +
+            `🎬 *Géneros disponibles:* \n${generosDisponibles.join(", ")}`
+    }, { quoted: m });
   }
 
-  const genero = args.join(' ').toLowerCase()
+  let genero = text.toLowerCase().trim();
 
+  if (genero === "random") {
+    genero = generosDisponibles[Math.floor(Math.random() * generosDisponibles.length)];
+  }
+
+  if (!generosDisponibles.includes(genero)) {
+    return conn.sendMessage(m.chat, { text: "❗ *Categoría no válida.*" }, { quoted: m });
+  }
+
+  const esSerie = /verserie/i.test(command);
+
+  const endpoint = esSerie
+    ? `https://streaming-recommendation-api.vercel.app/api/serie?genre=${genero}`
+    : `https://streaming-recommendation-api.vercel.app/api/movie?genre=${genero}`;
+
+  await m.react("🍿");
+
+  let data;
   try {
-    await conn.sendMessage(m.chat, { react: { text: '🍿', key: m.key } })
-
-    const url = `https://streaming-recommendation-api.vercel.app/api/movie?genre=${encodeURIComponent(genero)}`
-    const res = await fetch(url)
-    const raw = await res.text()
-
-    // 🛡️ Blindaje por si la API cae
-    let data
-    try {
-      data = JSON.parse(raw)
-    } catch {
-      console.log("Respuesta inválida:", raw)
-      return conn.reply(m.chat, '❌ La API de películas está caída.', m)
-    }
-
-    if (!data.success || !data.recommendation) {
-      return conn.reply(m.chat, `❌ No encontré películas del género *${genero}*`, m)
-    }
-
-    const p = data.recommendation
-
-    let texto = `
-🎬 *RECOMENDACIÓN — ${genero.toUpperCase()}*
-
-🎞️ *Título:* ${p.name}
-📅 *Estreno:* ${p.date}
-⭐ *Puntaje:* ${p.vote}
-🎭 *Géneros:* ${p.genres}
-
-📖 *Sinopsis:*
-${p.overview}
-
-🖼️ *Poster:*
-https://image.tmdb.org/t/p/original${p.urlImage}
-
-🍿 *FelixCat_Bot recomienda cine de verdad*
-`.trim()
-
-    await conn.reply(m.chat, texto, m)
-
+    const res = await fetch(endpoint);
+    data = await res.json();
   } catch (e) {
-    console.error('ERROR .quever:', e)
-    await conn.reply(m.chat, '❌ Error interno al buscar películas.', m)
+    console.error(e);
+    return conn.sendMessage(m.chat, { text: "❗ *Error al conectar con la API.*" }, { quoted: m });
   }
-}
 
-handler.help = ['quever']
-handler.tags = ['entretenimiento']
-handler.command = ['quever']
+  if (!data?.success || !data?.recommendation) {
+    return conn.sendMessage(m.chat, { text: "❗ *No se encontró recomendación.*" }, { quoted: m });
+  }
 
-export default handler
+  const reco = data.recommendation;
+  const poster = `https://image.tmdb.org/t/p/w500${reco.urlImage}`;
+
+  let caption = 
+`🍿 *${reco.name}* 🍿
+
+📌 *Género:* ${reco.genres}
+⭐ *Puntuación:* ${reco.vote}
+📆 *Estreno:* ${reco.date}
+
+📝 *Sinopsis:* ${reco.overview}`;
+
+  if (esSerie) {
+    caption =
+`🍿 *${reco.name}* 🍿
+
+📌 *Género:* ${reco.genres}
+⭐ *Puntuación:* ${reco.vote}
+📆 *Estreno:* ${reco.date}
+
+📺 *Episodios:* ${reco.number_of_episodes}
+📺 *Temporadas:* ${reco.number_of_seasons}
+
+📝 *Sinopsis:* ${reco.overview}`;
+  }
+
+  await conn.sendFile(m.chat, poster, "poster.jpg", caption, m);
+};
+
+handler.help = ["quever", "verserie"];
+handler.tags = ["fun", "movie"];
+handler.command = ["quever", "verserie"];
+
+export default handler;
