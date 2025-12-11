@@ -1,10 +1,13 @@
 import fetch from "node-fetch";
 
-const handler = async (m, { conn, text, command, isOwner, chat }) => {
+const handler = async (m, { conn, text, command, isOwner, chat = {} }) => {
     if (!text) return conn.reply(m.chat, '❌ Debes escribir qué imagen buscar.', m);
 
+    // Definir adultMode seguro
+    const adultMode = chat?.adultMode || false;
+
     // Restricciones para grupos
-    if (!chat.adultMode && m.isGroup && !isOwner) {
+    if (!adultMode && m.isGroup && !isOwner) {
         const prohibited = ["caca","polla","gay","hombres cogiendo","mia malkova","porno","gore","cum","puta","culo","pussy","hentai","pene","coño","asesinato","zoofilia","desnudo","muertos","pornhub","xnxx","xvideos","vagina","sex","xxx","+18","pedofilia","necrofilia"];
         const normalizedText = text.replace(/\s+/g, "").toLowerCase();
         if (prohibited.some(word => normalizedText.includes(word.replace(/\s+/g, "")))) {
@@ -61,4 +64,4 @@ handler.command = ['imagen', 'foto', 'imágen'];
 handler.group = true;
 handler.botAdmin = false;
 
-export default handler; 
+export default handler;
