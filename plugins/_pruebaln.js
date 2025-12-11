@@ -1,8 +1,10 @@
 import fs from 'fs';
 import path from 'path';
-import config from "../config.js";
 
 const dbFile = path.join(process.cwd(), 'blacklist.json');
+
+// Números de los dueños
+const ownerNumbers = ["59898719147", "59896026646"];
 
 // Inicializar archivo si no existe
 if (!fs.existsSync(dbFile)) fs.writeFileSync(dbFile, JSON.stringify({ blacklist: {} }, null, 2));
@@ -101,7 +103,6 @@ export default {
       const whoNumber = who.split('@')[0];
       const botNumber = conn.user.jid.split('@')[0];
       const senderNumber = (m.key.participant || m.key.remoteJid).split('@')[0];
-      const ownerNumbers = (config.owner || []).map(String);
 
       if ([botNumber, senderNumber, ...ownerNumbers].includes(whoNumber)) {
         return await conn.sendMessage(remoteJid, { react: { text: '❌', key: m.key } });
