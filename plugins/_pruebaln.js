@@ -27,31 +27,94 @@ function removeFromBlacklist(jid) {
 }
 
 // ----------------- PLUGIN HANDLER -----------------
-export const handler = {
-  command: ["ln", "unln", "ln2", "vln"],  // comandos
-  owner: true,                             // solo dueños
+let handler = async (m, { conn, command, text, isGroup }) => {
+  try {
+    let who, reason;
+    let cleanText = text || "";
+    if (command === "addn") cleanText = cleanText.replace(/^\.addn\s+/, '').trim();
+    else cleanText = cleanText.replace(/^\.(remn|ln2)\s+/, '').trim();
 
-  run: async ({ conn, m, command, remoteJid, text, isGroup }) => {
-    try {
-      // Aquí va toda la lógica que ya tenías de LN / UNLN / VLN
-      if(command === "vln") {
-        const entries = getBlacklist();
-        if(entries.length === 0) return await conn.sendText(remoteJid, "📋 *No hay usuarios en lista negra.*", m);
+    // Detectar número
+    const phoneMatches = cleanText.match(/\+\d[\d\s]*/g);
+    if (phoneMatches && phoneMatches.length > 0) {
+      const cleanNumber = phoneMatches[0].replace(/\+|\s+/g, "");
+      reason = command === "addn" ? cleanText.replace(phoneMatches[0], "").trim() : "";
+      who = cleanNumber + "@s.whatsapp.net";
+    } else {
+      // Detectar mención o mensaje citado
+      const mentions = m.message?.extendedTextMessage?.contextInfo?.mentionedJid || [];
+      who = mentions[0] || m.message?.extendedTextMessage?.contextInfo?.quotedMessage?.participant || null;
+      reason = command === "addn" ? cleanText : "";
+      if (who) {
+        const whoNumber = who.split('@')[0];
+        reason = reason.replace(`@${whoNumber}`, "").trim();
+      }
+    }
 
-        let msg = `🚫 *LISTA NEGRA* (${entries.length} usuario${entries.length > 1 ? 's' : ''})\n\n`;
-        entries.forEach((entry, i) => {
-          const num = entry.jid.split("@")[0];
-          const fecha = new Date(entry.addedAt).toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' });
-          msg += `${i+1}. @${num}\n   📝 Razón: ${entry.reason}\n   📅 Desde: ${fecha}\n\n`;
-        });
-        const jids = entries.map(e => e.jid);
-        return await conn.sendMessage(remoteJid, { text: msg, mentions: jids }, { quoted: m });
+    // VALIDACIÓN
+    if (!who && command !== 'listn') return await conn.sendText(m.chat, `⚠️ *Debes mencionar, citar o usar número.*\nEjemplo: .${command} @usuario razón`, m);
+
+    const whoNumber = who?.split('@')[0];
+    const botNumber = conn.user.jid.split('@')[0];
+    const senderNumber = (m.key.participant || m.key.remoteJid).split('@')[0];
+
+    if ([botNumber, senderNumber, ...ownerNumbers].includes(whoNumber)) {
+      return await conn.sendMessage(m.chat, { react: { text: '❌', key: m.key } });
+    }
+
+    // =========================
+    // ACCIONES
+    // =========================
+    if (command === 'addn') {
+      if (!reason) reason = "Sin razón especificada";
+      addToBlacklist(who, reason, whoNumber);
+      await conn.sendMessage(m.chat, { react: { text: '✅', key: m.key } });
+      await conn.sendText(m.chat, `🚫 *Usuario agregado a lista negra*\n👤 @${whoNumber}\n📝 Razón: ${reason}`, m, { mentions: [who] });
+    } else if (command === 'remn') {
+      const allBlacklist = readDB().blacklist || {};
+      let exists = null, correctJid = who;
+
+      for (const [jid, entry] of Object.entries(allBlacklist)) {
+        if (jid.split('@')[0] === whoNumber || entry.phoneNumber === whoNumber) {
+          exists = entry;
+          correctJid = jid;
+          break;
+        }
       }
 
-      // Resto de LN / UNLN / LN2 aquí...
-    } catch(err) {
-      console.error('❌ Error handler lista negra:', err);
-      await conn.sendText(remoteJid, '⚠️ *Error al procesar la lista negra.*', m);
+      if (!exists) return await conn.sendText(m.chat, "ℹ️ *Ese usuario no está en la lista negra.*", m);
+
+      removeFromBlacklist(correctJid);
+      await conn.sendMessage(m.chat, { react: { text: '☑️', key: m.key } });
+      await conn.sendText(m.chat, `✅ *Usuario removido de lista negra*\n👤 +${exists.phoneNumber || whoNumber}`, m);
+    } else if (command === 'listn') {
+      const entries = getBlacklist();
+      if (entries.length === 0) return await conn.sendText(m.chat, "📋 *No hay usuarios en lista negra.*", m);
+
+      let msg = `🚫 *LISTA NEGRA* (${entries.length} usuario${entries.length > 1 ? 's' : ''})\n\n`;
+      entries.forEach((entry, i) => {
+        const num = entry.jid.split("@")[0];
+        const fecha = new Date(entry.addedAt).toLocaleDateString('es-ES', { day:'2-digit', month:'2-digit', year:'numeric' });
+        msg += `${i+1}. @${num}\n   📝 Razón: ${entry.reason}\n   📅 Desde: ${fecha}\n\n`;
+      });
+      const jids = entries.map(e => e.jid);
+      await conn.sendMessage(m.chat, { text: msg, mentions: jids }, { quoted: m });
+    } else if (command === 'clrn') {
+      writeDB({ blacklist: {} });
+      await conn.sendMessage(m.chat, { react: { text: '🧹', key: m.key } });
+      await conn.sendText(m.chat, "✅ *Lista negra limpiada*", m);
     }
+
+  } catch (err) {
+    console.error(err);
+    await conn.sendText(m.chat, '⚠️ *Error al procesar la lista negra.*', m);
   }
 };
+
+// ----------------- METADATA -----------------
+handler.help = ['addn', 'remn', 'clrn', 'listn'];
+handler.tags = ['owner'];
+handler.command = ['addn', 'remn', 'clrn', 'listn'];
+handler.rowner = true;
+
+export default handler;
