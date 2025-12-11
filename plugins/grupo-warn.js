@@ -87,7 +87,7 @@ const handler = async (m, { conn, text, usedPrefix, command, isAdmin, isBotAdmin
     })
   }
 
-  // ---------- 📜 LISTA DE ADVERTENCIAS ----------
+  // ---------- 📜 LISTA DE ADVERTENCIAS (MINIMIZADA) ----------
   else if (['warnlist', 'advertencias', 'listaad'].includes(command)) {
     const entries = Object.entries(warns)
       .map(([jid, data]) => [normalizeJid(jid), data])
@@ -95,17 +95,13 @@ const handler = async (m, { conn, text, usedPrefix, command, isAdmin, isBotAdmin
 
     if (entries.length === 0) return m.reply('✅ No hay usuarios con advertencias en este grupo.')
 
-    let textList = '⚠️ *Usuarios con advertencias:*\n\n'
+    let textList = '⚠️ *Advertencias activas:*\n\n'
     let mentions = []
 
     for (const [jid, w] of entries) {
-      textList += `👤 @${jid.split('@')[0]} → ${w.count}/3\n`
-      if (w.motivos?.length) {
-        w.motivos.slice(-3).forEach((m, i) => {
-          textList += `   ${i + 1}. ${m.motivo} — 🗓️ ${m.fecha}\n`
-        })
-      }
-      textList += '\n'
+      const ultimo = w.motivos?.length ? w.motivos[w.motivos.length - 1] : null
+      const motivo = ultimo ? ultimo.motivo : 'Sin motivo'
+      textList += `• @${jid.split('@')[0]} → ${w.count}/3 — 📝 ${motivo}\n`
       mentions.push(jid)
     }
 
