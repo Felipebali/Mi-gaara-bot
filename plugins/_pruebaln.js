@@ -1,5 +1,41 @@
-import { addToBlacklist, removeFromBlacklist, isBlacklisted, getBlacklist } from "../db.js";
+import fs from 'fs';
+import path from 'path';
 import config from "../config.js";
+
+const dbFile = path.join(process.cwd(), 'blacklist.json');
+
+// Inicializar archivo si no existe
+if (!fs.existsSync(dbFile)) fs.writeFileSync(dbFile, JSON.stringify({ blacklist: {} }, null, 2));
+
+function readDB() {
+  return JSON.parse(fs.readFileSync(dbFile, 'utf-8'));
+}
+
+function writeDB(data) {
+  fs.writeFileSync(dbFile, JSON.stringify(data, null, 2));
+}
+
+function getBlacklist() {
+  const data = readDB();
+  return Object.entries(data.blacklist || {}).map(([jid, val]) => ({ jid, ...val }));
+}
+
+function isBlacklisted(jid) {
+  const data = readDB();
+  return Boolean(data.blacklist[jid]);
+}
+
+function addToBlacklist(jid, reason, phoneNumber) {
+  const data = readDB();
+  data.blacklist[jid] = { reason, addedAt: Date.now(), phoneNumber };
+  writeDB(data);
+}
+
+function removeFromBlacklist(jid) {
+  const data = readDB();
+  delete data.blacklist[jid];
+  writeDB(data);
+}
 
 export default {
   command: ["ln", "unln", "ln2", "vln"],
@@ -12,20 +48,15 @@ export default {
       // =========================
       if (command === "vln") {
         const entries = getBlacklist();
-        if (!entries || entries.length === 0) {
-          return await conn.sendText(remoteJid, "📋 *No hay usuarios en lista negra.*", m);
-        }
+        if (entries.length === 0) return await conn.sendText(remoteJid, "📋 *No hay usuarios en lista negra.*", m);
 
         let msg = `🚫 *LISTA NEGRA* (${entries.length} usuario${entries.length > 1 ? 's' : ''})\n\n`;
-        const jids = [];
-
         entries.forEach((entry, i) => {
           const num = entry.jid.split("@")[0];
           const fecha = new Date(entry.addedAt).toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' });
           msg += `${i + 1}. @${num}\n   📝 Razón: ${entry.reason}\n   📅 Desde: ${fecha}\n\n`;
-          jids.push(entry.jid);
         });
-
+        const jids = entries.map(e => e.jid);
         return await conn.sendMessage(remoteJid, { text: msg, mentions: jids }, { quoted: m });
       }
 
@@ -34,8 +65,6 @@ export default {
       // =========================
       let who, reason;
       let cleanText = text || "";
-
-      // Limpiar prefijo
       if (command === "ln") cleanText = cleanText.replace(/^\.ln\s+/, '').trim();
       else cleanText = cleanText.replace(/^\.(unln|ln2)\s+/, '').trim();
 
@@ -46,6 +75,7 @@ export default {
         reason = command === "ln" ? cleanText.replace(phoneMatches[0], "").trim() : "";
         who = cleanNumber + "@s.whatsapp.net";
 
+        // Intentar buscar en grupo
         if (isGroup) {
           try {
             const groupMetadata = await conn.groupMetadata(remoteJid);
@@ -54,14 +84,9 @@ export default {
           } catch {}
         }
       } else {
-        // Detectar mención
+        // Detectar mención o mensaje citado
         const mentions = m.message?.extendedTextMessage?.contextInfo?.mentionedJid || [];
-        who = mentions[0] || null;
-
-        // Detectar mensaje citado
-        if (!who && m.message?.extendedTextMessage?.contextInfo?.quotedMessage) {
-          who = m.message.extendedTextMessage.contextInfo.participant;
-        }
+        who = mentions[0] || m.message?.extendedTextMessage?.contextInfo?.quotedMessage?.participant || null;
 
         reason = command === "ln" ? cleanText : "";
         if (who) {
@@ -100,21 +125,16 @@ export default {
         }
 
         addToBlacklist(who, reason, realPhoneNumber);
-
-        const actionMsg = exists 
-          ? `⚠️ *Usuario ya estaba en lista negra*\n✅ Razón actualizada a: ${reason}`
-          : `🚫 *Usuario agregado a lista negra*\n👤 Usuario: @${whoNumber}\n📝 Razón: ${reason}`;
+        const actionMsg = exists ? `⚠️ *Usuario ya estaba en lista negra*\n✅ Razón actualizada a: ${reason}`
+                                 : `🚫 *Usuario agregado a lista negra*\n👤 Usuario: @${whoNumber}\n📝 Razón: ${reason}`;
 
         await conn.sendMessage(remoteJid, { react: { text: '✅', key: m.key } });
         await conn.sendText(remoteJid, actionMsg, m, { mentions: [who] });
 
-        if (isGroup) {
-          try { await conn.groupParticipantsUpdate(remoteJid, [who], "remove"); } catch {}
-        }
-
+        if (isGroup) try { await conn.groupParticipantsUpdate(remoteJid, [who], "remove"); } catch {}
       } else {
         // UNLN / LN2
-        const allBlacklist = global.db.blacklist || {};
+        const allBlacklist = readDB().blacklist || {};
         let exists = null, correctJid = who;
 
         for (const [jid, entry] of Object.entries(allBlacklist)) {
