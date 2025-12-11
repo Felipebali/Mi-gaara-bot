@@ -1,12 +1,12 @@
 // 📂 plugins/propietario-listanegra.js — VERSIÓN ACTUALIZADA FELI 2025
 // (NUM LISTA + AUTOKICK GLOBAL + AVISO SI HABLA + AVISO SI ENTRA + AUTO-KICK POR CITA)
-// Cambios: prohíbe agregar por número con +598 / 598... ; avisos vistosos; remn por índice; lista numerada.
+// Cambios: prohíbe agregar por número con +598 / 598... ; avisos vistosos; remn por índice; lista numerada limpia.
 
 function sleep(ms) { return new Promise(r => setTimeout(r, ms)) }
 
 function normalizeJid(jid = '') {
   if (!jid) return null
-  jid = jid.toString().trim().replace(/^\+/, '') // fixed: remove literal '+' if present
+  jid = jid.toString().trim().replace(/^\+/, '')
   if (jid.endsWith('@c.us') || jid.endsWith('@s.whatsapp.net'))
     return jid.replace(/@c.us$/, '@s.whatsapp.net')
   if (jid.includes('@')) return jid
@@ -31,7 +31,6 @@ function findMemberByNumber(group, numberDigits) {
     const pid = (p.id || p).toString()
     const pd = digitsOnly(pid)
     if (!pd) continue
-    // exact match or endsWith (local vs international), or contains
     if (pd === numberDigits || pd.endsWith(numberDigits) || numberDigits.endsWith(pd)) return p.id || p
     if (pd.includes(numberDigits) || numberDigits.includes(pd)) return p.id || p
   }
@@ -47,7 +46,7 @@ const handler = async (m, { conn, command, text }) => {
   const warn = '⚠️'
   const dbUsers = global.db.data.users || (global.db.data.users = {})
 
-  // ✅ AUTO-KICK INMEDIATO SI SOLO LO CITAN
+  // AUTO-KICK por citar
   if (m.isGroup && m.quoted) {
     const quotedJid = normalizeJid(m.quoted.sender || m.quoted.participant)
     if (quotedJid && dbUsers[quotedJid]?.banned) {
@@ -73,7 +72,7 @@ const handler = async (m, { conn, command, text }) => {
   let userJid = null
   let numberDigits = null
 
-  // REMN por índice: remn 1
+  // remn por índice
   if (command === 'remn' && /^\d+$/.test(text?.trim())) {
     const index = parseInt(text.trim()) - 1
     if (!bannedList[index])
@@ -100,28 +99,26 @@ const handler = async (m, { conn, command, text }) => {
 
   if (userJid && !dbUsers[userJid]) dbUsers[userJid] = {}
 
-  // ================= VALIDACIONES ESPECÍFICAS: impedir +598 en addn =================
-  // Si intentan agregar con número que contiene country code 598 (ej: +598..., 598...), lo rechazamos.
-  const attemptedRawNumber = digitsOnly(text || '') // si escribieron número en text
+  // BLOQUEO total de agregar con +598 o 598
+  const attemptedRawNumber = digitsOnly(text || '')
   const hasForbidden598 = attemptedRawNumber && (attemptedRawNumber.startsWith('598') || text?.includes('+598'))
+
   if (command === 'addn' && hasForbidden598 && !m.quoted && !m.mentionedJid) {
     return conn.sendMessage(m.chat, {
-      text: `${emoji} No está permitido agregar a la lista negra escribiendo números con prefijo +598 o 598.\n\n➡️ Usa *mencionar* o *citar* el mensaje de la persona para agregarla.\n\n${SEP}\nEjemplo válido: responde al mensaje de la persona y escribe: *addn motivo*`,
+      text: `${emoji} No está permitido agregar a la lista negra escribiendo números con prefijo +598 o 598.\n\n➡️ Usa *mencionar* o *citar* el mensaje de la persona.`,
     })
   }
 
-  // ================= ADD LISTA NEGRA + EXPULSIÓN GLOBAL + EXPULSIÓN INMEDIATA SI ES POR CITA =================
+  // =============== ADD LISTA NEGRA =================
   if (command === 'addn') {
-    // For safety: only allow adding when there is actually a mention/quoted (no free numbers)
+
     const addedByNumberInput = !!(userJid && numberDigits && (!m.mentionedJid || m.mentionedJid.length === 0) && !m.quoted)
     if (addedByNumberInput) {
-      // Disallow adding by raw number (unless you want to allow - user's request was to remove +598)
       return conn.sendMessage(m.chat, {
-        text: `${emoji} No se permite agregar escribiendo un número directamente. Usa mencionar o citar.` 
+        text: `${emoji} No se permite agregar escribiendo un número directamente. Usa mencionar o citar.`
       })
     }
 
-    // Ensure userJid exists
     if (!userJid)
       return conn.sendMessage(m.chat, { text: `${emoji} No pude determinar al usuario. Responde o menciona.` })
 
@@ -130,17 +127,16 @@ const handler = async (m, { conn, command, text }) => {
     dbUsers[userJid].bannedBy = m.sender
 
     await conn.sendMessage(m.chat, {
-      text: `${ok} *Agregado a LISTA NEGRA*\n${SEP}\n@${userJid.split('@')[0]} ahora está en *lista negra*.\n📝 Motivo: ${reason}\n👤 Agregado por: @${m.sender.split('@')[0]}\n${SEP}`,
-      mentions: [userJid, m.sender]
+      text: `${ok} *Agregado a LISTA NEGRA*\n${SEP}\n@${userJid.split('@')[0]} ahora está en *lista negra*.\n📝 Motivo: ${reason}\n${SEP}`,
+      mentions: [userJid]
     })
 
-    // ✅ EXPULSIÓN INMEDIATA EN ESTE GRUPO SI FUE POR CITA O MENCION
+    // expulsión inmediata
     if (m.isGroup && (m.quoted || (m.mentionedJid && m.mentionedJid.length))) {
       try {
         await sleep(500)
         await conn.groupParticipantsUpdate(m.chat, [userJid], 'remove')
         await sleep(800)
-
         await conn.sendMessage(m.chat, {
           text: `${emoji} *Expulsión inmediata*\n${SEP}\n@${userJid.split('@')[0]} eliminado por estar en *lista negra*.\n📝 Motivo: ${reason}\n${SEP}`,
           mentions: [userJid]
@@ -148,7 +144,7 @@ const handler = async (m, { conn, command, text }) => {
       } catch {}
     }
 
-    // EXPULSIÓN GLOBAL: recorrer grupos y expulsar si está
+    // expulsión global
     try {
       let groupsObj = await conn.groupFetchAllParticipating()
       const groups = Object.keys(groupsObj)
@@ -174,7 +170,7 @@ const handler = async (m, { conn, command, text }) => {
     } catch {}
   }
 
-  // ✅ REMOVER DE LISTA NEGRA (por mención/cita o por índice)
+  // =============== REMOVER =================
   else if (command === 'remn') {
     if (!userJid || !dbUsers[userJid]?.banned)
       return conn.sendMessage(m.chat, { text: `${emoji} No está en lista negra.` })
@@ -189,7 +185,7 @@ const handler = async (m, { conn, command, text }) => {
     })
   }
 
-  // ✅ LISTAR (numerada y vistosa)
+  // =============== LISTAR (LIMPIA, SIN "POR @USUARIO") =================
   else if (command === 'listn') {
     if (bannedList.length === 0)
       return conn.sendMessage(m.chat, { text: `${ok} Lista negra vacía.` })
@@ -198,8 +194,7 @@ const handler = async (m, { conn, command, text }) => {
     const mentions = []
 
     bannedList.forEach(([jid, data], i) => {
-      const by = data.bannedBy ? ` (por @${(data.bannedBy||'').split('@')[0]})` : ''
-      list += `*${i + 1}.* @${jid.split('@')[0]}${by}\n📝 ${data.banReason || 'No especificado'}\n\n`
+      list += `*${i + 1}.* @${jid.split('@')[0]}\n📝 ${data.banReason || 'No especificado'}\n\n`
       mentions.push(jid)
     })
 
@@ -207,7 +202,7 @@ const handler = async (m, { conn, command, text }) => {
     await conn.sendMessage(m.chat, { text: list.trim(), mentions })
   }
 
-  // ✅ LIMPIAR LISTA
+  // =============== LIMPIAR =================
   else if (command === 'clrn') {
     for (const jid in dbUsers) {
       if (dbUsers[jid]?.banned) {
@@ -222,7 +217,7 @@ const handler = async (m, { conn, command, text }) => {
   if (global.db.write) await global.db.write()
 }
 
-// ================= AUTO-KICK SI HABLA + AVISO =================
+// ================= AUTO-KICK AL HABLAR =================
 
 handler.all = async function (m) {
   try {
@@ -245,11 +240,10 @@ handler.all = async function (m) {
   } catch {}
 }
 
-// ================= AUTO-KICK AL ENTRAR + AVISO =================
+// ================= AUTO-KICK AL ENTRAR =================
 
 handler.before = async function (m) {
   try {
-    // messageStubType 27 = add, 31 = invite? (varía según librería) — mantenemos ambos
     if (![27, 31].includes(m.messageStubType)) return
     const db = global.db.data.users
     const conn = this
@@ -271,9 +265,7 @@ handler.before = async function (m) {
         })
       }
     }
-  } catch (e) {
-    console.error('Error en auto-kick al entrar:', e)
-  }
+  } catch {}
 }
 
 // ================= CONFIG FINAL =================
