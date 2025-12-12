@@ -1,3 +1,6 @@
+// 📂 plugins/propietario-listanegra.js — FELI 2025 (JSON PERSISTENTE)
+// Lista negra persistente + auto-kick inmediato + remn por índice
+
 import fs from 'fs';
 import path from 'path';
 
@@ -5,11 +8,14 @@ const DB_FILE = path.join(process.cwd(), 'blacklist.json');
 
 function loadDB() {
   try {
-    if (!fs.existsSync(DB_FILE)) fs.writeFileSync(DB_FILE, JSON.stringify({ users: {} }, null, 2));
+    if (!fs.existsSync(DB_FILE)) {
+      fs.writeFileSync(DB_FILE, JSON.stringify({ users: {} }, null, 2));
+      console.log('✅ blacklist.json creado correctamente');
+    }
     const data = fs.readFileSync(DB_FILE, 'utf-8');
     return JSON.parse(data);
   } catch (e) {
-    console.log('Error leyendo DB:', e);
+    console.log('❌ Error leyendo DB:', e);
     return { users: {} };
   }
 }
@@ -17,9 +23,9 @@ function loadDB() {
 function saveDB(db) {
   try {
     fs.writeFileSync(DB_FILE, JSON.stringify(db, null, 2));
-    console.log('DB guardada correctamente ✅');
+    console.log('✅ DB guardada correctamente');
   } catch (e) {
-    console.log('Error guardando DB:', e);
+    console.log('❌ Error guardando DB:', e);
   }
 }
 
@@ -27,8 +33,7 @@ function sleep(ms) { return new Promise(r => setTimeout(r, ms)) }
 function normalizeJid(jid = '') {
   if (!jid) return null;
   jid = jid.toString().trim().replace(/^\+/, '');
-  if (jid.endsWith('@c.us') || jid.endsWith('@s.whatsapp.net'))
-    return jid.replace(/@c.us$/, '@s.whatsapp.net');
+  if (jid.endsWith('@c.us') || jid.endsWith('@s.whatsapp.net')) return jid.replace(/@c.us$/, '@s.whatsapp.net');
   if (jid.includes('@')) return jid;
   const cleaned = jid.replace(/[^0-9]/g, '');
   if (!cleaned) return null;
@@ -47,9 +52,9 @@ const handler = async (m, { conn, command, text }) => {
   const warn = '⚠️';
 
   let userJid = null;
-
   const bannedList = Object.entries(dbUsers).filter(([_, d]) => d.banned);
 
+  // Determinar usuario
   if (command === 'remn' && /^\d+$/.test(text?.trim())) {
     const index = parseInt(text.trim()) - 1;
     if (!bannedList[index]) return conn.reply(m.chat, `${emoji} Número inválido.`, m);
@@ -59,8 +64,7 @@ const handler = async (m, { conn, command, text }) => {
   else if (text) { const num = extractPhoneNumber(text); if (num) userJid = normalizeJid(num); }
 
   let reason = text?.replace(/@/g, '').replace(/\d{5,}/g, '').trim() || 'No especificado';
-  if (!userJid && !['listn', 'clrn'].includes(command))
-    return conn.reply(m.chat, `${warn} Debes responder, mencionar o usar índice.`, m);
+  if (!userJid && !['listn', 'clrn'].includes(command)) return conn.reply(m.chat, `${warn} Debes responder, mencionar o usar índice.`, m);
   if (userJid && !dbUsers[userJid]) dbUsers[userJid] = {};
 
   // ================= ADD =================
@@ -68,12 +72,11 @@ const handler = async (m, { conn, command, text }) => {
     dbUsers[userJid].banned = true;
     dbUsers[userJid].banReason = reason;
     dbUsers[userJid].bannedBy = m.sender;
-
-    saveDB(db); // GUARDA inmediatamente
+    saveDB(db);
 
     await conn.sendMessage(m.chat, { text: `${ok} *Agregado a LISTA NEGRA*\n${SEP}\n@${userJid.split('@')[0]} agregado.\n📝 Motivo: ${reason}\n${SEP}`, mentions: [userJid] });
 
-    // Auto expulsión en el grupo
+    // Expulsión inmediata
     if (m.isGroup) {
       try {
         const meta = await conn.groupMetadata(m.chat);
@@ -87,14 +90,11 @@ const handler = async (m, { conn, command, text }) => {
 
   // ================= REMOVER =================
   else if (command === 'remn') {
-    if (!userJid || !dbUsers[userJid]?.banned)
-      return conn.reply(m.chat, `${emoji} No está en la lista negra.`, m);
-
+    if (!userJid || !dbUsers[userJid]?.banned) return conn.reply(m.chat, `${emoji} No está en la lista negra.`, m);
     dbUsers[userJid].banned = false;
     dbUsers[userJid].banReason = '';
     dbUsers[userJid].bannedBy = null;
-
-    saveDB(db); // GUARDA inmediatamente
+    saveDB(db);
 
     await conn.sendMessage(m.chat, { text: `${ok} *Removido de lista negra*\n${SEP}\n@${userJid.split('@')[0]} removido.`, mentions: [userJid] });
   }
@@ -111,8 +111,8 @@ const handler = async (m, { conn, command, text }) => {
 
   // ================= LIMPIAR =================
   else if (command === 'clrn') {
-    for (const jid in dbUsers) { if (dbUsers[jid]?.banned) { dbUsers[jid].banned = false; dbUsers[jid].banReason = ''; dbUsers[jid].bannedBy = null; } }
-    saveDB(db); // GUARDA inmediatamente
+    for (const jid in dbUsers) if (dbUsers[jid]?.banned) { dbUsers[jid].banned = false; dbUsers[jid].banReason = ''; dbUsers[jid].bannedBy = null; }
+    saveDB(db);
     await conn.sendMessage(m.chat, { text: `${ok} Lista negra vaciada.` });
   }
 }
@@ -153,9 +153,9 @@ handler.before = async function (m) {
   } catch {}
 }
 
-handler.help = ['addn', 'remn', 'clrn', 'listn']
-handler.tags = ['owner']
-handler.command = ['addn', 'remn', 'clrn', 'listn']
-handler.rowner = true
+handler.help = ['addn','remn','clrn','listn'];
+handler.tags = ['owner'];
+handler.command = ['addn','remn','clrn','listn'];
+handler.rowner = true;
 
 export default handler;
