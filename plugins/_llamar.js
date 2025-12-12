@@ -1,5 +1,15 @@
 // 📂 plugins/grupos-llamar.js — FelixCat_Bot 🐾
-// FIX: .cancelar muestra solo SU mensaje, no el del comando llamar
+// FIX DEFINITIVO jid.endsWith
+
+function normalizeJid(jid) {
+  if (!jid) return null
+  if (typeof jid === "string") {
+    if (jid.endsWith("@s.whatsapp.net") || jid.endsWith("@g.us")) return jid
+    return jid.replace(/[^0-9]/g, "") + "@s.whatsapp.net"
+  }
+  if (Array.isArray(jid)) return normalizeJid(jid[0])
+  return null
+}
 
 const owners = ["59896026646@s.whatsapp.net", "59898719147@s.whatsapp.net"]
 
@@ -12,16 +22,18 @@ let handler = async (m, { conn, text, command, args }) => {
   if (!owners.includes(sender)) return
 
   // ===============================
-  // COMANDO LLAMAR
+  // LLAMAR
   // ===============================
   if (command === "llamar") {
 
     if (!m.isGroup)
       return m.reply("❌ *Este comando solo funciona en grupos.*")
 
-    let target = m.mentionedJid?.[0]
-    if (typeof target !== "string")
-      return m.reply("⚠️ Debes mencionar a alguien.\nEjemplo: *.llamar @usuario*")
+    let raw = m.mentionedJid?.[0] || (m.quoted && m.quoted.sender)
+    let target = normalizeJid(raw)
+
+    if (!target)
+      return m.reply("⚠️ Debes mencionar o citar a alguien.")
 
     if (activeCalls[chatId]?.running)
       return m.reply("⚠️ Ya hay una llamada en curso.\nUsa *.cancelar* para detenerla.")
@@ -29,34 +41,23 @@ let handler = async (m, { conn, text, command, args }) => {
     const total = parseInt(args[1]) || 10
     const intervalo = parseInt(args[2]) || 5
 
-    activeCalls[chatId] = {
-      running: true,
-      target: target
-    }
+    activeCalls[chatId] = { running: true, target }
 
     m.reply(
       `📞 *Llamada iniciada*\n👉 Usuario: @${target.split("@")[0]}\n🔢 Repeticiones: *${total}*\n⏳ Intervalo: *${intervalo}s*\n\n🛑 Usa *.cancelar* para detener.`,
       { mentions: [target] }
     )
 
-    // LOOP
     for (let i = 0; i < total; i++) {
-
-      // SI SE CANCELÓ → NO MANDAR MENSAJE ADICIONAL
       if (!activeCalls[chatId]?.running) {
         delete activeCalls[chatId]
-        return // ← NO RESPONDE NADA AQUÍ
+        return
       }
 
-      try {
-        await conn.sendMessage(chatId, {
-          text: `📞 *LLAMADA #${i + 1}*\n➡️ @${target.split("@")[0]}`,
-          mentions: [target]
-        })
-      } catch (err) {
-        console.log("Error enviando llamada:", err)
-        break
-      }
+      await conn.sendMessage(chatId, {
+        text: `📞 *LLAMADA #${i + 1}*\n➡️ @${target.split("@")[0]}`,
+        mentions: [target]
+      })
 
       await new Promise(r => setTimeout(r, intervalo * 1000))
     }
@@ -66,7 +67,7 @@ let handler = async (m, { conn, text, command, args }) => {
   }
 
   // ===============================
-  // COMANDO CANCELAR
+  // CANCELAR
   // ===============================
   if (command === "cancelar") {
 
@@ -86,5 +87,4 @@ let handler = async (m, { conn, text, command, args }) => {
 handler.help = ["llamar @usuario (total) (intervalo)", "cancelar"]
 handler.tags = ["owner"]
 handler.command = /^(llamar|cancelar)$/i
-
 export default handler
