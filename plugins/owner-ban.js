@@ -1,5 +1,5 @@
 // 📂 plugins/propietario-listanegra.js — FELI 2025 (JSON PERSISTENTE)
-// Lista negra persistente + auto-kick + remn por índice + expulsión inmediata solo si está en el grupo
+// Lista negra persistente + auto-kick inmediato + remn por índice
 
 import fs from 'fs';
 import path from 'path';
@@ -8,7 +8,6 @@ const DB_FILE = path.join(process.cwd(), 'blacklist.json');
 
 // =====================================================
 // ============= FUNCIONES DE DB JSON =================
-// =====================================================
 function loadDB() {
   try {
     if (!fs.existsSync(DB_FILE)) fs.writeFileSync(DB_FILE, JSON.stringify({ users: {} }, null, 2));
@@ -25,7 +24,6 @@ function saveDB(db) {
 
 // =====================================================
 // ============= FUNCIONES AUXILIARES =================
-// =====================================================
 function sleep(ms) { return new Promise(r => setTimeout(r, ms)) }
 
 function normalizeJid(jid = '') {
@@ -49,23 +47,9 @@ function extractPhoneNumber(text = '') {
   return d
 }
 
-function findMemberByNumber(group, numberDigits) {
-  if (!group || !group.participants) return null
-  for (const p of group.participants) {
-    const pid = (p.id || p).toString()
-    const pd = digitsOnly(pid)
-    if (!pd) continue
-    if (pd === numberDigits || pd.endsWith(numberDigits) || numberDigits.endsWith(pd)) return p.id || p
-    if (pd.includes(numberDigits) || numberDigits.includes(pd)) return p.id || p
-  }
-  return null
-}
-
 // =====================================================
 // ================= HANDLER PRINCIPAL =================
-// =====================================================
 const handler = async (m, { conn, command, text }) => {
-
   const SEP = '━━━━━━━━━━━━━━━━━━━━'
   const emoji = '🚫'
   const ok = '✅'
@@ -86,7 +70,7 @@ const handler = async (m, { conn, command, text }) => {
           await conn.groupParticipantsUpdate(m.chat, [quotedJid], 'remove')
           await sleep(600)
           await conn.sendMessage(m.chat, {
-            text: `${emoji} *Eliminación inmediata por LISTA NEGRA*\n${SEP}\n@${quotedJid.split('@')[0]} fue eliminado.\n📝 Motivo: ${reason}\n${SEP}`,
+            text: `${emoji} *Eliminación inmediata por LISTA NEGRA*\n${SEP}\n@${quotedJid.split('@')[0]} eliminado.\n📝 Motivo: ${reason}\n${SEP}`,
             mentions: [quotedJid]
           })
         }
@@ -100,7 +84,6 @@ const handler = async (m, { conn, command, text }) => {
 
   const bannedList = Object.entries(dbUsers).filter(([_, data]) => data.banned)
   let userJid = null
-  let numberDigits = null
 
   // remn por índice
   if (command === 'remn' && /^\d+$/.test(text?.trim())) {
@@ -108,17 +91,13 @@ const handler = async (m, { conn, command, text }) => {
     if (!bannedList[index])
       return conn.reply(m.chat, `${emoji} Número inválido.`, m)
     userJid = bannedList[index][0]
-  }
-  else if (m.quoted)
+  } else if (m.quoted)
     userJid = normalizeJid(m.quoted.sender || m.quoted.participant)
   else if (m.mentionedJid?.length)
     userJid = normalizeJid(m.mentionedJid[0])
   else if (text) {
     const num = extractPhoneNumber(text)
-    if (num) {
-      numberDigits = num
-      userJid = normalizeJid(num)
-    }
+    if (num) userJid = normalizeJid(num)
   }
 
   let reason = text?.replace(/@/g, '').replace(/\d{5,}/g, '').trim()
@@ -129,21 +108,8 @@ const handler = async (m, { conn, command, text }) => {
 
   if (userJid && !dbUsers[userJid]) dbUsers[userJid] = {}
 
-  const attemptedRawNumber = digitsOnly(text || '')
-  const hasForbidden598 = attemptedRawNumber && (attemptedRawNumber.startsWith('598') || text?.includes('+598'))
-  if (command === 'addn' && hasForbidden598 && !m.quoted && !m.mentionedJid) {
-    return conn.sendMessage(m.chat, {
-      text: `${emoji} No se permite agregar números con +598 o 598.\nUsa *mencionar* o *citar* un mensaje.`
-    })
-  }
-
   // ======================= ADD =========================
   if (command === 'addn') {
-    const addedByNumberInput = !!(userJid && numberDigits && (!m.mentionedJid || m.mentionedJid.length === 0) && !m.quoted)
-    if (addedByNumberInput) {
-      return conn.sendMessage(m.chat, { text: `${emoji} No se permite agregar escribiendo un número. Usa mencionar o citar.` })
-    }
-
     dbUsers[userJid].banned = true
     dbUsers[userJid].banReason = reason
     dbUsers[userJid].bannedBy = m.sender
