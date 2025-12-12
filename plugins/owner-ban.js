@@ -1,5 +1,5 @@
-// 📂 plugins/propietario-listanegra.js — VERSIÓN ULTRA FELI 2025 CORREGIDA
-// Permite agregar con número (+598), mención o cita; expulsión inmediata si está en el grupo
+// 📂 plugins/propietario-listanegra.js — VERSIÓN ULTRA FELI 2025 PRO
+// Funciona con +598, mención o cita; expulsión inmediata y global
 
 function sleep(ms) { return new Promise(r => setTimeout(r, ms)) }
 
@@ -24,9 +24,15 @@ function extractPhoneNumber(text = '') {
   return d
 }
 
+function matchJidNumber(jid1, jid2) {
+  // Compara solo últimos 8 dígitos
+  const n1 = digitsOnly(jid1).slice(-8)
+  const n2 = digitsOnly(jid2).slice(-8)
+  return n1 && n2 && n1 === n2
+}
+
 // =====================================================
 // ================= HANDLER PRINCIPAL =================
-// =====================================================
 const handler = async (m, { conn, command, text }) => {
   const SEP = '━━━━━━━━━━━━━━━━━━━━'
   const emoji = '🚫'
@@ -37,13 +43,10 @@ const handler = async (m, { conn, command, text }) => {
   const bannedList = Object.entries(dbUsers).filter(([_, data]) => data.banned)
 
   let userJid = null
-  let numberDigits = null
 
-  // remn por índice
   if (command === 'remn' && /^\d+$/.test(text?.trim())) {
     const index = parseInt(text.trim()) - 1
-    if (!bannedList[index])
-      return conn.reply(m.chat, `${emoji} Número inválido.`, m)
+    if (!bannedList[index]) return conn.reply(m.chat, `${emoji} Número inválido.`, m)
     userJid = bannedList[index][0]
   }
   else if (m.quoted)
@@ -52,41 +55,31 @@ const handler = async (m, { conn, command, text }) => {
     userJid = normalizeJid(m.mentionedJid[0])
   else if (text) {
     const num = extractPhoneNumber(text)
-    if (num) {
-      numberDigits = num
-      userJid = normalizeJid(num)
-    }
+    if (num) userJid = normalizeJid(num)
   }
 
   let reason = text?.replace(/@/g, '').replace(/\d{5,}/g, '').trim() || 'No especificado'
-  if (!userJid && !['listn', 'clrn'].includes(command))
+  if (!userJid && !['listn','clrn'].includes(command))
     return conn.reply(m.chat, `${warn} Debes responder, mencionar o usar índice.`, m)
 
   if (userJid && !dbUsers[userJid]) dbUsers[userJid] = {}
 
-  // =====================================================
   // ======================= ADD =========================
-  // =====================================================
   if (command === 'addn') {
     dbUsers[userJid].banned = true
     dbUsers[userJid].banReason = reason
     dbUsers[userJid].bannedBy = m.sender
 
-    await conn.sendMessage(m.chat, {
+    await conn.sendMessage(m.chat, { 
       text: `${ok} *Agregado a LISTA NEGRA*\n${SEP}\n@${userJid.split('@')[0]} agregado.\n📝 Motivo: ${reason}\n${SEP}`,
       mentions: [userJid]
     })
 
-    // EXPULSIÓN INMEDIATA EN EL GRUPO (funciona con +598)
+    // EXPULSIÓN INMEDIATA EN EL GRUPO
     if (m.isGroup) {
       try {
         const metadata = await conn.groupMetadata(m.chat)
-        const member = metadata.participants.find(p => {
-          const pd = digitsOnly(p.id)
-          const ud = digitsOnly(userJid)
-          return pd.endsWith(ud) || ud.endsWith(pd)
-        })
-
+        const member = metadata.participants.find(p => matchJidNumber(p.id, userJid))
         if (member) {
           await conn.groupParticipantsUpdate(m.chat, [member.id], 'remove')
           await sleep(500)
@@ -104,16 +97,10 @@ const handler = async (m, { conn, command, text }) => {
       for (const jid of Object.keys(groupsObj)) {
         try {
           const group = await conn.groupMetadata(jid)
-          const member = group.participants.find(p => {
-            const pd = digitsOnly(p.id)
-            const ud = digitsOnly(userJid)
-            return pd.endsWith(ud) || ud.endsWith(pd)
-          })
+          const member = group.participants.find(p => matchJidNumber(p.id, userJid))
           if (!member) continue
-
           await conn.groupParticipantsUpdate(jid, [member.id], 'remove')
           await sleep(500)
-
           await conn.sendMessage(jid, {
             text: `${emoji} @${member.id.split('@')[0]} eliminado por lista negra.\n📝 Motivo: ${reason}`,
             mentions: [member.id]
@@ -123,9 +110,7 @@ const handler = async (m, { conn, command, text }) => {
     } catch {}
   }
 
-  // =====================================================
   // ======================= REMOVER =====================
-  // =====================================================
   else if (command === 'remn') {
     if (!userJid || !dbUsers[userJid]?.banned)
       return conn.reply(m.chat, `${emoji} No está en la lista negra.`, m)
@@ -140,27 +125,20 @@ const handler = async (m, { conn, command, text }) => {
     })
   }
 
-  // =====================================================
   // ======================= LISTAR ======================
-  // =====================================================
   else if (command === 'listn') {
     if (bannedList.length === 0) return conn.reply(m.chat, `${ok} Lista negra vacía.`, m)
-
     let list = `🚫 *Lista Negra — ${bannedList.length}*\n${SEP}\n`
     const mentions = []
-
     bannedList.forEach(([jid, data], i) => {
-      list += `*${i + 1}.* @${jid.split('@')[0]}\n📝 ${data.banReason || 'No especificado'}\n\n`
+      list += `*${i+1}.* @${jid.split('@')[0]}\n📝 ${data.banReason || 'No especificado'}\n\n`
       mentions.push(jid)
     })
-
     list += SEP
     await conn.sendMessage(m.chat, { text: list.trim(), mentions })
   }
 
-  // =====================================================
   // ======================= LIMPIAR =====================
-  // =====================================================
   else if (command === 'clrn') {
     for (const jid in dbUsers) {
       if (dbUsers[jid]?.banned) {
@@ -175,9 +153,8 @@ const handler = async (m, { conn, command, text }) => {
   if (global.db.write) await global.db.write()
 }
 
-// =====================================================
-// ============= AUTO-KICK SI HABLA ====================
-handler.all = async function (m) {
+// ================= AUTO-KICK SI HABLA =================
+handler.all = async function(m) {
   try {
     if (!m.isGroup || !m.sender) return
     const db = global.db.data.users
@@ -185,11 +162,7 @@ handler.all = async function (m) {
     if (sender && db[sender]?.banned) {
       const reason = db[sender].banReason || 'No especificado'
       const metadata = await this.groupMetadata(m.chat)
-      const member = metadata.participants.find(p => {
-        const pd = digitsOnly(p.id)
-        const ud = digitsOnly(sender)
-        return pd.endsWith(ud) || ud.endsWith(pd)
-      })
+      const member = metadata.participants.find(p => matchJidNumber(p.id, sender))
       if (member) {
         await this.groupParticipantsUpdate(m.chat, [member.id], 'remove')
         await sleep(500)
@@ -202,11 +175,10 @@ handler.all = async function (m) {
   } catch {}
 }
 
-// =====================================================
-// ============= AUTO-KICK AL ENTRAR ====================
-handler.before = async function (m) {
+// ================= AUTO-KICK AL ENTRAR =================
+handler.before = async function(m) {
   try {
-    if (![27, 31].includes(m.messageStubType)) return
+    if (![27,31].includes(m.messageStubType)) return
     const db = global.db.data.users
     const conn = this
     for (const user of m.messageStubParameters || []) {
@@ -226,11 +198,10 @@ handler.before = async function (m) {
   } catch {}
 }
 
-// =====================================================
 // ====================== CONFIG =======================
-handler.help = ['addn', 'remn', 'clrn', 'listn']
+handler.help = ['addn','remn','clrn','listn']
 handler.tags = ['owner']
-handler.command = ['addn', 'remn', 'clrn', 'listn']
+handler.command = ['addn','remn','clrn','listn']
 handler.rowner = true
 
 export default handler
