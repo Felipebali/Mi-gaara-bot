@@ -2,7 +2,7 @@
 
 let channelRegex = /whatsapp\.com\/channel/i
 
-let handler = async (m, { conn, isAdmin, isBotAdmin, args }) => {
+let handler = async (m, { conn, isAdmin, isBotAdmin }) => {
   let chat = global.db.data.chats[m.chat]
   if (!chat) global.db.data.chats[m.chat] = {}
   chat = global.db.data.chats[m.chat]
@@ -10,7 +10,7 @@ let handler = async (m, { conn, isAdmin, isBotAdmin, args }) => {
   if (!isAdmin)
     return m.reply("❌ *Solo administradores pueden activar/desactivar el anti-canales.*")
 
-  // alternar estado
+  // Alternar estado
   chat.antiChannels = !chat.antiChannels
 
   return m.reply(
@@ -22,7 +22,6 @@ handler.command = ["anticanal"]
 handler.group = true
 handler.admin = true
 export default handler
-
 
 // ==========================================================
 // 📌 BEFORE — DETECTOR DE LINKS DE CANALES
@@ -51,8 +50,8 @@ export async function before(m, { conn, isAdmin, isBotAdmin }) {
     )
   }
 
-  // Si la opción delete está activa
-  if (chat.delete) {
+  // 🔥 FIX: usar antiDelete (existe en Gaara-Ultra)
+  if (chat.antiDelete) {
     try { await m.delete() } catch {}
     return conn.reply(
       m.chat,
@@ -70,6 +69,6 @@ export async function before(m, { conn, isAdmin, isBotAdmin }) {
     { mentions: [m.sender] }
   )
 
-  // Si querés expulsarlo automáticamente, descomentá:
+  // Si querés expulsarlo automáticamente:
   // await conn.groupParticipantsUpdate(m.chat, [m.sender], "remove")
-}
+  }
