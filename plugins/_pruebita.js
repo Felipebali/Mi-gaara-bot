@@ -1,60 +1,3 @@
-let WAMessageStubType = (await import('@whiskeysockets/baileys')).default
-import chalk from 'chalk'
-import fs from 'fs'
-import path from 'path'
-import fetch from 'node-fetch'
-
-const groupMetadataCache = new Map()
-const lidCache = new Map()
-
-const handler = m => m
-
-handler.before = async function (m, { conn, participants, groupMetadata }) {
-if (!m.messageStubType || !m.isGroup) return
-
-const primaryBot = global.db.data.chats[m.chat].primaryBot
-if (primaryBot && conn.user.jid !== primaryBot) throw !1
-
-const chat = global.db.data.chats[m.chat]
-const users = m.messageStubParameters[0]
-const usuario = await resolveLidToRealJid(m?.sender, conn, m?.chat)
-const groupAdmins = participants.filter(p => p.admin)
-
-const pp = await conn.profilePictureUrl(m.chat, 'image').catch(_ => null) 
-  || 'https://files.catbox.moe/xr2m6u.jpg'
-
-// ===============================
-// MENSAJES CLÁSICOS SIN CANAL
-// ===============================
-
-const nombre = `🌸✨ ¡NUEVO NOMBRE! ✨🌸\n\n@${usuario.split('@')[0]} decidió darle un nuevo nombre.\n💌 Ahora se llama: *${m.messageStubParameters[0]}*`
-
-const foto = `🖼️🌷 ¡Foto renovada! 🌷🖼️\n\n👀 Acción hecha por: @${usuario.split('@')[0]}`
-
-const edit = `🔧✨ Configuración del grupo ✨🔧\n\n@${usuario.split('@')[0]} ha decidido que ${m.messageStubParameters[0] == 'on' ? 'solo los admins 🌟' : 'todos los miembros 🌼'} puedan modificar el grupo.`
-
-const newlink = `🔗💫 ¡Enlace del grupo actualizado! 💫🔗\n\n✦ Gracias a: @${usuario.split('@')[0]}\nAhora todos pueden unirse de nuevo 🌸`
-
-const status = `🚦🌸 Estado del grupo 🌸🚦\n\nEl grupo ha sido ${m.messageStubParameters[0] == 'on' ? '*cerrado* 🔒' : '*abierto* 🔓'}.\n✦ Por: @${usuario.split('@')[0]}\n🌿 ${m.messageStubParameters[0] == 'on' ? 'Solo admins pueden enviar mensajes' : 'Todos pueden enviar mensajes'}`
-
-const admingp = `🌟✨ ¡Admin nuevo! ✨🌟\n\n@${users.split('@')[0]} ahora es admin del grupo.\n🖇️ Acción realizada por: @${usuario.split('@')[0]} 💖`
-
-const noadmingp = `🌸⚡ ¡Admin removido! ⚡🌸\n\n@${users.split('@')[0]} ya no tiene permisos de admin.\n🖇️ Acción realizada por: @${usuario.split('@')[0]} 💌`
-
-// ===============================
-// BORRADO DE SESSIONS
-// ===============================
-if (chat.detect && m.messageStubType == 2) {
-  const uniqid = (m.isGroup ? m.chat : m.sender).split('@')[0]
-  const sessionPath = `./${sessions}/`
-  for (const file of await fs.promises.readdir(sessionPath)) {
-    if (file.includes(uniqid)) {
-      await fs.promises.unlink(path.join(sessionPath, file))
-      console.log(`${chalk.yellow.bold('✎ Delete!')} ${chalk.greenBright(`'${file}'`)}\n${chalk.redBright('Que provoca el "undefined" en el chat.')}`)
-    }
-  }
-}
-
 // ===============================
 // RESPUESTAS LIMPIAS
 // ===============================
@@ -84,7 +27,20 @@ if (chat.detect && m.messageStubType == 23) {
   })
 }
 
-// EDIT CONFIG
+// DESCRIPCIÓN DEL GRUPO (24)
+if (chat.detect && m.messageStubType == 24) {
+  const descripcion = m.messageStubParameters[0] || "Sin descripción"
+  const mensaje = `📝✨ ¡Descripción actualizada! ✨📝\n\n` +
+  `🔧 Acción realizada por: @${usuario.split('@')[0]}\n\n` +
+  `📄 Nueva descripción:\n*${descripcion}*`
+
+  await this.sendMessage(m.chat, { 
+    text: mensaje, 
+    mentions: [usuario, ...groupAdmins.map(v => v.id)] 
+  })
+}
+
+// EDIT CONFIG (25)
 if (chat.detect && m.messageStubType == 25) {
   await this.sendMessage(m.chat, { 
     text: edit, 
@@ -92,7 +48,7 @@ if (chat.detect && m.messageStubType == 25) {
   })
 }
 
-// STATUS (ABIERTO/CERRADO)
+// STATUS (ABIERTO/CERRADO) (26)
 if (chat.detect && m.messageStubType == 26) {
   await this.sendMessage(m.chat, { 
     text: status, 
@@ -100,7 +56,83 @@ if (chat.detect && m.messageStubType == 26) {
   })
 }
 
-// NUEVO ADMIN
+// RESTRICCIONES (27)
+if (chat.detect && m.messageStubType == 27) {
+  const modo = m.messageStubParameters[0] == 'on' 
+    ? "🚫 Restricciones activadas\nSolo admins pueden modificar ajustes sensibles."
+    : "✔️ Restricciones desactivadas\nTodos pueden modificar ajustes permitidos."
+
+  const msg = `⚙️🔒 *Modo de restricciones del grupo* 🔒⚙️\n\n` +
+              `${modo}\n\n👤 Acción: @${usuario.split('@')[0]}`
+
+  await this.sendMessage(m.chat, {
+    text: msg,
+    mentions: [usuario, ...groupAdmins.map(v => v.id)]
+  })
+}
+
+// APROBACIÓN REQUERIDA (28)
+if (chat.detect && m.messageStubType == 28) {
+  const modo = m.messageStubParameters[0] == 'on'
+    ? "🟡 Ahora *se requiere aprobación* para entrar al grupo."
+    : "🟢 *Ya no se requiere* aprobación para entrar."
+
+  const msg = `🛂✨ *Actualización en solicitudes de entrada* ✨🛂\n\n` +
+              `${modo}\n\n👤 Acción: @${usuario.split('@')[0]}`
+
+  await this.sendMessage(m.chat, {
+    text: msg,
+    mentions: [usuario, ...groupAdmins.map(v => v.id)]
+  })
+}
+
+// SOLICITUD ACEPTADA (31)
+if (chat.detect && m.messageStubType == 31) {
+  const quien = users.split('@')[0]
+  const msg = `🟢✨ *Solicitud de entrada aceptada* ✨🟢\n\n` +
+              `👤 Usuario aprobado: @${quien}\n` +
+              `🔧 Aprobado por: @${usuario.split('@')[0]}`
+
+  await this.sendMessage(m.chat, {
+    text: msg,
+    mentions: [usuario, users, ...groupAdmins.map(v => v.id)].filter(Boolean)
+  })
+}
+
+// SOLICITUD RECHAZADA (32)
+if (chat.detect && m.messageStubType == 32) {
+  const quien = users.split('@')[0]
+  const msg = `🔴❌ *Solicitud de entrada rechazada* ❌🔴\n\n` +
+              `👤 Usuario rechazado: @${quien}\n` +
+              `🔧 Acción por: @${usuario.split('@')[0]}`
+
+  await this.sendMessage(m.chat, {
+    text: msg,
+    mentions: [usuario, users, ...groupAdmins.map(v => v.id)].filter(Boolean)
+  })
+}
+
+// MENSAJES TEMPORALES (DISAPPEARING MESSAGES) (72)
+if (chat.detect && m.messageStubType == 72) {
+  const timer = m.messageStubParameters[0]
+  const tiempoLegible = {
+    "0": "❌ Desactivados",
+    "86400": "1 día",
+    "604800": "7 días",
+    "7776000": "90 días"
+  }[timer] || `${timer} segundos`
+
+  const msg = `⏳✨ *Mensajes temporales actualizados* ✨⏳\n\n` +
+              `🕒 Ahora los mensajes desaparecerán en: *${tiempoLegible}*\n` +
+              `👤 Por: @${usuario.split('@')[0]}`
+
+  await this.sendMessage(m.chat, {
+    text: msg,
+    mentions: [usuario, ...groupAdmins.map(v => v.id)]
+  })
+}
+
+// NUEVO ADMIN (29)
 if (chat.detect && m.messageStubType == 29) {
   await this.sendMessage(m.chat, { 
     text: admingp, 
@@ -109,68 +141,20 @@ if (chat.detect && m.messageStubType == 29) {
   return
 }
 
-// ADMIN REMOVIDO
+// ADMIN REMOVIDO (30)
 if (chat.detect && m.messageStubType == 30) {
   await this.sendMessage(m.chat, { 
     text: noadmingp, 
     mentions: [usuario, users, ...groupAdmins.map(v => v.id)].filter(Boolean) 
   })
-} else { 
+}
+
+// LOG EXTRA
+else { 
   if (m.messageStubType == 2) return
   console.log({
     messageStubType: m.messageStubType,
     messageStubParameters: m.messageStubParameters,
     type: WAMessageStubType[m.messageStubType],
   })
-}
-}
-
-export default handler
-
-// ===============================
-// RESOLVE LID (INTACTO)
-// ===============================
-async function resolveLidToRealJid(lid, conn, groupChatId, maxRetries = 3, retryDelay = 60000) {
-const inputJid = lid.toString()
-
-if (!inputJid.endsWith("@lid") || !groupChatId?.endsWith("@g.us")) {
-  return inputJid.includes("@") ? inputJid : `${inputJid}@s.whatsapp.net`
-}
-
-if (lidCache.has(inputJid)) return lidCache.get(inputJid)
-
-const lidToFind = inputJid.split("@")[0]
-let attempts = 0
-
-while (attempts < maxRetries) {
-  try {
-    const metadata = await conn?.groupMetadata(groupChatId)
-    if (!metadata?.participants) throw new Error("No se obtuvieron participantes")
-
-    for (const participant of metadata.participants) {
-      try {
-        if (!participant?.jid) continue
-        const contactDetails = await conn?.onWhatsApp(participant.jid)
-        if (!contactDetails?.[0]?.lid) continue
-
-        const possibleLid = contactDetails[0].lid.split("@")[0]
-        if (possibleLid === lidToFind) {
-          lidCache.set(inputJid, participant.jid)
-          return participant.jid
-        }
-      } catch (e) {}
-    }
-
-    lidCache.set(inputJid, inputJid)
-    return inputJid
-
-  } catch (e) {
-    if (++attempts >= maxRetries) {
-      lidCache.set(inputJid, inputJid)
-      return inputJid
-    }
-    await new Promise(resolve => setTimeout(resolve, retryDelay))
-  }
-}
-return inputJid
 }
