@@ -1,37 +1,34 @@
-// 📂 plugins/propietario-listanegra.js — VERSIÓN ULTRA FELI 2025 PRO
-// Funciona con +598, mención o cita; expulsión inmediata y global
+// 📂 plugins/propietario-listanegra.js — ULTRA FELI 2025 FIX +598
 
 function sleep(ms) { return new Promise(r => setTimeout(r, ms)) }
-
-function normalizeJid(jid = '') {
-  if (!jid) return null
-  jid = jid.toString().trim().replace(/^\+/, '')
-  if (jid.endsWith('@c.us') || jid.endsWith('@s.whatsapp.net'))
-    return jid.replace(/@c.us$/, '@s.whatsapp.net')
-  if (jid.includes('@')) return jid
-  const cleaned = jid.replace(/[^0-9]/g, '')
-  if (!cleaned) return null
-  return cleaned + '@s.whatsapp.net'
-}
 
 function digitsOnly(text = '') {
   return (text || '').toString().replace(/[^0-9]/g, '')
 }
 
+// Normaliza cualquier JID o número a dígitos + @s.whatsapp.net
+function normalizeJid(jid = '') {
+  if (!jid) return null
+  jid = jid.toString().trim()
+  const cleaned = digitsOnly(jid)
+  if (!cleaned) return null
+  return cleaned + '@s.whatsapp.net'
+}
+
+// Extrae número desde un texto
 function extractPhoneNumber(text = '') {
   const d = digitsOnly(text)
   if (!d || d.length < 5) return null
   return d
 }
 
+// Compara solo últimos 8 dígitos (Uruguay)
 function matchJidNumber(jid1, jid2) {
-  // Compara solo últimos 8 dígitos
   const n1 = digitsOnly(jid1).slice(-8)
   const n2 = digitsOnly(jid2).slice(-8)
   return n1 && n2 && n1 === n2
 }
 
-// =====================================================
 // ================= HANDLER PRINCIPAL =================
 const handler = async (m, { conn, command, text }) => {
   const SEP = '━━━━━━━━━━━━━━━━━━━━'
@@ -48,8 +45,7 @@ const handler = async (m, { conn, command, text }) => {
     const index = parseInt(text.trim()) - 1
     if (!bannedList[index]) return conn.reply(m.chat, `${emoji} Número inválido.`, m)
     userJid = bannedList[index][0]
-  }
-  else if (m.quoted)
+  } else if (m.quoted)
     userJid = normalizeJid(m.quoted.sender || m.quoted.participant)
   else if (m.mentionedJid?.length)
     userJid = normalizeJid(m.mentionedJid[0])
@@ -64,7 +60,7 @@ const handler = async (m, { conn, command, text }) => {
 
   if (userJid && !dbUsers[userJid]) dbUsers[userJid] = {}
 
-  // ======================= ADD =========================
+  // ================= ADD =================
   if (command === 'addn') {
     dbUsers[userJid].banned = true
     dbUsers[userJid].banReason = reason
@@ -75,7 +71,7 @@ const handler = async (m, { conn, command, text }) => {
       mentions: [userJid]
     })
 
-    // EXPULSIÓN INMEDIATA EN EL GRUPO
+    // EXPULSIÓN INMEDIATA
     if (m.isGroup) {
       try {
         const metadata = await conn.groupMetadata(m.chat)
@@ -110,7 +106,7 @@ const handler = async (m, { conn, command, text }) => {
     } catch {}
   }
 
-  // ======================= REMOVER =====================
+  // ================= REMOVER =================
   else if (command === 'remn') {
     if (!userJid || !dbUsers[userJid]?.banned)
       return conn.reply(m.chat, `${emoji} No está en la lista negra.`, m)
@@ -125,7 +121,7 @@ const handler = async (m, { conn, command, text }) => {
     })
   }
 
-  // ======================= LISTAR ======================
+  // ================= LISTAR =================
   else if (command === 'listn') {
     if (bannedList.length === 0) return conn.reply(m.chat, `${ok} Lista negra vacía.`, m)
     let list = `🚫 *Lista Negra — ${bannedList.length}*\n${SEP}\n`
@@ -138,7 +134,7 @@ const handler = async (m, { conn, command, text }) => {
     await conn.sendMessage(m.chat, { text: list.trim(), mentions })
   }
 
-  // ======================= LIMPIAR =====================
+  // ================= LIMPIAR =================
   else if (command === 'clrn') {
     for (const jid in dbUsers) {
       if (dbUsers[jid]?.banned) {
@@ -198,7 +194,7 @@ handler.before = async function(m) {
   } catch {}
 }
 
-// ====================== CONFIG =======================
+// ================= CONFIG =================
 handler.help = ['addn','remn','clrn','listn']
 handler.tags = ['owner']
 handler.command = ['addn','remn','clrn','listn']
