@@ -1,7 +1,9 @@
-// 📂 plugins/propietario-listanegra.js — ULTRA FELI 2025 FIX +598
+// 📂 plugins/propietario-listanegra.js — ULTRA FELI 2025 PRO
+// Lista negra con +598, mención o cita, expulsión inmediata y global
 
 function sleep(ms) { return new Promise(r => setTimeout(r, ms)) }
 
+// Extrae solo dígitos
 function digitsOnly(text = '') {
   return (text || '').toString().replace(/[^0-9]/g, '')
 }
@@ -9,7 +11,6 @@ function digitsOnly(text = '') {
 // Normaliza cualquier JID o número a dígitos + @s.whatsapp.net
 function normalizeJid(jid = '') {
   if (!jid) return null
-  jid = jid.toString().trim()
   const cleaned = digitsOnly(jid)
   if (!cleaned) return null
   return cleaned + '@s.whatsapp.net'
@@ -22,7 +23,7 @@ function extractPhoneNumber(text = '') {
   return d
 }
 
-// Compara solo últimos 8 dígitos (Uruguay)
+// Compara últimos 8 dígitos (Uruguay)
 function matchJidNumber(jid1, jid2) {
   const n1 = digitsOnly(jid1).slice(-8)
   const n2 = digitsOnly(jid2).slice(-8)
@@ -41,14 +42,19 @@ const handler = async (m, { conn, command, text }) => {
 
   let userJid = null
 
+  // Por índice en remn
   if (command === 'remn' && /^\d+$/.test(text?.trim())) {
     const index = parseInt(text.trim()) - 1
     if (!bannedList[index]) return conn.reply(m.chat, `${emoji} Número inválido.`, m)
     userJid = bannedList[index][0]
-  } else if (m.quoted)
+  }
+  // Responder mensaje
+  else if (m.quoted)
     userJid = normalizeJid(m.quoted.sender || m.quoted.participant)
+  // Mención
   else if (m.mentionedJid?.length)
     userJid = normalizeJid(m.mentionedJid[0])
+  // Número directo
   else if (text) {
     const num = extractPhoneNumber(text)
     if (num) userJid = normalizeJid(num)
@@ -71,7 +77,7 @@ const handler = async (m, { conn, command, text }) => {
       mentions: [userJid]
     })
 
-    // EXPULSIÓN INMEDIATA
+    // Expulsión inmediata en el grupo
     if (m.isGroup) {
       try {
         const metadata = await conn.groupMetadata(m.chat)
@@ -87,7 +93,7 @@ const handler = async (m, { conn, command, text }) => {
       } catch {}
     }
 
-    // EXPULSIÓN GLOBAL
+    // Expulsión global
     try {
       const groupsObj = await conn.groupFetchAllParticipating()
       for (const jid of Object.keys(groupsObj)) {
