@@ -1,6 +1,6 @@
 // 📂 plugins/grupos-llamar.js — FelixCat_Bot 🐾
-// .llamar @usuario → llama varias veces con intervalo configurable
-// .cancelar → corta la llamada al instante
+// .llamar @usuario → llama 10 veces con intervalo configurable
+// .cancelar → corta la llamada inmediatamente
 
 const owners = ["59896026646@s.whatsapp.net", "59898719147@s.whatsapp.net"]
 
@@ -27,13 +27,12 @@ let handler = async (m, { conn, text, command, args }) => {
     if (!target)
       return m.reply("⚠️ Debes mencionar a alguien.\nEjemplo: *.llamar @usuario*")
 
-    // Evitar llamadas simultáneas
+    // Evitar dos llamadas simultáneas
     if (activeCalls[chatId]?.running)
       return m.reply("⚠️ Ya hay una llamada en curso.\nUsa *.cancelar* para detenerla.")
 
-    // Configuración flexible
-    const total = Math.min(parseInt(args[1]) || 10, 50)
-    const intervalo = Math.max(1, Math.min(parseInt(args[2]) || 5, 60))
+    const total = parseInt(args[1]) || 10
+    const intervalo = parseInt(args[2]) || 5
 
     activeCalls[chatId] = {
       running: true,
@@ -42,20 +41,13 @@ let handler = async (m, { conn, text, command, args }) => {
     }
 
     m.reply(
-      `📞 *Llamada iniciada*\n` +
-      `👤 Usuario: @${target.split("@")[0]}\n` +
-      `🔢 Repeticiones: *${total}*\n` +
-      `⏳ Intervalo: *${intervalo}s*\n\n` +
-      `🛑 Usa *.cancelar* para detener inmediatamente.`,
+      `📞 *Llamada iniciada*\n👉 Usuario: @${target.split("@")[0]}\n🔢 Repeticiones: *${total}*\n⏳ Intervalo: *${intervalo}s*\n\n🛑 Usa *.cancelar* para detener.`,
       { mentions: [target] }
     )
 
-    // ===============================
-    // LOOP DE LLAMADAS
-    // ===============================
+    // LOOP
     for (let i = 0; i < total; i++) {
 
-      // Si se canceló →
       if (!activeCalls[chatId]?.running) {
         delete activeCalls[chatId]
         return m.reply("🛑 *Llamada cancelada.*")
@@ -78,20 +70,21 @@ let handler = async (m, { conn, text, command, args }) => {
   }
 
   // ===============================
-  // COMANDO CANCELAR (INSTANTÁNEO)
+  // COMANDO CANCELAR (INMEDIATO)
   // ===============================
   if (command === "cancelar") {
     if (!activeCalls[chatId]?.running)
-      return m.reply("⚠️ No hay ninguna llamada activa en este grupo.")
+      return m.reply("⚠️ No hay ninguna llamada activa.")
 
-    // CORTAR YA MISMO
+    // corta YA MISMO
     activeCalls[chatId].running = false
 
+    // único mensaje final
     return m.reply("🛑 *Llamada cancelada.*")
   }
 }
 
-handler.help = ["llamar @usuario (veces) (intervalo)", "cancelar"]
+handler.help = ["llamar @usuario (total) (intervalo)", "cancelar"]
 handler.tags = ["owner"]
 handler.command = /^(llamar|cancelar)$/i
 
