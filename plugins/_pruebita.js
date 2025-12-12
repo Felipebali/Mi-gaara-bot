@@ -45,10 +45,10 @@ handler.before = async function (m, { conn, participants, groupMetadata }) {
 ✦ Gracias a: @${usuario.split('@')[0]}
 Ahora todos pueden unirse de nuevo 🌸`
 
+  // (Ya NO se usa en stub 24)
   const linkrevocado = `🚫🔗 ¡Enlace eliminado! 🔗🚫
 
-@${usuario.split('@')[0]} ha *revocado* el enlace del grupo.
-Nadie podrá unirse hasta generar uno nuevo.`
+@${usuario.split('@')[0]} ha *revocado* el enlace del grupo.`
 
   const edit = `🔧✨ Configuración del grupo ✨🔧
 
@@ -67,13 +67,11 @@ Nadie podrá unirse hasta generar uno nuevo.`
 
   const approveOn = `📝✨ ¡Aprobación activada! ✨📝
 
-@${usuario.split('@')[0]} activó la *aprobación para unirse al grupo*.
-Ahora los admins deberán aceptar cada solicitud.`
+@${usuario.split('@')[0]} activó la *aprobación para unirse al grupo*.`
 
   const approveOff = `📝💨 Aprobación desactivada 💨📝
 
-@${usuario.split('@')[0]} desactivó la aprobación.
-Ahora cualquiera puede unirse sin revisión.`
+@${usuario.split('@')[0]} desactivó la aprobación.`
 
   const admingp = `🌟✨ ¡Admin nuevo! ✨🌟
 
@@ -89,16 +87,14 @@ Ahora cualquiera puede unirse sin revisión.`
   // RESPUESTAS POR STUB
   // ===============================
 
-  // 20 — Cambio de descripción
-  if (chat.detect && m.messageStubType == 20)
-    return conn.sendMessage(m.chat, {
-      text: descripcion,
-      mentions: [usuario, ...groupAdmins.map(v => v.id)]
-    })
+  // ❌ 20 — eliminado (como pediste)
 
   // 21 — Cambio nombre
   if (chat.detect && m.messageStubType == 21)
-    return conn.sendMessage(m.chat, { text: nombre, mentions: [usuario, ...groupAdmins.map(v => v.id)] })
+    return conn.sendMessage(m.chat, {
+      text: nombre,
+      mentions: [usuario, ...groupAdmins.map(v => v.id)]
+    })
 
   // 22 — Cambio foto
   if (chat.detect && m.messageStubType == 22)
@@ -110,25 +106,40 @@ Ahora cualquiera puede unirse sin revisión.`
 
   // 23 — Nuevo link
   if (chat.detect && m.messageStubType == 23)
-    return conn.sendMessage(m.chat, { text: newlink, mentions: [usuario, ...groupAdmins.map(v => v.id)] })
+    return conn.sendMessage(m.chat, {
+      text: newlink,
+      mentions: [usuario, ...groupAdmins.map(v => v.id)]
+    })
 
-  // 24 — Link revocado
+  // ✅ 24 — Cambio de descripción (como pediste)
   if (chat.detect && m.messageStubType == 24)
-    return conn.sendMessage(m.chat, { text: linkrevocado, mentions: [usuario, ...groupAdmins.map(v => v.id)] })
+    return conn.sendMessage(m.chat, {
+      text: descripcion,
+      mentions: [usuario, ...groupAdmins.map(v => v.id)]
+    })
 
-  // 25 — Editar configuración del grupo
+  // 25 — Editar configuración
   if (chat.detect && m.messageStubType == 25)
-    return conn.sendMessage(m.chat, { text: edit, mentions: [usuario, ...groupAdmins.map(v => v.id)] })
+    return conn.sendMessage(m.chat, {
+      text: edit,
+      mentions: [usuario, ...groupAdmins.map(v => v.id)]
+    })
 
-  // ❌ 26 — Eliminado
+  // ❌ 26 — Eliminado (dejado vacío)
 
   // 27 — Activar aprobación
   if (chat.detect && m.messageStubType == 27)
-    return conn.sendMessage(m.chat, { text: approveOn, mentions: [usuario, ...groupAdmins.map(v => v.id)] })
+    return conn.sendMessage(m.chat, {
+      text: approveOn,
+      mentions: [usuario, ...groupAdmins.map(v => v.id)]
+    })
 
   // 28 — Desactivar aprobación
   if (chat.detect && m.messageStubType == 28)
-    return conn.sendMessage(m.chat, { text: approveOff, mentions: [usuario, ...groupAdmins.map(v => v.id)] })
+    return conn.sendMessage(m.chat, {
+      text: approveOff,
+      mentions: [usuario, ...groupAdmins.map(v => v.id)]
+    })
 
   // 29 — Dar admin
   if (chat.detect && m.messageStubType == 29)
