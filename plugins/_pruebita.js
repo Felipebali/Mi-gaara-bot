@@ -1,3 +1,4 @@
+// ✨ FATÍDICO PLUGIN DETECT — FELIXCAT BOT — FULL STUB SUPPORT ✨
 import fs from 'fs'
 import path from 'path'
 import chalk from 'chalk'
@@ -23,21 +24,31 @@ handler.before = async function (m, { conn, participants, groupMetadata }) {
   const usuario = await resolveLidToRealJid(m?.sender, conn, m?.chat)
   const groupAdmins = participants.filter(p => p.admin)
 
-  // Foto grupo
   const pp = await conn.profilePictureUrl(m.chat, 'image').catch(_ => null)
     || 'https://files.catbox.moe/xr2m6u.jpg'
 
   // ===============================
   // MENSAJES
   // ===============================
+
   const nombre = `🌸✨ ¡NUEVO NOMBRE! ✨🌸
-  
+
 @${usuario.split('@')[0]} decidió darle un nuevo nombre.
 💌 Ahora se llama: *${m.messageStubParameters[0]}*`
 
   const foto = `🖼️🌷 ¡Foto renovada! 🌷🖼️
 
 👀 Acción hecha por: @${usuario.split('@')[0]}`
+
+  const newlink = `🔗💫 ¡Enlace del grupo actualizado! 💫🔗
+
+✦ Gracias a: @${usuario.split('@')[0]}
+Ahora todos pueden unirse de nuevo 🌸`
+
+  const linkrevocado = `🚫🔗 ¡Enlace eliminado! 🔗🚫
+
+@${usuario.split('@')[0]} ha *revocado* el enlace del grupo.
+Nadie podrá unirse hasta generar uno nuevo.`
 
   const edit = `🔧✨ Configuración del grupo ✨🔧
 
@@ -47,22 +58,22 @@ handler.before = async function (m, { conn, participants, groupMetadata }) {
       : 'todos los miembros 🌼'
   } puedan modificar el grupo.`
 
-  const newlink = `🔗💫 ¡Enlace del grupo actualizado! 💫🔗
+  const descripcion = `📝✨ ¡Descripción actualizada! ✨📝
 
-✦ Gracias a: @${usuario.split('@')[0]}
-Ahora todos pueden unirse de nuevo 🌸`
+@${usuario.split('@')[0]} modificó la descripción del grupo.
 
-  const status = `🚦🌸 Estado del grupo 🌸🚦
+📄 Nueva descripción:
+*${m.messageStubParameters[0]}*`
 
-El grupo ha sido ${
-    m.messageStubParameters[0] == 'on' ? '*cerrado* 🔒' : '*abierto* 🔓'
-  }.
-✦ Por: @${usuario.split('@')[0]}
-🌿 ${
-    m.messageStubParameters[0] == 'on'
-      ? 'Solo admins pueden enviar mensajes'
-      : 'Todos pueden enviar mensajes'
-  }`
+  const approveOn = `📝✨ ¡Aprobación activada! ✨📝
+
+@${usuario.split('@')[0]} activó la *aprobación para unirse al grupo*.
+Ahora los admins deberán aceptar cada solicitud.`
+
+  const approveOff = `📝💨 Aprobación desactivada 💨📝
+
+@${usuario.split('@')[0]} desactivó la aprobación.
+Ahora cualquiera puede unirse sin revisión.`
 
   const admingp = `🌟✨ ¡Admin nuevo! ✨🌟
 
@@ -75,82 +86,63 @@ El grupo ha sido ${
 🖇️ Acción realizada por: @${usuario.split('@')[0]} 💌`
 
   // ===============================
-  // BORRADO DE SESSIONS
-  // ===============================
-  if (chat.detect && m.messageStubType == 2) {
-    const uniqid = (m.isGroup ? m.chat : m.sender).split('@')[0]
-    const sessionPath = './sessions/'
-
-    for (const file of await fs.promises.readdir(sessionPath)) {
-      if (file.includes(uniqid)) {
-        await fs.promises.unlink(path.join(sessionPath, file))
-        console.log(
-          `${chalk.yellow.bold('✎ Delete!')} ${chalk.greenBright(`'${file}'`)}\n${chalk.redBright('Que provoca el "undefined" en el chat.')}`
-        )
-      }
-    }
-  }
-
-  // ===============================
-  // RESPUESTAS
+  // RESPUESTAS POR STUB
   // ===============================
 
-  // NOMBRE
-  if (chat.detect && m.messageStubType == 21) {
-    await conn.sendMessage(m.chat, {
-      text: nombre,
-      mentions: [usuario, ...groupAdmins.map(v => v.id)],
+  // 20 — Cambio de descripción
+  if (chat.detect && m.messageStubType == 20)
+    return conn.sendMessage(m.chat, {
+      text: descripcion,
+      mentions: [usuario, ...groupAdmins.map(v => v.id)]
     })
-  }
 
-  // FOTO
-  if (chat.detect && m.messageStubType == 22) {
-    await conn.sendMessage(m.chat, {
+  // 21 — Cambio nombre
+  if (chat.detect && m.messageStubType == 21)
+    return conn.sendMessage(m.chat, { text: nombre, mentions: [usuario, ...groupAdmins.map(v => v.id)] })
+
+  // 22 — Cambio foto
+  if (chat.detect && m.messageStubType == 22)
+    return conn.sendMessage(m.chat, {
       image: { url: pp },
       caption: foto,
-      mentions: [usuario, ...groupAdmins.map(v => v.id)],
+      mentions: [usuario, ...groupAdmins.map(v => v.id)]
     })
-  }
 
-  // NUEVO LINK
-  if (chat.detect && m.messageStubType == 23) {
-    await conn.sendMessage(m.chat, {
-      text: newlink,
-      mentions: [usuario, ...groupAdmins.map(v => v.id)],
-    })
-  }
+  // 23 — Nuevo link
+  if (chat.detect && m.messageStubType == 23)
+    return conn.sendMessage(m.chat, { text: newlink, mentions: [usuario, ...groupAdmins.map(v => v.id)] })
 
-  // EDIT CONFIG
-  if (chat.detect && m.messageStubType == 25) {
-    await conn.sendMessage(m.chat, {
-      text: edit,
-      mentions: [usuario, ...groupAdmins.map(v => v.id)],
-    })
-  }
+  // 24 — Link revocado
+  if (chat.detect && m.messageStubType == 24)
+    return conn.sendMessage(m.chat, { text: linkrevocado, mentions: [usuario, ...groupAdmins.map(v => v.id)] })
 
-  // STATUS
-  if (chat.detect && m.messageStubType == 26) {
-    await conn.sendMessage(m.chat, {
-      text: status,
-      mentions: [usuario, ...groupAdmins.map(v => v.id)],
-    })
-  }
+  // 25 — Editar configuración del grupo
+  if (chat.detect && m.messageStubType == 25)
+    return conn.sendMessage(m.chat, { text: edit, mentions: [usuario, ...groupAdmins.map(v => v.id)] })
 
-  // NUEVO ADMIN
-  if (chat.detect && m.messageStubType == 29) {
-    await conn.sendMessage(m.chat, {
+  // ❌ 26 — Eliminado
+
+  // 27 — Activar aprobación
+  if (chat.detect && m.messageStubType == 27)
+    return conn.sendMessage(m.chat, { text: approveOn, mentions: [usuario, ...groupAdmins.map(v => v.id)] })
+
+  // 28 — Desactivar aprobación
+  if (chat.detect && m.messageStubType == 28)
+    return conn.sendMessage(m.chat, { text: approveOff, mentions: [usuario, ...groupAdmins.map(v => v.id)] })
+
+  // 29 — Dar admin
+  if (chat.detect && m.messageStubType == 29)
+    return conn.sendMessage(m.chat, {
       text: admingp,
-      mentions: [usuario, users, ...groupAdmins.map(v => v.id)].filter(Boolean),
+      mentions: [usuario, users, ...groupAdmins.map(v => v.id)].filter(Boolean)
     })
-  }
 
-  // ADMIN REMOVIDO
-  if (chat.detect && m.messageStubType == 30) {
-    await conn.sendMessage(m.chat, {
+  // 30 — Quitar admin
+  if (chat.detect && m.messageStubType == 30)
+    return conn.sendMessage(m.chat, {
       text: noadmingp,
-      mentions: [usuario, users, ...groupAdmins.map(v => v.id)].filter(Boolean),
+      mentions: [usuario, users, ...groupAdmins.map(v => v.id)].filter(Boolean)
     })
-  }
 }
 
 // ===============================
@@ -159,9 +151,8 @@ El grupo ha sido ${
 async function resolveLidToRealJid(lid, conn, groupChatId, maxRetries = 3, retryDelay = 60000) {
   const inputJid = lid.toString()
 
-  if (!inputJid.endsWith('@lid') || !groupChatId?.endsWith('@g.us')) {
+  if (!inputJid.endsWith('@lid') || !groupChatId?.endsWith('@g.us'))
     return inputJid.includes('@') ? inputJid : `${inputJid}@s.whatsapp.net`
-  }
 
   if (lidCache.has(inputJid)) return lidCache.get(inputJid)
 
@@ -170,17 +161,17 @@ async function resolveLidToRealJid(lid, conn, groupChatId, maxRetries = 3, retry
 
   while (attempts < maxRetries) {
     try {
-      const metadata = await conn?.groupMetadata(groupChatId)
-      if (!metadata?.participants) throw new Error('No se obtuvieron participantes')
+      const metadata = await conn.groupMetadata(groupChatId)
+      if (!metadata?.participants) throw new Error()
 
       for (const participant of metadata.participants) {
         try {
           if (!participant?.jid) continue
-          const contactDetails = await conn?.onWhatsApp(participant.jid)
-          if (!contactDetails?.[0]?.lid) continue
+          const check = await conn.onWhatsApp(participant.jid)
+          if (!check?.[0]?.lid) continue
 
-          const possibleLid = contactDetails[0].lid.split('@')[0]
-          if (possibleLid === lidToFind) {
+          const compare = check[0].lid.split('@')[0]
+          if (compare === lidToFind) {
             lidCache.set(inputJid, participant.jid)
             return participant.jid
           }
