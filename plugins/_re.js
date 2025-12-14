@@ -1,4 +1,4 @@
-// 📂 plugins/propietario-re.js — FELI 2025 — GLOBAL RE 🔥
+// 📂 plugins/propietario-re.js — FELI 2025 — GLOBAL RE 🔥 FIXED
 
 function sleep(ms) { return new Promise(r => setTimeout(r, ms)) }
 
@@ -6,22 +6,26 @@ function digitsOnly(t = '') {
   return (t || '').toString().replace(/[^0-9]/g, '')
 }
 
-function normalizeJid(num = '') {
-  const d = digitsOnly(num)
-  if (!d) return null
-  return d + '@s.whatsapp.net'
+function normalizeJid(jid = '') {
+  if (!jid) return null
+  jid = jid.toString()
+  if (jid.includes('@')) return jid
+  const d = digitsOnly(jid)
+  return d ? d + '@s.whatsapp.net' : null
 }
 
-function findParticipantByDigits(meta, digits) {
-  return meta.participants.find(p => {
-    const pd = digitsOnly(p.id)
-    return pd === digits || pd.endsWith(digits)
-  })
+function jidDigits(jid = '') {
+  return digitsOnly(jid.split('@')[0])
+}
+
+function isSameNumber(a, b) {
+  return a === b || a.endsWith(b) || b.endsWith(a)
 }
 
 // =====================================================
-// 🔥 AUTO-KICK CUANDO ENTRA (RE GLOBAL)
+// ================= HANDLER PRINCIPAL =================
 // =====================================================
+
 const handler = async (m, { conn, command, text }) => {
 
   const SEP = '━━━━━━━━━━━━━━━━━━━━'
@@ -38,39 +42,44 @@ const handler = async (m, { conn, command, text }) => {
     if (!digits || digits.length < 6)
       return m.reply(`${emoji} Usá: *.re 598xxxxxxx*`)
 
-    if (db.reBlackList.some(u => u.digits === digits))
+    if (db.reBlackList.some(u => isSameNumber(u.digits, digits)))
       return m.reply(`${emoji} Ese número ya está en la lista.`)
-
-    const jid = normalizeJid(digits)
 
     db.reBlackList.push({
       digits,
-      jid,
       by: m.sender,
       date: Date.now()
     })
 
-    await m.reply(`${ok} *Agregado a lista negra*\n${SEP}\n📞 ${digits}\n${SEP}`)
+    await m.reply(
+      `${ok} *Agregado a RE GLOBAL*\n${SEP}\n📞 ${digits}\n${SEP}`
+    )
 
-    // ===== EXPULSIÓN GLOBAL INMEDIATA =====
+    // ===== EXPULSIÓN GLOBAL =====
     try {
       const groups = Object.keys(await conn.groupFetchAllParticipating())
 
       for (const gid of groups) {
-        await sleep(900)
+        await sleep(800)
         try {
           const meta = await conn.groupMetadata(gid)
-          const participant = findParticipantByDigits(meta, digits)
-          if (!participant) continue
 
-          await conn.groupParticipantsUpdate(gid, [participant.id], 'remove')
-          await sleep(300)
+          const isBotAdmin = meta.participants.some(p =>
+            p.id === conn.user.id && p.admin
+          )
+          if (!isBotAdmin) continue
+
+          const target = meta.participants.find(p =>
+            isSameNumber(jidDigits(p.id), digits)
+          )
+          if (!target) continue
+
+          await conn.groupParticipantsUpdate(gid, [target.id], 'remove')
 
           await conn.sendMessage(gid, {
-            text: `${emoji} Usuario eliminado por *RE GLOBAL*\n📞 ${digits}`,
-            mentions: [participant.id]
+            text: `${emoji} *RE GLOBAL*\n📞 ${digits}`,
+            mentions: [target.id]
           })
-
         } catch {}
       }
     } catch {}
@@ -86,7 +95,7 @@ const handler = async (m, { conn, command, text }) => {
     const removed = db.reBlackList.splice(index - 1, 1)[0]
 
     await m.reply(
-      `${ok} *Removido de lista negra*\n${SEP}\n📞 ${removed.digits}\n${SEP}`
+      `${ok} *Removido de RE GLOBAL*\n${SEP}\n📞 ${removed.digits}\n${SEP}`
     )
   }
 
@@ -94,15 +103,14 @@ const handler = async (m, { conn, command, text }) => {
   else if (command === 'vre') {
 
     if (!db.reBlackList.length)
-      return m.reply(`${ok} Lista negra vacía.`)
+      return m.reply(`${ok} Lista RE vacía.`)
 
     let txt = `🚫 *RE GLOBAL — ${db.reBlackList.length}*\n${SEP}\n`
-
     db.reBlackList.forEach((u, i) => {
       txt += `*${i + 1}.* 📞 ${u.digits}\n`
     })
-
     txt += SEP
+
     await m.reply(txt)
   }
 
@@ -110,45 +118,52 @@ const handler = async (m, { conn, command, text }) => {
 }
 
 // =====================================================
-// 🚨 DETECTOR DE NUEVOS PARTICIPANTES
+// ========== AUTO-KICK AL ENTRAR (REAL) ================
 // =====================================================
+
 handler.before = async function (m, { conn }) {
 
   if (!m.isGroup) return
+  if (![27, 28, 32].includes(m.messageStubType)) return
 
   const db = global.db.data
   db.reBlackList = db.reBlackList || []
 
-  // 27 = usuario agregado
-  if (m.messageStubType !== 27) return
-
   const newUsers = m.messageStubParameters || []
+  if (!newUsers.length) return
 
-  for (const jid of newUsers) {
-    const digits = digitsOnly(jid)
+  try {
+    const meta = await conn.groupMetadata(m.chat)
 
-    const banned = db.reBlackList.find(u =>
-      u.digits === digits || digits.endsWith(u.digits)
+    const isBotAdmin = meta.participants.some(p =>
+      p.id === conn.user.id && p.admin
     )
+    if (!isBotAdmin) return
 
-    if (!banned) continue
+    for (const jid of newUsers) {
+      const digits = jidDigits(jid)
 
-    try {
-      await sleep(500)
+      const banned = db.reBlackList.find(u =>
+        isSameNumber(u.digits, digits)
+      )
+      if (!banned) continue
+
+      await sleep(400)
       await conn.groupParticipantsUpdate(m.chat, [jid], 'remove')
 
       await conn.sendMessage(m.chat, {
         text: `🚫 *RE GLOBAL*\n📞 ${digits}\nExpulsión automática.`,
         mentions: [jid]
       })
-    } catch {}
-  }
+    }
+  } catch {}
 }
 
 // ================= CONFIG =================
+
 handler.help = ['re', 're2', 'vre']
 handler.tags = ['owner']
 handler.command = ['re', 're2', 'vre']
 handler.rowner = true
 
-export default handler 
+export default handler
