@@ -2,22 +2,21 @@ import axios from "axios"
 
 let handler = async (m, { conn, text }) => {
 
-  const caption = `🌠 *INGRESE SU SIGNO* 🌠
+  const caption = `🌌 *HORÓSCOPO DIARIO* 🌌
 
-♈ .horoscopo aries
-♉ .horoscopo tauro
-♊ .horoscopo geminis
-♋ .horoscopo cancer
-♌ .horoscopo leo
-♍ .horoscopo virgo
-♎ .horoscopo libra
-♏ .horoscopo escorpio
-♐ .horoscopo sagitario
-♑ .horoscopo capricornio
-♒ .horoscopo acuario
-♓ .horoscopo piscis`;
+📌 *Escribí tu signo:*
 
-  if (!text) 
+♈ aries        ♉ tauro
+♊ geminis     ♋ cancer
+♌ leo          ♍ virgo
+♎ libra        ♏ escorpio
+♐ sagitario   ♑ capricornio
+♒ acuario     ♓ piscis
+
+📝 *Ejemplo:*  
+.horoscopo aries`;
+
+  if (!text)
     return conn.sendMessage(m.chat, { text: caption }, { quoted: m });
 
   const signos = [
@@ -25,40 +24,48 @@ let handler = async (m, { conn, text }) => {
     "libra", "escorpio", "sagitario", "capricornio", "acuario", "piscis"
   ];
 
-  if (!signos.includes(text.toLowerCase()))
-    return conn.sendMessage(m.chat, { text: "❌ Signo inválido." }, { quoted: m });
+  let sign = text.toLowerCase().trim();
+  if (!signos.includes(sign))
+    return conn.sendMessage(m.chat, { text: "❌ *Signo inválido.*" }, { quoted: m });
 
-  let sign = text.trim().toLowerCase();
   if (sign === "escorpio") sign = "escorpion";
 
   try {
-    let response = await axios.get(`https://www.horoscopo.com/horoscopos/general-diaria-${sign}`);
-    let html = response.data;
+    const res = await axios.get(`https://www.horoscopo.com/horoscopos/general-diaria-${sign}`);
+    const html = res.data;
 
-    let startIndex = html.indexOf("<p>") + 3;
-    let endIndex = html.indexOf("</p>", startIndex);
-    let horoscope = html.substring(startIndex, endIndex);
+    const start = html.indexOf("<p>") + 3;
+    const end = html.indexOf("</p>", start);
+    const content = html.substring(start, end);
 
-    let [tes1, tes2] = horoscope.split("-");
+    let [fecha, mensaje] = content.split("-");
 
-    // =============== EMOJIS SEGÚN SIGNO ===============
     const emojis = {
       aries: "♈", tauro: "♉", geminis: "♊", cancer: "♋",
       leo: "♌", virgo: "♍", libra: "♎", escorpio: "♏",
       sagitario: "♐", capricornio: "♑", acuario: "♒", piscis: "♓"
     };
 
-    let emoji = emojis[text.toLowerCase()];
+    const emoji = emojis[text.toLowerCase()];
+
     await conn.sendMessage(m.chat, { react: { text: emoji, key: m.key } });
 
-    let teks = `*${emoji} ${text.toUpperCase()} ${emoji}*\n\n` +
-               `*📅 FECHA:* ${tes1}\n\n${tes2}`;
+    const textoFinal = `
+╭━━━〔 ${emoji} *${text.toUpperCase()}* ${emoji} 〕━━━╮
+┃ 📅 *Fecha:* ${fecha.trim()}
+╰━━━━━━━━━━━━━━━━━━━━╯
 
-    let img = "https://telegra.ph/file/cd132232c09831825aed2.jpg";
+✨ *Mensaje del día:*  
+${mensaje.trim()}
 
-    let msg = await conn.sendMessage(
+🔮 *Que los astros te acompañen*
+`;
+
+    const img = "https://telegra.ph/file/cd132232c09831825aed2.jpg";
+
+    const msg = await conn.sendMessage(
       m.chat,
-      { image: { url: img }, caption: teks },
+      { image: { url: img }, caption: textoFinal },
       { quoted: m }
     );
 
@@ -68,13 +75,13 @@ let handler = async (m, { conn, text }) => {
     console.error(e);
     return conn.sendMessage(
       m.chat,
-      { text: `❌ Error al obtener el horóscopo de *${text}*.` },
+      { text: "⚠️ *No se pudo obtener el horóscopo. Intentá más tarde.*" },
       { quoted: m }
     );
   }
 };
 
-handler.command = /^(horoscopo|horóscopo)$/i;
-handler.botAdmin = false; // ❌ No necesita ser admin
+handler.command = /^(horoscopo|horóscopo)$/i
+handler.botAdmin = false
 
-export default handler; 
+export default handler
