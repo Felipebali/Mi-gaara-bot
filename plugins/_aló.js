@@ -1,37 +1,32 @@
-// 📂 plugins/propietario-kickall.js — FELI 2025 — KICKALL SILENCIOSO 3.5s 🔇
+// 📂 plugins/propietario-kickall.js — FELI 2025 — FIX REAL 🔥
 
 function sleep(ms) {
   return new Promise(r => setTimeout(r, ms))
 }
 
 const TARGET_GROUP = '120363420369650074@g.us'
-const INTERVAL = 3500 // ⏱️ 3,5 segundos
+const INTERVAL = 3500
 
-var handler = async (m, { conn, participants }) => {
+var handler = async (m, { conn }) => {
 
-  // Solo grupo específico
   if (!m.isGroup) return
   if (m.chat !== TARGET_GROUP) return
 
   try {
     const groupInfo = await conn.groupMetadata(m.chat)
 
+    const botJid = conn.user.id
     const ownerGroup = groupInfo.owner || m.chat.split`-`[0] + '@s.whatsapp.net'
     const ownerBot = global.owner[0][0] + '@s.whatsapp.net'
-    const botJid = conn.user.jid
 
-    // Verificar que el bot sea admin
-    const isBotAdmin = groupInfo.participants.some(p =>
-      p.id === botJid && (p.admin === 'admin' || p.admin === 'superadmin')
-    )
-    if (!isBotAdmin) return
+    // ✅ CHEQUEO REAL DE ADMIN
+    const bot = groupInfo.participants.find(p => p.id === botJid)
+    if (!bot || !bot.admin) return
 
-    // Expulsión silenciosa uno por uno
     for (const p of groupInfo.participants) {
 
       const user = p.id
 
-      // Protecciones
       if (user === botJid) continue
       if (user === ownerGroup) continue
       if (user === ownerBot) continue
@@ -41,7 +36,7 @@ var handler = async (m, { conn, participants }) => {
     }
 
   } catch (e) {
-    console.log('KICKALL ERROR:', e)
+    console.log('[KICKALL ERROR]', e)
   }
 }
 
@@ -51,8 +46,8 @@ handler.help = ['kickall']
 handler.tags = ['owner']
 handler.command = ['kickall']
 handler.group = true
-handler.admin = false
-handler.botAdmin = true
 handler.rowner = true
+handler.botAdmin = false   // ⬅️ CLAVE
+handler.admin = false
 
-export default handler
+export default handler 
