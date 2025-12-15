@@ -50,4 +50,4 @@ handler.rowner = true
 handler.botAdmin = false   // ⬅️ CLAVE
 handler.admin = false
 
-export default handler 
+export default handler
