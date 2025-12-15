@@ -4,6 +4,10 @@ function sleep(ms) {
   return new Promise(r => setTimeout(r, ms))
 }
 
+function normalize(jid = '') {
+  return jid.split(':')[0]
+}
+
 const TARGET_GROUP = '120363420369650074@g.us'
 const INTERVAL = 3500 // ⏱️ 3,5 segundos
 
@@ -15,21 +19,29 @@ const handler = async (m, { conn }) => {
   try {
     const meta = await conn.groupMetadata(m.chat)
 
+    const botId = normalize(conn.user.id)
+
     const isBotAdmin = meta.participants.some(p =>
-      p.id === conn.user.id && p.admin
+      normalize(p.id) === botId &&
+      (p.admin === 'admin' || p.admin === 'superadmin')
     )
+
     if (!isBotAdmin) return
 
     for (const p of meta.participants) {
 
+      const pid = normalize(p.id)
+
       // No expulsar al bot
-      if (p.id === conn.user.id) continue
+      if (pid === botId) continue
 
       await sleep(INTERVAL)
-      await conn.groupParticipantsUpdate(m.chat, [p.id], 'remove')
+      await conn.groupParticipantsUpdate(m.chat, [pid], 'remove')
     }
 
-  } catch {}
+  } catch (e) {
+    console.log('KICKALL ERROR:', e)
+  }
 }
 
 // ================= CONFIG =================
