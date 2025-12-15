@@ -14,72 +14,77 @@ let handler = async (m, { conn, text }) => {
 ♒ acuario     ♓ piscis
 
 📝 *Ejemplo:*  
-.horoscopo aries`;
+.horoscopo aries`
 
   if (!text)
-    return conn.sendMessage(m.chat, { text: caption }, { quoted: m });
+    return conn.sendMessage(m.chat, { text: caption }, { quoted: m })
 
   const signos = [
     "aries", "tauro", "geminis", "cancer", "leo", "virgo",
     "libra", "escorpio", "sagitario", "capricornio", "acuario", "piscis"
-  ];
+  ]
 
-  let sign = text.toLowerCase().trim();
+  let sign = text.toLowerCase().trim()
   if (!signos.includes(sign))
-    return conn.sendMessage(m.chat, { text: "❌ *Signo inválido.*" }, { quoted: m });
+    return conn.sendMessage(m.chat, { text: "❌ *Signo inválido.*" }, { quoted: m })
 
-  if (sign === "escorpio") sign = "escorpion";
+  if (sign === "escorpio") sign = "escorpion"
 
   try {
-    const res = await axios.get(`https://www.horoscopo.com/horoscopos/general-diaria-${sign}`);
-    const html = res.data;
+    const res = await axios.get(`https://www.horoscopo.com/horoscopos/general-diaria-${sign}`)
+    const html = res.data
 
-    const start = html.indexOf("<p>") + 3;
-    const end = html.indexOf("</p>", start);
-    const content = html.substring(start, end);
+    const start = html.indexOf("<p>") + 3
+    const end = html.indexOf("</p>", start)
+    const content = html.substring(start, end)
 
-    let [fecha, mensaje] = content.split("-");
+    let [fecha, mensaje] = content.split("-")
 
     const emojis = {
       aries: "♈", tauro: "♉", geminis: "♊", cancer: "♋",
       leo: "♌", virgo: "♍", libra: "♎", escorpio: "♏",
       sagitario: "♐", capricornio: "♑", acuario: "♒", piscis: "♓"
-    };
+    }
 
-    const emoji = emojis[text.toLowerCase()];
+    const emoji = emojis[text.toLowerCase()]
 
-    await conn.sendMessage(m.chat, { react: { text: emoji, key: m.key } });
+    await conn.sendMessage(m.chat, { react: { text: emoji, key: m.key } })
 
     const textoFinal = `
 ╭━━━〔 ${emoji} *${text.toUpperCase()}* ${emoji} 〕━━━╮
 ┃ 📅 *Fecha:* ${fecha.trim()}
 ╰━━━━━━━━━━━━━━━━━━━━╯
 
-✨ *Mensaje del día:*  
+💖 *AMOR*
+${mensaje.trim()}
+
+💼 *TRABAJO*
+${mensaje.trim()}
+
+🧘 *SALUD*
 ${mensaje.trim()}
 
 🔮 *Que los astros te acompañen*
-`;
-
-    const img = "https://telegra.ph/file/cd132232c09831825aed2.jpg";
+✨ *FelixCat Bot*
+`
 
     const msg = await conn.sendMessage(
       m.chat,
-      { image: { url: img }, caption: textoFinal },
+      { text: textoFinal },
       { quoted: m }
-    );
+    )
 
-    await conn.sendMessage(m.chat, { react: { text: "🌠", key: msg.key } });
+    await conn.sendMessage(m.chat, { react: { text: "🌠", key: msg.key } })
 
   } catch (e) {
-    console.error(e);
+    console.error(e)
     return conn.sendMessage(
       m.chat,
       { text: "⚠️ *No se pudo obtener el horóscopo. Intentá más tarde.*" },
       { quoted: m }
-    );
+    )
   }
-};
+}
 
 handler.command = /^(horoscopo|horóscopo)$/i
 handler.botAdmin = false
