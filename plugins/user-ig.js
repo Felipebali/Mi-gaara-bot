@@ -1,6 +1,10 @@
 const handler = async (m, { conn, text }) => {
   if (!text) {
-    return conn.reply(m.chat, '❌ Debes escribir un usuario de Instagram.\n\nEjemplo:\n.ig messi', m)
+    return conn.reply(
+      m.chat,
+      '❌ *Debes escribir un usuario de Instagram.*\n\n📌 *Ejemplo:*\n.ig messi',
+      m
+    )
   }
 
   // Quitar @ si lo escribe
@@ -12,11 +16,15 @@ const handler = async (m, { conn, text }) => {
   const instagramUrl = `https://instagram.com/${text}`
 
   const str = `
-*[🤳🏻] INSTAGRAM DE:* @${m.sender.split('@')[0]}
+╭━━━〔 🤳 *INSTAGRAM* 〕━━━╮
+┃ 👤 *Usuario:* @${text}
+┃ 👀 *Solicitado por:* @${m.sender.split('@')[0]}
+╰━━━━━━━━━━━━━━━━━━━━━━╯
 
-*[👤] USUARIO:* @${text}
+🔗 *Perfil:*  
+${instagramUrl}
 
-*[📌] ENLACE:* ${instagramUrl}
+✨ *Abrí el enlace para ver el perfil*
 `.trim()
 
   await conn.sendFile(
@@ -28,8 +36,7 @@ const handler = async (m, { conn, text }) => {
     false,
     {
       mentions: [
-        m.sender,
-        `${text}@s.whatsapp.net`
+        m.sender
       ]
     }
   )
