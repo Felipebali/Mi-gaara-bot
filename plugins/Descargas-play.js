@@ -20,7 +20,16 @@ const txt = {
     `⚠️ Esperá ${time} antes de volver a usar el comando.\nIntentos: ${atts}/4`,
   ingresarTitulo: "🎵 Escribí el nombre del video.",
   sendPreview: (isAudio, title) =>
-    `${isAudio ? "🎧 Audio" : "🎬 Video"}:\n\n${title}\n\n⏳ Descargando...`,
+    `╔══════════════════════╗
+║ 🎶 YOUTUBE ${isAudio ? "AUDIO" : "VIDEO"}
+╠══════════════════════╣
+║ 📌 Título:
+║ ${title}
+║
+║ ⏳ Estado: Descargando…
+║ ⚡ Calidad: Óptima
+║ 🔐 Proceso seguro
+╚══════════════════════╝`,
 }
 
 // CREAR CARPETA TMP
@@ -51,7 +60,6 @@ let handler = async (m, { conn, args, text, isOwner, command }) => {
 
   // 🔥 OWNER: NO TIENE SPAM, NO MENSAJE, SIN LÍMITES
   if (!isOwner) {
-    // ANTISPAM PARA USUARIOS NORMALES
     if (new Date() - user.lastmining < waitTime) {
       user.commandAttempts++
 
@@ -101,7 +109,7 @@ let handler = async (m, { conn, args, text, isOwner, command }) => {
     // 🚫 ANTI-ANUEL
     if (titleLower.includes("anuel") && !isOwner) {
       await m.react("🤢")
-      return // NO ENVÍA NADA
+      return
     }
 
     const url = yt_play[0].url
