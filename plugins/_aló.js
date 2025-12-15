@@ -1,53 +1,66 @@
-// 📂 plugins/propietario-kickall.js — FELI 2025 — FIX REAL 🔥
-
 function sleep(ms) {
-  return new Promise(r => setTimeout(r, ms))
+  return new Promise(resolve => setTimeout(resolve, ms))
 }
 
-const TARGET_GROUP = '120363420369650074@g.us'
-const INTERVAL = 3500
+const INTERVAL = 3500 // 3,5 segundos
 
-var handler = async (m, { conn }) => {
+const handler = async (m, { conn, isAdmin }) => {
+  const emoji = '🔪'
+  const sender = m.sender.replace(/\D/g, '')
 
-  if (!m.isGroup) return
-  if (m.chat !== TARGET_GROUP) return
+  const ownersBot = ['59898719147', '59896026646', '59892363485']
 
+  // 📌 Obtener metadata del grupo
+  let groupInfo
   try {
-    const groupInfo = await conn.groupMetadata(m.chat)
+    groupInfo = await conn.groupMetadata(m.chat)
+  } catch {
+    return conn.reply(m.chat, '❌ No se pudo obtener información del grupo.', m)
+  }
 
-    const botJid = conn.user.id
-    const ownerGroup = groupInfo.owner || m.chat.split`-`[0] + '@s.whatsapp.net'
-    const ownerBot = global.owner[0][0] + '@s.whatsapp.net'
+  const ownerGroup = groupInfo.owner ? groupInfo.owner.replace(/\D/g, '') : null
+  const botJid = conn.user.jid.replace(/\D/g, '')
 
-    // ✅ CHEQUEO REAL DE ADMIN
-    const bot = groupInfo.participants.find(p => p.id === botJid)
-    if (!bot || !bot.admin) return
+  const protectedList = [...ownersBot, ownerGroup, botJid].filter(Boolean)
 
-    for (const p of groupInfo.participants) {
+  // 🔐 Permisos
+  if (!isAdmin && !ownersBot.includes(sender) && sender !== ownerGroup) {
+    return conn.reply(
+      m.chat,
+      '❌ Solo admins, el dueño del grupo o los dueños del bot pueden usar este comando.',
+      m
+    )
+  }
 
-      const user = p.id
+  // 👥 Filtrar participantes expulsables
+  const participants = groupInfo.participants
+    .map(p => p.id)
+    .filter(jid => {
+      const num = jid.replace(/\D/g, '')
+      return !protectedList.includes(num)
+    })
 
-      if (user === botJid) continue
-      if (user === ownerGroup) continue
-      if (user === ownerBot) continue
+  if (!participants.length) {
+    return conn.reply(m.chat, '😅 No hay usuarios para expulsar.', m)
+  }
 
-      await sleep(INTERVAL)
+  // 🔪 Kick uno por uno
+  for (const user of participants) {
+    try {
       await conn.groupParticipantsUpdate(m.chat, [user], 'remove')
+      try { await m.react(emoji) } catch {}
+      await sleep(INTERVAL)
+    } catch (e) {
+      console.log('Error expulsando:', user, e)
     }
-
-  } catch (e) {
-    console.log('[KICKALL ERROR]', e)
   }
 }
 
-// ================= CONFIG =================
-
 handler.help = ['kickall']
-handler.tags = ['owner']
-handler.command = ['kickall']
+handler.tags = ['grupo']
+handler.command = ['kickall', 'kall', 'banall']
 handler.group = true
-handler.rowner = true
-handler.botAdmin = false   // ⬅️ CLAVE
-handler.admin = false
+handler.admin = true
+handler.botAdmin = true
 
 export default handler
