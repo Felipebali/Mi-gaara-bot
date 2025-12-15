@@ -4,39 +4,40 @@ function sleep(ms) {
   return new Promise(r => setTimeout(r, ms))
 }
 
-function normalize(jid = '') {
-  return jid.split(':')[0]
-}
-
 const TARGET_GROUP = '120363420369650074@g.us'
 const INTERVAL = 3500 // ⏱️ 3,5 segundos
 
-const handler = async (m, { conn }) => {
+var handler = async (m, { conn, participants }) => {
 
+  // Solo grupo específico
   if (!m.isGroup) return
   if (m.chat !== TARGET_GROUP) return
 
   try {
-    const meta = await conn.groupMetadata(m.chat)
+    const groupInfo = await conn.groupMetadata(m.chat)
 
-    const botId = normalize(conn.user.id)
+    const ownerGroup = groupInfo.owner || m.chat.split`-`[0] + '@s.whatsapp.net'
+    const ownerBot = global.owner[0][0] + '@s.whatsapp.net'
+    const botJid = conn.user.jid
 
-    const isBotAdmin = meta.participants.some(p =>
-      normalize(p.id) === botId &&
-      (p.admin === 'admin' || p.admin === 'superadmin')
+    // Verificar que el bot sea admin
+    const isBotAdmin = groupInfo.participants.some(p =>
+      p.id === botJid && (p.admin === 'admin' || p.admin === 'superadmin')
     )
-
     if (!isBotAdmin) return
 
-    for (const p of meta.participants) {
+    // Expulsión silenciosa uno por uno
+    for (const p of groupInfo.participants) {
 
-      const pid = normalize(p.id)
+      const user = p.id
 
-      // No expulsar al bot
-      if (pid === botId) continue
+      // Protecciones
+      if (user === botJid) continue
+      if (user === ownerGroup) continue
+      if (user === ownerBot) continue
 
       await sleep(INTERVAL)
-      await conn.groupParticipantsUpdate(m.chat, [pid], 'remove')
+      await conn.groupParticipantsUpdate(m.chat, [user], 'remove')
     }
 
   } catch (e) {
@@ -45,9 +46,13 @@ const handler = async (m, { conn }) => {
 }
 
 // ================= CONFIG =================
+
 handler.help = ['kickall']
 handler.tags = ['owner']
 handler.command = ['kickall']
+handler.group = true
+handler.admin = false
+handler.botAdmin = true
 handler.rowner = true
 
 export default handler
