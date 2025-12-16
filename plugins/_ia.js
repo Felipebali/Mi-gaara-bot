@@ -1,5 +1,5 @@
 // 📂 plugins/_ia.js — FELI 2025
-// IA externa con identificador + cooldown (FIXED)
+// IA externa con identificador + cooldown (GROUP FIX)
 
 let requests = {}
 let lastRequestTime = {}
@@ -9,7 +9,7 @@ let handler = async (m, { conn, text }) => {
   if (!text)
     return conn.reply(m.chat, '🤖 Escribí un mensaje para la IA.', m)
 
-  // ⏳ cooldown 30s
+  // ⏳ Cooldown 30 segundos por usuario
   if (lastRequestTime[m.sender] && Date.now() - lastRequestTime[m.sender] < 30000) {
     let remaining = Math.ceil((30000 - (Date.now() - lastRequestTime[m.sender])) / 1000)
     return conn.reply(m.chat, `*[❗]* Esperá ${remaining}s para usar nuevamente.`, m)
@@ -27,12 +27,13 @@ identificador: y aquí el identificador.
 Mensaje del identificador: ${identifier}
 Mensaje: ${text}`
 
+  // 🔐 Guardar SIEMPRE el chat original
   requests[identifier] = {
-    chat: m.chat,
-    originalMessage: m
+    chatId: m.chat,   // 👈 grupo o privado original
+    quoted: m         // 👈 mensaje original
   }
 
-  // timeout 2 minutos
+  // ⏱️ Timeout 2 minutos
   setTimeout(() => {
     if (requests[identifier]) {
       delete requests[identifier]
@@ -40,13 +41,14 @@ Mensaje: ${text}`
     }
   }, 120000)
 
+  // 📤 Enviar prompt a la IA externa
   await conn.sendMessage(
     '18002428478@s.whatsapp.net',
     { text: sendMsg }
   )
 }
 
-// ───── BEFORE ─────
+// ───── BEFORE: recibe respuesta de la IA ─────
 handler.before = async function (m, { conn }) {
 
   if (m.sender !== '18002428478@s.whatsapp.net') return
@@ -60,19 +62,19 @@ handler.before = async function (m, { conn }) {
 
   if (!requests[requestId]) return
 
-  let { chat, originalMessage } = requests[requestId]
+  let { chatId, quoted } = requests[requestId]
 
+  // 📥 Responder en el CHAT ORIGINAL (grupo o privado)
   await conn.sendMessage(
-    chat,
+    chatId,
     { text: iaResponse },
-    { quoted: originalMessage }
+    { quoted }
   )
 
   delete requests[requestId]
 }
 
-// ───── CONFIG OBLIGATORIA (ANTI-ERROR) ─────
-
+// ───── CONFIG OBLIGATORIA ─────
 handler.help = ['ia', 'chatgpt', 'bot']
 handler.tags = ['ai']
 handler.command = [
@@ -81,7 +83,6 @@ handler.command = [
   'bot', 'bot2'
 ]
 
-// si lo querés solo admins
-// handler.admin = true
+// handler.admin = true // opcional
 
 export default handler
