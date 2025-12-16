@@ -1,6 +1,6 @@
-// 🤖 IA REAL GRATIS — FELI 2025
+// 🤖 IA LIMPIA — FELI 2025
 // Comando: .bot pregunta
-// BrainShop AI (JSON seguro)
+// IA gratuita, respuestas naturales
 
 import fetch from 'node-fetch'
 
@@ -9,26 +9,27 @@ let cooldown = {}
 const handler = async (m, { conn, text }) => {
   try {
     if (!text)
-      return conn.reply(m.chat, '🤖 Usá:\n\n.bot <pregunta>', m)
+      return conn.reply(m.chat, '🤖 Escribí algo después de .bot', m)
 
-    // ⏳ Cooldown 5s
+    // ⏳ Cooldown 5 segundos
     if (cooldown[m.chat] && Date.now() - cooldown[m.chat] < 5000)
-      return conn.reply(m.chat, '⏳ Esperá un poco...', m)
+      return
 
     cooldown[m.chat] = Date.now()
 
     await conn.sendPresenceUpdate('composing', m.chat)
 
-    // 🌐 IA GRATIS (JSON REAL)
-    const url = `https://api.brainshop.ai/get?bid=178&key=7fIY0ZQ7y3U3e0Vh&uid=${m.sender}&msg=${encodeURIComponent(text)}`
-    const res = await fetch(url)
-    const json = await res.json()
+    const res = await fetch(
+      `https://api.brainshop.ai/get?bid=178&key=7fIY0ZQ7y3U3e0Vh&uid=chat&msg=${encodeURIComponent(text)}`
+    )
 
-    const reply = json.cnt || '🤖 No pude responder eso.'
+    const data = await res.json()
+
+    let reply = data.cnt || 'No tengo una respuesta ahora mismo.'
 
     await conn.sendMessage(
       m.chat,
-      { text: `🤖 *Bot IA:*\n\n${reply}` },
+      { text: reply },
       { quoted: m }
     )
 
