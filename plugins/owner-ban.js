@@ -25,9 +25,11 @@ function extractPhoneNumber(text = '') {
   return d
 }
 
+// 🔥 FIX REAL — manejar IDs con :xx
 function findParticipantByDigits(metadata, digits) {
   return metadata.participants.find(p => {
-    const pd = digitsOnly(p.id)
+    const baseId = p.id.split(':')[0] // ← CLAVE
+    const pd = digitsOnly(baseId)
     return pd === digits || pd.endsWith(digits)
   })
 }
@@ -56,9 +58,9 @@ const handler = async (m, { conn, command, text }) => {
 
         if (participant) {
           await conn.groupParticipantsUpdate(m.chat, [participant.id], 'remove')
-          await sleep(600)
+          await sleep(500)
           await conn.sendMessage(m.chat, {
-            text: `${emoji} *Eliminación inmediata por LISTA NEGRA*\n${SEP}\n@${participant.id.split('@')[0]} fue eliminado.\n📝 Motivo: ${reason}\n${SEP}`,
+            text: `${emoji} *Eliminación inmediata por LISTA NEGRA*\n${SEP}\n@${participant.id.split('@')[0]} eliminado.\n📝 Motivo: ${reason}\n${SEP}`,
             mentions: [participant.id]
           })
         }
@@ -77,24 +79,25 @@ const handler = async (m, { conn, command, text }) => {
   if (command === 'remn' && /^\d+$/.test(text?.trim())) {
     const index = parseInt(text.trim()) - 1
     if (!bannedList[index])
-      return conn.reply(m.chat, `${emoji} Número inválido.`, m)
+      return conn.reply(m.chat, `${emoji} Índice inválido.`, m)
     userJid = bannedList[index][0]
+
   } else if (m.quoted) {
     userJid = normalizeJid(m.quoted.sender || m.quoted.participant)
+
   } else if (m.mentionedJid?.length) {
     userJid = normalizeJid(m.mentionedJid[0])
+
   } else if (text) {
     const num = extractPhoneNumber(text)
-    if (num) {
-      userJid = normalizeJid('+' + num) // 🔥 FIX +598
-    }
+    if (num) userJid = normalizeJid(num)
   }
 
-  let reason = text?.replace(/@/g, '').replace(/\d{5,}/g, '').trim()
+  let reason = text?.replace(/@\S+/g, '').replace(/\d{5,}/g, '').trim()
   if (!reason) reason = 'No especificado'
 
   if (!userJid && !['listn', 'clrn'].includes(command))
-    return conn.reply(m.chat, `${warn} Debes responder, mencionar o escribir el número.`, m)
+    return conn.reply(m.chat, `${warn} Debes mencionar, citar o escribir el número.`, m)
 
   if (userJid && !dbUsers[userJid]) dbUsers[userJid] = {}
 
@@ -106,7 +109,7 @@ const handler = async (m, { conn, command, text }) => {
     dbUsers[userJid].bannedBy = m.sender
 
     await conn.sendMessage(m.chat, {
-      text: `${ok} *Agregado a LISTA NEGRA*\n${SEP}\n@${userJid.split('@')[0]} agregado.\n📝 Motivo: ${reason}\n${SEP}`,
+      text: `${ok} *Agregado a LISTA NEGRA*\n${SEP}\n@${userJid.split('@')[0]}\n📝 Motivo: ${reason}\n${SEP}`,
       mentions: [userJid]
     })
 
@@ -117,13 +120,8 @@ const handler = async (m, { conn, command, text }) => {
         const participant = findParticipantByDigits(metadata, digitsOnly(userJid))
 
         if (participant) {
-          await sleep(400)
           await conn.groupParticipantsUpdate(m.chat, [participant.id], 'remove')
-          await sleep(600)
-          await conn.sendMessage(m.chat, {
-            text: `${emoji} *Expulsión inmediata*\n${SEP}\n@${participant.id.split('@')[0]} eliminado.\n📝 Motivo: ${reason}\n${SEP}`,
-            mentions: [participant.id]
-          })
+          await sleep(500)
         }
       } catch {}
     }
@@ -132,19 +130,12 @@ const handler = async (m, { conn, command, text }) => {
     try {
       const groups = Object.keys(await conn.groupFetchAllParticipating())
       for (const jid of groups) {
-        await sleep(900)
+        await sleep(700)
         try {
           const meta = await conn.groupMetadata(jid)
           const participant = findParticipantByDigits(meta, digitsOnly(userJid))
           if (!participant) continue
-
           await conn.groupParticipantsUpdate(jid, [participant.id], 'remove')
-          await sleep(400)
-
-          await conn.sendMessage(jid, {
-            text: `${emoji} @${participant.id.split('@')[0]} eliminado por lista negra.\n📝 Motivo: ${reason}`,
-            mentions: [participant.id]
-          })
         } catch {}
       }
     } catch {}
@@ -156,9 +147,8 @@ const handler = async (m, { conn, command, text }) => {
       return conn.reply(m.chat, `${emoji} No está en la lista negra.`, m)
 
     dbUsers[userJid] = { banned: false }
-
     await conn.sendMessage(m.chat, {
-      text: `${ok} *Removido de lista negra*\n${SEP}\n@${userJid.split('@')[0]} removido.`,
+      text: `${ok} *Removido de lista negra*\n@${userJid.split('@')[0]}`,
       mentions: [userJid]
     })
   }
@@ -168,11 +158,11 @@ const handler = async (m, { conn, command, text }) => {
     if (!bannedList.length)
       return conn.reply(m.chat, `${ok} Lista negra vacía.`, m)
 
-    let msg = `🚫 *Lista Negra — ${bannedList.length}*\n${SEP}\n`
+    let msg = `🚫 *LISTA NEGRA (${bannedList.length})*\n${SEP}\n`
     const mentions = []
 
     bannedList.forEach(([jid, d], i) => {
-      msg += `*${i + 1}.* @${jid.split('@')[0]}\n📝 ${d.banReason}\n\n`
+      msg += `${i + 1}. @${jid.split('@')[0]}\n📝 ${d.banReason}\n\n`
       mentions.push(jid)
     })
 
@@ -197,19 +187,13 @@ handler.all = async function (m) {
   try {
     if (!m.isGroup) return
     const sender = normalizeJid(m.sender)
-    if (!sender || !global.db.data.users[sender]?.banned) return
+    if (!global.db.data.users[sender]?.banned) return
 
     const meta = await this.groupMetadata(m.chat)
     const participant = findParticipantByDigits(meta, digitsOnly(sender))
     if (!participant) return
 
     await this.groupParticipantsUpdate(m.chat, [participant.id], 'remove')
-    await sleep(600)
-
-    await this.sendMessage(m.chat, {
-      text: `🚫 *Eliminado por LISTA NEGRA*\n━━━━━━━━━━━━━━━━━━━━\n@${participant.id.split('@')[0]} eliminado.\n━━━━━━━━━━━━━━━━━━━━`,
-      mentions: [participant.id]
-    })
   } catch {}
 }
 
@@ -227,10 +211,8 @@ handler.before = async function (m) {
       if (!global.db.data.users[ujid]?.banned) continue
 
       const participant = findParticipantByDigits(meta, digitsOnly(ujid))
-      if (!participant) continue
-
-      await sleep(500)
-      await this.groupParticipantsUpdate(m.chat, [participant.id], 'remove')
+      if (participant)
+        await this.groupParticipantsUpdate(m.chat, [participant.id], 'remove')
     }
   } catch {}
 }
