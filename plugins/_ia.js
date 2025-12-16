@@ -1,51 +1,50 @@
-// 🤖 IA TRIGGER — FELI 2025
-// Responde cuando escriben: bot | ia | bot2
+// 🤖 IA GRATIS REAL — FELI 2025
+// Comando: .bot pregunta
+// IA online SIN API KEY
 
 import fetch from 'node-fetch'
 
-const BOT_JID = '18002428478@s.whatsapp.net'
-const TRIGGERS = ['bot', 'ia', 'bot2']
-
 let cooldown = {}
 
-export async function before(m, { conn }) {
+const handler = async (m, { conn, text, command }) => {
   try {
-    if (!m.text) return
-    if (m.fromMe) return
+    if (!text)
+      return conn.reply(
+        m.chat,
+        '🤖 Usá:\n\n.bot <pregunta>',
+        m
+      )
 
-    // Solo si el mensaje menciona el bot o palabras clave
-    const text = m.text.toLowerCase()
-    const called =
-      TRIGGERS.some(w => text.startsWith(w)) ||
-      m.mentionedJid?.includes(BOT_JID)
+    // ⏳ Cooldown 5s por chat
+    if (cooldown[m.chat] && Date.now() - cooldown[m.chat] < 5000)
+      return conn.reply(m.chat, '⏳ Esperá un poco...', m)
 
-    if (!called) return
-
-    // Cooldown por chat (5s)
-    if (cooldown[m.chat] && Date.now() - cooldown[m.chat] < 5000) return
     cooldown[m.chat] = Date.now()
 
-    // Limpiar texto (sacar "bot", "ia", etc)
-    let question = text
-      .replace(/^bot/i, '')
-      .replace(/^ia/i, '')
-      .replace(/^bot2/i, '')
-      .trim()
+    await conn.sendPresenceUpdate('composing', m.chat)
 
-    if (!question)
-      return conn.reply(m.chat, '🤖 Decime qué querés saber.', m)
+    // 🌐 IA GRATIS
+    const res = await fetch(
+      `https://api.simsimi.net/v2/?text=${encodeURIComponent(text)}&lc=es`
+    )
+    const json = await res.json()
 
-    // 🔮 RESPUESTA IA (ejemplo)
-    const reply = await fakeIA(question)
+    let reply = json.success || '🤖 No sé qué responder 😅'
 
-    await conn.sendMessage(m.chat, { text: reply }, { quoted: m })
+    await conn.sendMessage(
+      m.chat,
+      { text: `🤖 *Bot IA:*\n\n${reply}` },
+      { quoted: m }
+    )
 
   } catch (e) {
     console.error(e)
+    conn.reply(m.chat, '❌ Error en la IA', m)
   }
 }
 
-// 🧠 IA SIMPLE (podés reemplazar por API real)
-async function fakeIA(text) {
-  return `🤖 *IA RESPONDE:*\n\n${text}\n\n✨ (respuesta generada)`
-}
+handler.command = ['bot']
+handler.help = ['bot <pregunta>']
+handler.tags = ['ia']
+
+export default handler
