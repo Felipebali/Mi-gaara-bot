@@ -1,16 +1,18 @@
 // 📂 plugins/antiver.js — FELI 2025
-// Marca automáticamente como leídos TODOS los mensajes de grupos
+// Auto-lee TODOS los mensajes de grupos (Baileys MD FIX)
 
 export async function before(m, { conn }) {
   try {
-    // Solo grupos
     if (!m.isGroup) return
-
-    // Ignorar mensajes propios del bot
+    if (!m.key || !m.key.id) return
     if (m.fromMe) return
 
-    // 👁️ AUTO READ (ver mensajes)
-    await conn.readMessages([m.key])
+    // 🔥 FORZAR KEY CORRECTA (FIX BAILEYS)
+    await conn.readMessages([{
+      remoteJid: m.chat,
+      id: m.key.id,
+      participant: m.key.participant || m.sender
+    }])
 
   } catch (e) {
     console.error('ANTIVER error:', e)
