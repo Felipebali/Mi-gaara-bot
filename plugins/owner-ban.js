@@ -52,8 +52,7 @@ const handler = async (m, { conn, command, text }) => {
       try {
         const reason = dbUsers[quotedJid].banReason || 'No especificado'
         const metadata = await conn.groupMetadata(m.chat)
-        const targetDigits = digitsOnly(quotedJid)
-        const participant = findParticipantByDigits(metadata, targetDigits)
+        const participant = findParticipantByDigits(metadata, digitsOnly(quotedJid))
 
         if (participant) {
           await conn.groupParticipantsUpdate(m.chat, [participant.id], 'remove')
@@ -74,7 +73,6 @@ const handler = async (m, { conn, command, text }) => {
   const bannedList = Object.entries(dbUsers).filter(([_, d]) => d.banned)
 
   let userJid = null
-  let numberDigits = null
 
   if (command === 'remn' && /^\d+$/.test(text?.trim())) {
     const index = parseInt(text.trim()) - 1
@@ -88,8 +86,7 @@ const handler = async (m, { conn, command, text }) => {
   } else if (text) {
     const num = extractPhoneNumber(text)
     if (num) {
-      numberDigits = num
-      userJid = normalizeJid(num)
+      userJid = normalizeJid('+' + num) // 🔥 FIX +598
     }
   }
 
@@ -97,15 +94,12 @@ const handler = async (m, { conn, command, text }) => {
   if (!reason) reason = 'No especificado'
 
   if (!userJid && !['listn', 'clrn'].includes(command))
-    return conn.reply(m.chat, `${warn} Debes responder, mencionar o usar índice.`, m)
+    return conn.reply(m.chat, `${warn} Debes responder, mencionar o escribir el número.`, m)
 
   if (userJid && !dbUsers[userJid]) dbUsers[userJid] = {}
 
   // ================= ADD =================
   if (command === 'addn') {
-
-    if (numberDigits && !m.quoted && !m.mentionedJid)
-      return conn.reply(m.chat, `${emoji} Usa mencionar o citar, no escribas números.`, m)
 
     dbUsers[userJid].banned = true
     dbUsers[userJid].banReason = reason
@@ -248,4 +242,4 @@ handler.tags = ['owner']
 handler.command = ['addn', 'remn', 'listn', 'clrn']
 handler.rowner = true
 
-export default handler 
+export default handler
