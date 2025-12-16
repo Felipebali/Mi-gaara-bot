@@ -1,4 +1,5 @@
 // 📂 plugins/menu-owner.js
+
 let handler = async (m, { conn }) => {
   try {
     await conn.sendMessage(m.chat, { react: { text: '👑', key: m.key } })
@@ -26,17 +27,16 @@ let handler = async (m, { conn }) => {
 • .setpp — Cambiar foto del bot 🤖🖼️
 • .setpg — Cambiar foto del grupo 👥🖼️
 
+🖼️ *Multimedia / Perfil*
+• .gpu — Descargar foto de perfil de usuario 🧑🖼️
+• .gpo — Descargar foto del grupo 🏞️
+
 🛡️ *Administradores*
 • .autoadmin — Dar admin al bot 🧩
 • .dar — Dar admin a todos 🫡
 • .quitar — Quitar admin a todos 🧹
 • .chetar — Activar modo Pro ⚙️
 • .deschetar — Desactivar modo Pro 💤
-
-🚨 *AdminLog*
-• .adminlog — Activar/Desactivar logs 🟢🔴
-• .adminh — Ver historial 📋
-• .adminclear — Limpiar historial 🗑️
 
 🚫 *Lista Negra*
 • .addn @user — Agregar ⚠️
@@ -51,8 +51,6 @@ let handler = async (m, { conn }) => {
 • salir — Bot abandona el grupo 🚪
 • sh — Ejecuta comando shell 💽
 • u — Menciona a todos 📣
-• .gpu — Descargar foto de perfil de usuario 🖼️
-• .gpo — Descargar foto del grupo 🏞️
 
 ━━━━━━━━━━━━━━━━━━━
 🐾 *FelixCat – Propietario Supremo*
