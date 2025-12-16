@@ -1,5 +1,5 @@
 // 📂 plugins/_ia.js — FELI 2025
-// IA externa con identificador + cooldown (GROUP FIX)
+// IA externa con identificador + cooldown (FIX FINAL)
 
 let requests = {}
 let lastRequestTime = {}
@@ -9,7 +9,7 @@ let handler = async (m, { conn, text }) => {
   if (!text)
     return conn.reply(m.chat, '🤖 Escribí un mensaje para la IA.', m)
 
-  // ⏳ Cooldown 30 segundos por usuario
+  // ⏳ Cooldown 30s
   if (lastRequestTime[m.sender] && Date.now() - lastRequestTime[m.sender] < 30000) {
     let remaining = Math.ceil((30000 - (Date.now() - lastRequestTime[m.sender])) / 1000)
     return conn.reply(m.chat, `*[❗]* Esperá ${remaining}s para usar nuevamente.`, m)
@@ -27,28 +27,26 @@ identificador: y aquí el identificador.
 Mensaje del identificador: ${identifier}
 Mensaje: ${text}`
 
-  // 🔐 Guardar SIEMPRE el chat original
+  // 🔐 Guardar SOLO el chat original
   requests[identifier] = {
-    chatId: m.chat,   // 👈 grupo o privado original
-    quoted: m         // 👈 mensaje original
+    chatId: m.chat
   }
 
-  // ⏱️ Timeout 2 minutos
+  // ⏱️ Timeout 2 min
   setTimeout(() => {
     if (requests[identifier]) {
       delete requests[identifier]
-      conn.reply(m.chat, '❌ No se recibió respuesta de la IA.', m)
+      conn.sendMessage(m.chat, { text: '❌ No se recibió respuesta de la IA.' })
     }
   }, 120000)
 
-  // 📤 Enviar prompt a la IA externa
   await conn.sendMessage(
     '18002428478@s.whatsapp.net',
     { text: sendMsg }
   )
 }
 
-// ───── BEFORE: recibe respuesta de la IA ─────
+// ───── BEFORE ─────
 handler.before = async function (m, { conn }) {
 
   if (m.sender !== '18002428478@s.whatsapp.net') return
@@ -62,19 +60,15 @@ handler.before = async function (m, { conn }) {
 
   if (!requests[requestId]) return
 
-  let { chatId, quoted } = requests[requestId]
+  let { chatId } = requests[requestId]
 
-  // 📥 Responder en el CHAT ORIGINAL (grupo o privado)
-  await conn.sendMessage(
-    chatId,
-    { text: iaResponse },
-    { quoted }
-  )
+  // ✅ ENVIAR DIRECTO AL CHAT ORIGINAL (SIN QUOTE)
+  await conn.sendMessage(chatId, { text: iaResponse })
 
   delete requests[requestId]
 }
 
-// ───── CONFIG OBLIGATORIA ─────
+// ───── CONFIG ─────
 handler.help = ['ia', 'chatgpt', 'bot']
 handler.tags = ['ai']
 handler.command = [
@@ -83,6 +77,4 @@ handler.command = [
   'bot', 'bot2'
 ]
 
-// handler.admin = true // opcional
-
-export default handler
+export default handler 
