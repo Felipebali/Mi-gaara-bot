@@ -1,21 +1,17 @@
-// 🤖 IA GRATIS REAL — FELI 2025
+// 🤖 IA REAL GRATIS — FELI 2025
 // Comando: .bot pregunta
-// IA online SIN API KEY
+// BrainShop AI (JSON seguro)
 
 import fetch from 'node-fetch'
 
 let cooldown = {}
 
-const handler = async (m, { conn, text, command }) => {
+const handler = async (m, { conn, text }) => {
   try {
     if (!text)
-      return conn.reply(
-        m.chat,
-        '🤖 Usá:\n\n.bot <pregunta>',
-        m
-      )
+      return conn.reply(m.chat, '🤖 Usá:\n\n.bot <pregunta>', m)
 
-    // ⏳ Cooldown 5s por chat
+    // ⏳ Cooldown 5s
     if (cooldown[m.chat] && Date.now() - cooldown[m.chat] < 5000)
       return conn.reply(m.chat, '⏳ Esperá un poco...', m)
 
@@ -23,13 +19,12 @@ const handler = async (m, { conn, text, command }) => {
 
     await conn.sendPresenceUpdate('composing', m.chat)
 
-    // 🌐 IA GRATIS
-    const res = await fetch(
-      `https://api.simsimi.net/v2/?text=${encodeURIComponent(text)}&lc=es`
-    )
+    // 🌐 IA GRATIS (JSON REAL)
+    const url = `https://api.brainshop.ai/get?bid=178&key=7fIY0ZQ7y3U3e0Vh&uid=${m.sender}&msg=${encodeURIComponent(text)}`
+    const res = await fetch(url)
     const json = await res.json()
 
-    let reply = json.success || '🤖 No sé qué responder 😅'
+    const reply = json.cnt || '🤖 No pude responder eso.'
 
     await conn.sendMessage(
       m.chat,
@@ -44,7 +39,7 @@ const handler = async (m, { conn, text, command }) => {
 }
 
 handler.command = ['bot']
-handler.help = ['bot <pregunta>']
 handler.tags = ['ia']
+handler.help = ['bot <pregunta>']
 
 export default handler
