@@ -66,7 +66,7 @@ const handler = async (m, { conn, isAdmin }) => {
 
 handler.help = ['k'];
 handler.tags = ['grupo'];
-handler.command = ['k', 'echar', 'hechar', 'sacar', 'ban'];
+handler.command = ['k', 'echar', 'hechar', 'sacar'];
 handler.admin = true;
 handler.group = true;
 handler.botAdmin = true;
