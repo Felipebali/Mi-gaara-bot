@@ -1,14 +1,16 @@
 // 📂 plugins/propietario-listanegra.js — FELI 2025 — FIX DEFINITIVO 🔥
 
-function sleep(ms) { return new Promise(r => setTimeout(r, ms)) }
+function sleep(ms) {
+  return new Promise(r => setTimeout(r, ms))
+}
 
 // ================= UTILIDADES =================
 
 function normalizeJid(jid = '') {
   if (!jid) return null
   jid = jid.toString().trim().replace(/^\+/, '')
-  if (jid.endsWith('@c.us') || jid.endsWith('@s.whatsapp.net'))
-    return jid.replace(/@c.us$/, '@s.whatsapp.net')
+  if (jid.endsWith('@c.us')) return jid.replace('@c.us', '@s.whatsapp.net')
+  if (jid.endsWith('@s.whatsapp.net')) return jid
   if (jid.includes('@')) return jid
   const cleaned = jid.replace(/[^0-9]/g, '')
   if (!cleaned) return null
@@ -16,7 +18,7 @@ function normalizeJid(jid = '') {
 }
 
 function digitsOnly(text = '') {
-  return (text || '').toString().replace(/[^0-9]/g, '')
+  return text.toString().replace(/[^0-9]/g, '')
 }
 
 function extractPhoneNumber(text = '') {
@@ -37,7 +39,6 @@ function findParticipantByDigits(metadata, digits) {
 // =====================================================
 
 const handler = async (m, { conn, command, text }) => {
-
   const SEP = '━━━━━━━━━━━━━━━━━━━━'
   const emoji = '🚫'
   const ok = '✅'
@@ -51,15 +52,13 @@ const handler = async (m, { conn, command, text }) => {
     if (quotedJid && dbUsers[quotedJid]?.banned) {
       try {
         const reason = dbUsers[quotedJid].banReason || 'No especificado'
-        const metadata = await conn.groupMetadata(m.chat)
-        const targetDigits = digitsOnly(quotedJid)
-        const participant = findParticipantByDigits(metadata, targetDigits)
-
+        const meta = await conn.groupMetadata(m.chat)
+        const participant = findParticipantByDigits(meta, digitsOnly(quotedJid))
         if (participant) {
           await conn.groupParticipantsUpdate(m.chat, [participant.id], 'remove')
           await sleep(600)
           await conn.sendMessage(m.chat, {
-            text: `${emoji} *Eliminación inmediata por LISTA NEGRA*\n${SEP}\n@${participant.id.split('@')[0]} fue eliminado.\n📝 Motivo: ${reason}\n${SEP}`,
+            text: `${emoji} *Eliminación inmediata por LISTA NEGRA*\n${SEP}\n@${participant.id.split('@')[0]}\n📝 Motivo: ${reason}\n${SEP}`,
             mentions: [participant.id]
           })
         }
@@ -103,7 +102,6 @@ const handler = async (m, { conn, command, text }) => {
 
   // ================= ADD =================
   if (command === 'addn') {
-
     if (numberDigits && !m.quoted && !m.mentionedJid)
       return conn.reply(m.chat, `${emoji} Usa mencionar o citar, no escribas números.`, m)
 
@@ -112,45 +110,20 @@ const handler = async (m, { conn, command, text }) => {
     dbUsers[userJid].bannedBy = m.sender
 
     await conn.sendMessage(m.chat, {
-      text: `${ok} *Agregado a LISTA NEGRA*\n${SEP}\n@${userJid.split('@')[0]} agregado.\n📝 Motivo: ${reason}\n${SEP}`,
+      text: `${ok} *Agregado a LISTA NEGRA*\n${SEP}\n@${userJid.split('@')[0]}\n📝 Motivo: ${reason}\n${SEP}`,
       mentions: [userJid]
     })
 
-    // === EXPULSIÓN LOCAL ===
-    if (m.isGroup) {
-      try {
-        const metadata = await conn.groupMetadata(m.chat)
-        const participant = findParticipantByDigits(metadata, digitsOnly(userJid))
-
-        if (participant) {
-          await sleep(400)
-          await conn.groupParticipantsUpdate(m.chat, [participant.id], 'remove')
-          await sleep(600)
-          await conn.sendMessage(m.chat, {
-            text: `${emoji} *Expulsión inmediata*\n${SEP}\n@${participant.id.split('@')[0]} eliminado.\n📝 Motivo: ${reason}\n${SEP}`,
-            mentions: [participant.id]
-          })
-        }
-      } catch {}
-    }
-
-    // === EXPULSIÓN GLOBAL ===
+    // EXPULSIÓN GLOBAL
     try {
       const groups = Object.keys(await conn.groupFetchAllParticipating())
       for (const jid of groups) {
-        await sleep(900)
+        await sleep(800)
         try {
           const meta = await conn.groupMetadata(jid)
           const participant = findParticipantByDigits(meta, digitsOnly(userJid))
           if (!participant) continue
-
           await conn.groupParticipantsUpdate(jid, [participant.id], 'remove')
-          await sleep(400)
-
-          await conn.sendMessage(jid, {
-            text: `${emoji} @${participant.id.split('@')[0]} eliminado por lista negra.\n📝 Motivo: ${reason}`,
-            mentions: [participant.id]
-          })
         } catch {}
       }
     } catch {}
@@ -164,7 +137,7 @@ const handler = async (m, { conn, command, text }) => {
     dbUsers[userJid] = { banned: false }
 
     await conn.sendMessage(m.chat, {
-      text: `${ok} *Removido de lista negra*\n${SEP}\n@${userJid.split('@')[0]} removido.`,
+      text: `${ok} *Removido de lista negra*\n${SEP}\n@${userJid.split('@')[0]}`,
       mentions: [userJid]
     })
   }
@@ -203,7 +176,7 @@ handler.all = async function (m) {
   try {
     if (!m.isGroup) return
     const sender = normalizeJid(m.sender)
-    if (!sender || !global.db.data.users[sender]?.banned) return
+    if (!global.db.data.users[sender]?.banned) return
 
     const meta = await this.groupMetadata(m.chat)
     const participant = findParticipantByDigits(meta, digitsOnly(sender))
@@ -213,29 +186,45 @@ handler.all = async function (m) {
     await sleep(600)
 
     await this.sendMessage(m.chat, {
-      text: `🚫 *Eliminado por LISTA NEGRA*\n━━━━━━━━━━━━━━━━━━━━\n@${participant.id.split('@')[0]} eliminado.\n━━━━━━━━━━━━━━━━━━━━`,
+      text: `🚫 *Eliminado por LISTA NEGRA*\n━━━━━━━━━━━━━━━━━━━━\n@${participant.id.split('@')[0]}`,
       mentions: [participant.id]
     })
   } catch {}
 }
 
 // =====================================================
-// ================= AUTO-KICK AL ENTRAR =================
+// ========== AUTO-KICK + AVISO AL ENTRAR =================
 // =====================================================
 
 handler.before = async function (m) {
   try {
     if (![27, 31].includes(m.messageStubType)) return
+    if (!m.isGroup) return
+
     const meta = await this.groupMetadata(m.chat)
 
     for (const u of m.messageStubParameters || []) {
       const ujid = normalizeJid(u)
-      if (!global.db.data.users[ujid]?.banned) continue
+      const data = global.db.data.users[ujid]
+      if (!data?.banned) continue
 
       const participant = findParticipantByDigits(meta, digitsOnly(ujid))
       if (!participant) continue
 
-      await sleep(500)
+      const reason = data.banReason || 'No especificado'
+
+      await this.sendMessage(m.chat, {
+        text:
+`🚨 *USUARIO EN LISTA NEGRA*
+━━━━━━━━━━━━━━━━━━━━
+👤 @${participant.id.split('@')[0]}
+📝 Motivo: ${reason}
+🚫 Expulsión automática
+━━━━━━━━━━━━━━━━━━━━`,
+        mentions: [participant.id]
+      })
+
+      await sleep(700)
       await this.groupParticipantsUpdate(m.chat, [participant.id], 'remove')
     }
   } catch {}
