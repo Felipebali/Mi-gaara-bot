@@ -56,9 +56,15 @@ const handler = async (m, { conn, command, text }) => {
         const participant = findParticipantByDigits(meta, digitsOnly(quotedJid))
         if (participant) {
           await conn.groupParticipantsUpdate(m.chat, [participant.id], 'remove')
-          await sleep(600)
+          await sleep(700)
+
           await conn.sendMessage(m.chat, {
-            text: `${emoji} *Eliminación inmediata por LISTA NEGRA*\n${SEP}\n@${participant.id.split('@')[0]}\n📝 Motivo: ${reason}\n${SEP}`,
+            text:
+`${emoji} *Eliminación inmediata por LISTA NEGRA*
+${SEP}
+@${participant.id.split('@')[0]}
+📝 Motivo: ${reason}
+${SEP}`,
             mentions: [participant.id]
           })
         }
@@ -110,11 +116,16 @@ const handler = async (m, { conn, command, text }) => {
     dbUsers[userJid].bannedBy = m.sender
 
     await conn.sendMessage(m.chat, {
-      text: `${ok} *Agregado a LISTA NEGRA*\n${SEP}\n@${userJid.split('@')[0]}\n📝 Motivo: ${reason}\n${SEP}`,
+      text:
+`${ok} *Agregado a LISTA NEGRA*
+${SEP}
+@${userJid.split('@')[0]}
+📝 Motivo: ${reason}
+${SEP}`,
       mentions: [userJid]
     })
 
-    // EXPULSIÓN GLOBAL
+    // ===== EXPULSIÓN GLOBAL (KICK → AVISO) =====
     try {
       const groups = Object.keys(await conn.groupFetchAllParticipating())
       for (const jid of groups) {
@@ -123,7 +134,19 @@ const handler = async (m, { conn, command, text }) => {
           const meta = await conn.groupMetadata(jid)
           const participant = findParticipantByDigits(meta, digitsOnly(userJid))
           if (!participant) continue
+
           await conn.groupParticipantsUpdate(jid, [participant.id], 'remove')
+          await sleep(700)
+
+          await conn.sendMessage(jid, {
+            text:
+`🚫 *Usuario eliminado por LISTA NEGRA*
+━━━━━━━━━━━━━━━━━━━━
+👤 @${participant.id.split('@')[0]}
+📝 Motivo: ${reason}
+━━━━━━━━━━━━━━━━━━━━`,
+            mentions: [participant.id]
+          })
         } catch {}
       }
     } catch {}
@@ -137,7 +160,10 @@ const handler = async (m, { conn, command, text }) => {
     dbUsers[userJid] = { banned: false }
 
     await conn.sendMessage(m.chat, {
-      text: `${ok} *Removido de lista negra*\n${SEP}\n@${userJid.split('@')[0]}`,
+      text:
+`${ok} *Removido de lista negra*
+${SEP}
+@${userJid.split('@')[0]}`,
       mentions: [userJid]
     })
   }
@@ -183,10 +209,13 @@ handler.all = async function (m) {
     if (!participant) return
 
     await this.groupParticipantsUpdate(m.chat, [participant.id], 'remove')
-    await sleep(600)
+    await sleep(700)
 
     await this.sendMessage(m.chat, {
-      text: `🚫 *Eliminado por LISTA NEGRA*\n━━━━━━━━━━━━━━━━━━━━\n@${participant.id.split('@')[0]}`,
+      text:
+`🚫 *Eliminado por LISTA NEGRA*
+━━━━━━━━━━━━━━━━━━━━
+@${participant.id.split('@')[0]}`,
       mentions: [participant.id]
     })
   } catch {}
@@ -213,6 +242,9 @@ handler.before = async function (m) {
 
       const reason = data.banReason || 'No especificado'
 
+      await this.groupParticipantsUpdate(m.chat, [participant.id], 'remove')
+      await sleep(700)
+
       await this.sendMessage(m.chat, {
         text:
 `🚨 *USUARIO EN LISTA NEGRA*
@@ -223,9 +255,6 @@ handler.before = async function (m) {
 ━━━━━━━━━━━━━━━━━━━━`,
         mentions: [participant.id]
       })
-
-      await sleep(700)
-      await this.groupParticipantsUpdate(m.chat, [participant.id], 'remove')
     }
   } catch {}
 }
