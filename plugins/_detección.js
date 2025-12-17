@@ -5,17 +5,42 @@ import chalk from 'chalk'
 import fetch from 'node-fetch'
 let { default: WAMessageStubType } = await import('@whiskeysockets/baileys')
 
-const groupMetadataCache = new Map()
 const lidCache = new Map()
 
 const handler = {}
 export default handler
 
+// =====================================================
+// COMANDO .evento (TOGGLE)
+// =====================================================
+handler.command = ['evento']
+handler.group = true
+handler.admin = true
+
+handler.handler = async function (m, { conn, isAdmin, isOwner }) {
+  if (!isAdmin && !isOwner)
+    return conn.reply(m.chat, '🚫 Solo admins pueden usar este comando.', m)
+
+  const chat = global.db.data.chats[m.chat]
+  if (!chat) return
+
+  chat.detect = !chat.detect
+
+  await conn.reply(
+    m.chat,
+    `✨ *Detector de eventos*\n\nEstado: ${chat.detect ? '🟢 ACTIVADO' : '🔴 DESACTIVADO'}`,
+    m
+  )
+}
+
+// =====================================================
+// BEFORE — DETECTOR DE EVENTOS
+// =====================================================
 handler.before = async function (m, { conn, participants }) {
   if (!m.messageStubType || !m.isGroup) return
 
   const chat = global.db.data.chats[m.chat]
-  if (!chat) return
+  if (!chat || !chat.detect) return
 
   const primaryBot = chat.primaryBot
   if (primaryBot && conn.user.jid !== primaryBot) return
@@ -74,17 +99,15 @@ Ahora todos pueden unirse de nuevo 🌸`
   // RESPUESTAS POR STUB
   // ===============================
 
-  // ❌ 20 — eliminado
-
   // 21 — Cambio nombre
-  if (chat.detect && m.messageStubType == 21)
+  if (m.messageStubType == 21)
     return conn.sendMessage(m.chat, {
       text: nombre,
       mentions: [usuario, ...groupAdmins.map(v => v.id)]
     })
 
   // 22 — Cambio foto
-  if (chat.detect && m.messageStubType == 22)
+  if (m.messageStubType == 22)
     return conn.sendMessage(m.chat, {
       image: { url: pp },
       caption: foto,
@@ -92,48 +115,44 @@ Ahora todos pueden unirse de nuevo 🌸`
     })
 
   // 23 — Nuevo link
-  if (chat.detect && m.messageStubType == 23)
+  if (m.messageStubType == 23)
     return conn.sendMessage(m.chat, {
       text: newlink,
       mentions: [usuario, ...groupAdmins.map(v => v.id)]
     })
 
-  // 24 — Cambio de descripción
-  if (chat.detect && m.messageStubType == 24)
+  // 24 — Cambio descripción
+  if (m.messageStubType == 24)
     return conn.sendMessage(m.chat, {
       text: descripcion,
       mentions: [usuario, ...groupAdmins.map(v => v.id)]
     })
 
   // 25 — Editar configuración
-  if (chat.detect && m.messageStubType == 25)
+  if (m.messageStubType == 25)
     return conn.sendMessage(m.chat, {
       text: edit,
       mentions: [usuario, ...groupAdmins.map(v => v.id)]
     })
 
-  // ❌ 26 — eliminado
-  // ❌ 27 — eliminado
-  // ❌ 28 — eliminado
-
   // 29 — Dar admin
-  if (chat.detect && m.messageStubType == 29)
+  if (m.messageStubType == 29)
     return conn.sendMessage(m.chat, {
       text: admingp,
       mentions: [usuario, users, ...groupAdmins.map(v => v.id)].filter(Boolean)
     })
 
   // 30 — Quitar admin
-  if (chat.detect && m.messageStubType == 30)
+  if (m.messageStubType == 30)
     return conn.sendMessage(m.chat, {
       text: noadmingp,
       mentions: [usuario, users, ...groupAdmins.map(v => v.id)].filter(Boolean)
     })
 }
 
-// ===============================
-// RESOLVE LID
-// ===============================
+// =====================================================
+// RESOLVE LID → JID REAL
+// =====================================================
 async function resolveLidToRealJid(lid, conn, groupChatId, maxRetries = 3, retryDelay = 60000) {
   const inputJid = lid.toString()
 
@@ -156,8 +175,7 @@ async function resolveLidToRealJid(lid, conn, groupChatId, maxRetries = 3, retry
           const check = await conn.onWhatsApp(participant.jid)
           if (!check?.[0]?.lid) continue
 
-          const compare = check[0].lid.split('@')[0]
-          if (compare === lidToFind) {
+          if (check[0].lid.split('@')[0] === lidToFind) {
             lidCache.set(inputJid, participant.jid)
             return participant.jid
           }
@@ -172,9 +190,9 @@ async function resolveLidToRealJid(lid, conn, groupChatId, maxRetries = 3, retry
         lidCache.set(inputJid, inputJid)
         return inputJid
       }
-      await new Promise(res => setTimeout(res, retryDelay))
+      await new Promise(r => setTimeout(r, retryDelay))
     }
   }
 
   return inputJid
-                                             } 
+    }
