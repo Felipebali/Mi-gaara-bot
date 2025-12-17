@@ -2,151 +2,81 @@ const requests = {}
 const lastRequestTime = {}
 
 function cleanNum(jid) {
-  return String(jid || "").replace(/[^0-9]/g, "").trim()
+  return String(jid || "").replace(/[^0-9]/g, "")
 }
 
-export default {
-  command: ["ia", "chatgpt", "bot", "ia2", "chatgpt2", "bot2"],
-  admin: false,
+let handler = async (m, { conn, text, command }) => {
+  try {
+    const senderNum = cleanNum(m.sender)
+    const iaNum = "18002428478"
 
-  before: async ({ conn, m, text, senderJid }) => {
-    try {
-      // ══════════════════════════════════════════════════════
-      // 📥 VERIFICAR SI ES RESPUESTA DE LA IA
-      // ══════════════════════════════════════════════════════
-      const senderNum = cleanNum(senderJid)
-      const iaNum = "18002428478" // Número de la IA sin @s.whatsapp.net
-      
-      // Verificar si el remitente es la IA (por número, no por JID completo)
-      if (senderNum !== iaNum) return
+    // ═══════════════════════════════════════
+    // 📥 RESPUESTA DE LA IA
+    // ═══════════════════════════════════════
+    if (senderNum === iaNum) {
+      const msg = m.text || ""
+      const match = msg.match(/^identificador:\s*([^\n]+)\n([\s\S]+)/i)
+      if (!match) return
 
-      console.log("📩 Mensaje recibido de ChatGPT")
-      console.log("📍 Sender:", senderJid)
+      const requestId = match[1].trim()
+      const response = match[2].trim()
 
-      const messageText = text || ''
-      console.log("📝 Texto existe:", !!messageText)
+      if (!requests[requestId]) return
 
-      // Extraer el identificador de la respuesta de la IA
-      let match = messageText.match(/^identificador:\s*([^\n]+)\n([\s\S]+)/i)
+      const { chat, originalMessage } = requests[requestId]
+      delete requests[requestId]
 
-      if (match) {
-        console.log("✅ Match exitoso")
-
-        let requestId = match[1].trim() // El identificador único
-        let iaResponse = match[2].trim() // Mensaje real de la IA
-
-        console.log("🔑 Request ID:", requestId)
-
-        if (requests[requestId]) {
-          let { chat, originalMessage } = requests[requestId]
-
-          // Enviar la respuesta al usuario original citando su mensaje
-          await conn.sendText(chat, iaResponse, originalMessage)
-
-          // Eliminar la solicitud de la memoria
-          delete requests[requestId]
-
-          console.log(`✅ Respuesta enviada para: ${requestId}`)
-        } else {
-          console.log(`⚠️ No se encontró request para: ${requestId}`)
-          console.log(`📋 Requests disponibles:`, Object.keys(requests))
-        }
-      } else {
-        console.log("❌ No se pudo hacer match del identificador")
-        console.log("📝 Texto recibido:", messageText.substring(0, 100))
-      }
-    } catch (err) {
-      console.error(`❌ Error en ia.js (before):`, err.message)
+      await conn.sendMessage(chat, { text: response }, { quoted: originalMessage })
+      return
     }
-  },
 
-  run: async ({ conn, m, remoteJid, senderJid, isGroup, text }) => {
-    try {
-      // ══════════════════════════════════════════════════════
-      // ✅ VALIDAR QUE HAYA TEXTO
-      // ══════════════════════════════════════════════════════
-      if (!text || !text.trim()) {
-        return await conn.sendText(
-          remoteJid,
-          `❌ Por favor, proporciona un texto para la consulta.\n\n*Ejemplo:*\n.ia ¿Cuál es la capital de Francia?\n.ia Explícame la teoría de la relatividad`,
-          m
-        )
-      }
-
-      // ══════════════════════════════════════════════════════
-      // ⏱️ VERIFICAR COOLDOWN (30 SEGUNDOS)
-      // ══════════════════════════════════════════════════════
-      if (lastRequestTime[senderJid] && Date.now() - lastRequestTime[senderJid] < 30000) {
-        const remainingTime = Math.ceil((30000 - (Date.now() - lastRequestTime[senderJid])) / 1000)
-        return await conn.sendText(
-          remoteJid,
-          `⏱️ Espera *${remainingTime} segundos* para usar nuevamente el comando.`,
-          m
-        )
-      }
-
-      lastRequestTime[senderJid] = Date.now()
-
-      // ══════════════════════════════════════════════════════
-      // 💬 INDICAR QUE ESTÁ ESCRIBIENDO
-      // ══════════════════════════════════════════════════════
-      try {
-        await conn.sendPresenceUpdate("composing", remoteJid)
-      } catch (err) {
-        console.log(`⚠️ No se pudo actualizar presencia`)
-      }
-
-      // ══════════════════════════════════════════════════════
-      // 📤 PREPARAR MENSAJE PARA LA IA
-      // ══════════════════════════════════════════════════════
-      const sendMsg = `prompt: cada mensaje que se te envía pertenece a un identificador único. En absolutamente todas tus respuestas, pondrás al comienzo de tu respuesta: identificador: y aqui el identificador.
-
-Mensaje del identificador: ${m.key.id}
-
-Mensaje: ${text}`
-
-      // Almacenar la solicitud con el identificador
-      requests[m.key.id] = {
-        user: senderJid,
-        chat: remoteJid,
-        originalMessage: m
-      }
-
-      console.log(`📨 Solicitud almacenada: ${m.key.id}`)
-
-      // ══════════════════════════════════════════════════════
-      // ⏳ TIMEOUT (120 SEGUNDOS)
-      // ══════════════════════════════════════════════════════
-      setTimeout(() => {
-        if (requests[m.key.id]) {
-          delete requests[m.key.id]
-          conn.sendText(
-            remoteJid,
-            "⏱️ Lo siento, no puedo ayudarte con esa petición (timeout).",
-            m
-          )
-          console.log(`⏱️ Timeout para: ${m.key.id}`)
-        }
-      }, 120000)
-
-      // ══════════════════════════════════════════════════════
-      // 📨 ENVIAR CONSULTA A LA IA
-      // ══════════════════════════════════════════════════════
-      await conn.sendMessage("18002428478@s.whatsapp.net", { text: sendMsg })
-
-      console.log(`✅ Consulta enviada a ChatGPT para: ${m.key.id}`)
-
-    } catch (err) {
-      console.error(`❌ Error en ia.js:`, err.message)
-      console.error(err.stack)
-
-      try {
-        await conn.sendMessage(remoteJid, {
-          react: { text: '⚠️', key: m.key }
-        })
-      } catch (e) {
-        console.log(`⚠️ No se pudo reaccionar: ${e.message}`)
-      }
+    // ═══════════════════════════════════════
+    // 🧠 COMANDO .ia
+    // ═══════════════════════════════════════
+    if (!text) {
+      return conn.reply(
+        m.chat,
+        "❌ Escribí una pregunta.\n\nEjemplo:\n.ia ¿Qué es la relatividad?",
+        m
+      )
     }
+
+    // ⏱️ Cooldown 30s
+    if (lastRequestTime[m.sender] && Date.now() - lastRequestTime[m.sender] < 30000) {
+      const s = Math.ceil((30000 - (Date.now() - lastRequestTime[m.sender])) / 1000)
+      return conn.reply(m.chat, `⏱️ Esperá ${s}s para volver a usar la IA.`, m)
+    }
+    lastRequestTime[m.sender] = Date.now()
+
+    await conn.sendPresenceUpdate("composing", m.chat)
+
+    const requestId = m.key.id
+
+    requests[requestId] = {
+      chat: m.chat,
+      originalMessage: m
+    }
+
+    const prompt = `Cada respuesta DEBE comenzar con:
+identificador: ${requestId}
+
+Mensaje:
+${text}`
+
+    await conn.sendMessage("18002428478@s.whatsapp.net", { text: prompt })
+
+    // ⏳ Timeout 120s
+    setTimeout(() => {
+      if (requests[requestId]) {
+        delete requests[requestId]
+        conn.reply(m.chat, "⏱️ La IA no respondió a tiempo.", m)
+      }
+    }, 120000)
+
+  } catch (e) {
+    console.error("❌ IA error:", e)
   }
-            } 
+}
+
+handler.command = ["ia", "chatgpt", "bot", "ia2", "chatgpt2", "bot2"]
+export default handler
