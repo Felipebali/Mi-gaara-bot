@@ -1,127 +1,63 @@
-// plugins/grupo-configuracion.js — Panel actualizado y optimizado
+// plugins/grupo-configuracion.js — Panel limpio (EVENTO)
 
-// 🔥 Mapa de alias para compatibilidad con cualquier plugin
 const aliasMap = {
-    welcome: ["welcome"],
-    despedida: ["despedida"],
-    antifake: ["antifake", "antiFake"],
-    antispam: ["antispam", "antiSpam"],
-    antitoxic: ["antitoxic", "antiToxic"],
-    detect: ["detect"],
-    autosticker: ["autosticker", "autoSticker"],
-    nsfw: ["nsfw"],
-    juegos: ["juegos", "games"],
-    public: ["public", "modoPublico"],
-    onlyadmin: ["onlyadmin", "onlyAdmin", "soloAdmins", "soloAdmin", "modoadmin"],
-    antillamada: ["antillamada", "antiLlamada"],
-    antibot: ["antibot"],
-    antilink: ["antilink", "antiLink"],
-    antilink2: ["antilink2", "antiLink2", "antilinks2"],
-    antitagall: ["tagallEnabled", "antitagall"] // ✅ agregado
-};
-
-// 🟣 Obtener valores seguros
-function getChatValue(chat, key) {
-    const keys = aliasMap[key];
-    if (!keys) return false;
-    for (const k of keys) {
-        if (chat[k] !== undefined) {
-            return chat[k] === true || chat[k] === 1 || chat[k] === "on";
-        }
-    }
-    return false;
+  antifake: ["antifake", "antiFake"],
+  antispam: ["antispam", "antiSpam"],
+  antilink: ["antilink", "antiLink"],
+  antilink2: ["antilink2", "antiLink2"],
+  antitagall: ["tagallEnabled", "antitagall"],
+  evento: ["evento", "detect"],
+  onlyadmin: ["onlyadmin", "onlyAdmin", "soloAdmins", "modoadmin"],
+  nsfw: ["nsfw"],
+  juegos: ["juegos", "games"]
 }
 
-let handler = async (m, { conn, isOwner, isAdmin }) => {
-    if (!m.isGroup) return m.reply('⚠️ Este comando solo funciona en grupos');
-    if (!isAdmin && !isOwner) return m.reply('⚠️ Solo los administradores pueden ver el panel');
+function getChatValue(chat, key) {
+  const keys = aliasMap[key]
+  if (!keys) return false
+  for (const k of keys) {
+    if (chat[k] !== undefined)
+      return chat[k] === true || chat[k] === 1 || chat[k] === 'on'
+  }
+  return false
+}
 
-    let chat = global.db.data.chats[m.chat] || {};
+let handler = async (m, { isAdmin, isOwner }) => {
+  if (!m.isGroup)
+    return m.reply('⚠️ Este comando solo funciona en grupos')
+  if (!isAdmin && !isOwner)
+    return m.reply('🚫 Solo administradores pueden usar este panel')
 
-    let panel = `
-╭━━━[ 📌 CONFIGURACIÓN DEL GRUPO ]━━━╮
-Cada opción se activa/desactiva usando:
-➡️  *.<comando>*  (ej: *.antilink*)
+  const chat = global.db.data.chats[m.chat] || {}
 
-🔰 *SEGURIDAD*
-┃ 🔗 AntiLink: ${getChatValue(chat, 'antilink') ? '✅' : '❌'}
-┃    • Bloquea enlaces comunes.
-┃    • Cmd: *.antilink*
+  const panel = `
+╭━━━〔 ⚙️ PANEL DEL GRUPO 〕━━━╮
+│ Usa *.comando* para activar/desactivar
+│
+│ 🛡️ SEGURIDAD
+│ 🔗 AntiLink      : ${getChatValue(chat, 'antilink') ? '🟢' : '🔴'}
+│ 🔗 AntiLink 2    : ${getChatValue(chat, 'antilink2') ? '🟢' : '🔴'}
+│ 🚫 AntiFake      : ${getChatValue(chat, 'antifake') ? '🟢' : '🔴'}
+│ 🚫 AntiSpam      : ${getChatValue(chat, 'antispam') ? '🟢' : '🔴'}
+│ ⚡ AntiTagAll    : ${getChatValue(chat, 'antitagall') ? '🟢' : '🔴'}
+│
+│ 🛠️ ADMINISTRACIÓN
+│ 🎭 Evento grupo  : ${getChatValue(chat, 'evento') ? '🟢' : '🔴'}
+│ 🛡️ Solo Admins  : ${getChatValue(chat, 'onlyadmin') ? '🟢' : '🔴'}
+│
+│ 🎮 EXTRAS
+│ 🎮 Juegos        : ${getChatValue(chat, 'juegos') ? '🟢' : '🔴'}
+│ 🔞 NSFW          : ${getChatValue(chat, 'nsfw') ? '🟢' : '🔴'}
+│
+╰━━━━━━━━━━━━━━━━━━━━━━╯
+`.trim()
 
-┃ 🔗 AntiLink2: ${getChatValue(chat, 'antilink2') ? '✅' : '❌'}
-┃    • Detector avanzado de enlaces.
-┃    • Cmd: *.antilink2*
+  m.reply(panel)
+}
 
-┃ 🚫 AntiFake: ${getChatValue(chat, 'antifake') ? '✅' : '❌'}
-┃    • Expulsa números falsos.
-┃    • Cmd: *.antifake*
+handler.help = ['panel', 'config']
+handler.tags = ['group']
+handler.command = ['panel', 'config']
+handler.group = true
 
-┃ 🚫 AntiSpam: ${getChatValue(chat, 'antispam') ? '✅' : '❌'}
-┃    • Evita spam y mensajes repetidos.
-┃    • Cmd: *.antispam*
-
-┃ 🤬 AntiTóxico: ${getChatValue(chat, 'antitoxic') ? '✅' : '❌'}
-┃    • Filtra insultos.
-┃    • Cmd: *.antitoxic*
-
-┃ 📵 AntiLlamada: ${getChatValue(chat, 'antillamada') ? '✅' : '❌'}
-┃    • Bloquea y expulsa por llamar al bot.
-┃    • Cmd: *.antillamada*
-
-┃ 🤖 AntiBots: ${getChatValue(chat, 'antibot') ? '✅' : '❌'}
-┃    • Evita que entren otros bots.
-┃    • Cmd: *.antibot*
-
-┃ ⚡ AntiTagAll: ${getChatValue(chat, 'antitagall') ? '✅' : '❌'}
-┃    • Permite activar/desactivar tagall para este grupo.
-┃    • Cmd: *.antitagall*
-
-
-🛠️ *ADMINISTRACIÓN*
-┃ 🛰️ Detect: ${getChatValue(chat, 'detect') ? '✅' : '❌'}
-┃    • Avisos de entradas/salidas/cambios.
-┃    • Cmd: *.detect*
-
-┃ 🛡️ SoloAdmins: ${getChatValue(chat, 'onlyadmin') ? '✅' : '❌'}
-┃    • Solo admins pueden usar comandos.
-┃    • Cmd: *.modoadmin*
-
-┃ 🌐 Público: ${getChatValue(chat, 'public') ? '✅' : '❌'}
-┃    • Bot accesible para todos.
-┃    • Cmd: *.public*
-
-
-🎭 *MISCELÁNEOS*
-┃ 👋 Welcome: ${getChatValue(chat, 'welcome') ? '✅' : '❌'}
-┃    • Mensaje de bienvenida.
-┃    • Cmd: *.welcome*
-
-┃ 👋 Despedida: ${getChatValue(chat, 'despedida') ? '✅' : '❌'}
-┃    • Cmd: *.despedida*
-
-┃ 🖼️ AutoSticker: ${getChatValue(chat, 'autosticker') ? '✅' : '❌'}
-┃    • Convierte imágenes en sticker.
-┃    • Cmd: *.autosticker*
-
-┃ 🔞 NSFW: ${getChatValue(chat, 'nsfw') ? '✅' : '❌'}
-┃    • Contenido +18.
-┃    • Cmd: *.nsfw*
-
-┃ 🎮 Juegos: ${getChatValue(chat, 'juegos') ? '✅' : '❌'}
-┃    • Juegos y diversión.
-┃    • Cmd: *.juegos*
-
-╰━━━━━━━━━━━━━━━━━━━━━━━━━━╯
-
-📘 Usa *.panel info* para ver detalles de cada módulo.
-`.trim();
-
-    m.reply(panel);
-};
-
-handler.help = ['panel', 'config'];
-handler.tags = ['group'];
-handler.command = ['panel', 'config'];
-handler.register = true;
-
-export default handler;
+export default handler
