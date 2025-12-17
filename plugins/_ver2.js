@@ -18,22 +18,52 @@ let handler = async (m, { conn, command, text }) => {
   global.db.data.recoveredMedia = global.db.data.recoveredMedia || []
 
   // =================================================
-  // 📜 LISTAR MULTIMEDIA
+  // 📜 LISTAR MULTIMEDIA (SIN SPAM)
   // =================================================
   if (command === 'mlist') {
     if (!global.db.data.recoveredMedia.length)
       return conn.reply(m.chat, '📂 No hay multimedia recuperada.', m)
 
-    let txt = `📂 *MULTIMEDIA RECUPERADA*\n━━━━━━━━━━━━━━━━━━━━\n`
-    global.db.data.recoveredMedia.forEach((d, i) => {
-      txt +=
-`*ID:* ${d.id}
-📁 ${d.filename}
-🎞️ ${d.type}
-🏷️ ${d.groupName || 'Privado'}
-📅 ${d.date}\n\n`
+    // ─── DETALLE POR ID ───
+    if (text) {
+      const id = parseInt(text)
+      if (!id) return conn.reply(m.chat, '⚠️ Usa: `.mlist` o `.mlist <id>`', m)
+
+      const d = global.db.data.recoveredMedia.find(x => x.id === id)
+      if (!d) return conn.reply(m.chat, '❌ ID no encontrado.', m)
+
+      return conn.reply(
+        m.chat,
+`📄 *DETALLE DE MULTIMEDIA*
+━━━━━━━━━━━━━━━━━━━━
+🆔 *ID:* ${d.id}
+🎞️ *Tipo:* ${d.type}
+🏷️ *Grupo:* ${d.groupName || 'Privado'}
+📅 *Fecha:* ${d.date}
+📁 *Archivo:* ${d.filename}
+━━━━━━━━━━━━━━━━━━━━
+Usa *.mget ${d.id}* para recuperarlo`,
+        m
+      )
+    }
+
+    // ─── LISTA RESUMIDA ───
+    let txt =
+`📂 *MULTIMEDIA RECUPERADA (${global.db.data.recoveredMedia.length})*
+━━━━━━━━━━━━━━━━━━━━\n`
+
+    global.db.data.recoveredMedia.slice(-15).forEach(d => {
+      const icon = d.type === 'video' ? '🎞️' : '🖼️'
+      const fecha = d.date.split(',')[0]
+      txt += `🆔 ${d.id} | ${icon} ${d.type} | ${fecha}\n`
     })
-    return conn.reply(m.chat, txt.trim(), m)
+
+    txt +=
+`\n━━━━━━━━━━━━━━━━━━━━
+Usa *.mget <id>* para recuperar
+Usa *.mlist <id>* para ver detalles`
+
+    return conn.reply(m.chat, txt, m)
   }
 
   // =================================================
@@ -54,7 +84,7 @@ let handler = async (m, { conn, command, text }) => {
       {
         [data.type]: buffer,
         fileName: data.filename,
-        caption: `📥 Recuperado desde lista\n🆔 ID: ${id}`
+        caption: `📥 Recuperado desde historial\n🆔 ID: ${id}`
       }
     )
     return
@@ -116,7 +146,7 @@ let handler = async (m, { conn, command, text }) => {
     }
 
     // =================================================
-    // 📂 GUARDAR EN LISTA SEPARADA
+    // 📂 GUARDAR EN HISTORIAL SEPARADO
     // =================================================
     const mediaFolder = './media'
     if (!fs.existsSync(mediaFolder)) fs.mkdirSync(mediaFolder)
@@ -147,7 +177,7 @@ let handler = async (m, { conn, command, text }) => {
     if (global.db.write) await global.db.write()
 
     // =================================================
-    // 📤 COPIA AL OWNER
+    // 📤 COPIA AUTOMÁTICA AL OWNER
     // =================================================
     if (command !== 'rr') {
       await conn.sendMessage(
