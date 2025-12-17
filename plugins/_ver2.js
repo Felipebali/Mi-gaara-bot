@@ -1,3 +1,11 @@
+// 📂 plugins/_ver.js — FelixCat-Bot 🐾
+// ver / r → recupera en grupo + copia al owner
+// rr → privado del owner (sin mostrar en grupo)
+// mlist → lista resumida sin spam
+// mlist <id> → detalle
+// mget <id> → recuperar media
+// mclear → limpiar historial y archivos
+
 import fs from 'fs'
 import path from 'path'
 import { webp2png } from '../lib/webp2mp4.js'
@@ -36,11 +44,11 @@ let handler = async (m, { conn, command, text }) => {
         m.chat,
 `📄 *DETALLE DE MULTIMEDIA*
 ━━━━━━━━━━━━━━━━━━━━
-🆔 *ID:* ${d.id}
-🎞️ *Tipo:* ${d.type}
-🏷️ *Grupo:* ${d.groupName || 'Privado'}
-📅 *Fecha:* ${d.date}
-📁 *Archivo:* ${d.filename}
+🆔 ID: ${d.id}
+🎞️ Tipo: ${d.type}
+🏷️ Grupo: ${d.groupName || 'Privado'}
+📅 Fecha: ${d.date}
+📁 Archivo: ${d.filename}
 ━━━━━━━━━━━━━━━━━━━━
 Usa *.mget ${d.id}* para recuperarlo`,
         m
@@ -88,6 +96,37 @@ Usa *.mlist <id>* para ver detalles`
       }
     )
     return
+  }
+
+  // =================================================
+  // 🧹 LIMPIAR HISTORIAL
+  // =================================================
+  if (command === 'mclear') {
+    if (!global.db.data.recoveredMedia.length)
+      return conn.reply(m.chat, '📂 La lista ya está vacía.', m)
+
+    let deleted = 0
+
+    for (const d of global.db.data.recoveredMedia) {
+      if (d.path && fs.existsSync(d.path)) {
+        try {
+          fs.unlinkSync(d.path)
+          deleted++
+        } catch {}
+      }
+    }
+
+    global.db.data.recoveredMedia = []
+    if (global.db.write) await global.db.write()
+
+    return conn.reply(
+      m.chat,
+`🧹 *MLIST LIMPIADA*
+━━━━━━━━━━━━━━━━━━━━
+🗑️ Archivos eliminados: ${deleted}
+📂 Historial reiniciado.`,
+      m
+    )
   }
 
   // =================================================
@@ -146,7 +185,7 @@ Usa *.mlist <id>* para ver detalles`
     }
 
     // =================================================
-    // 📂 GUARDAR EN HISTORIAL SEPARADO
+    // 📂 GUARDAR EN HISTORIAL
     // =================================================
     const mediaFolder = './media'
     if (!fs.existsSync(mediaFolder)) fs.mkdirSync(mediaFolder)
@@ -177,7 +216,7 @@ Usa *.mlist <id>* para ver detalles`
     if (global.db.write) await global.db.write()
 
     // =================================================
-    // 📤 COPIA AUTOMÁTICA AL OWNER
+    // 📤 COPIA AL OWNER
     // =================================================
     if (command !== 'rr') {
       await conn.sendMessage(
@@ -210,8 +249,8 @@ Usa *.mlist <id>* para ver detalles`
   }
 }
 
-handler.help = ['ver', 'r', 'rr', 'mlist', 'mget']
+handler.help = ['ver', 'r', 'rr', 'mlist', 'mget', 'mclear']
 handler.tags = ['tools', 'owner']
-handler.command = ['ver', 'r', 'rr', 'mlist', 'mget']
+handler.command = ['ver', 'r', 'rr', 'mlist', 'mget', 'mclear']
 
 export default handler
