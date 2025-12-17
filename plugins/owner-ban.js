@@ -34,6 +34,16 @@ function findParticipantByDigits(metadata, digits) {
   })
 }
 
+// 🔥 FIX CLAVE — BUSCA BANEADO POR NÚMERO
+function findBannedByDigits(digits) {
+  const users = global.db.data.users || {}
+  return Object.entries(users).find(([jid, data]) => {
+    if (!data?.banned) return false
+    const jd = digitsOnly(jid)
+    return jd === digits || jd.endsWith(digits)
+  })
+}
+
 async function resolveJidFromNumber(conn, chat, number) {
   try {
     if (chat) {
@@ -59,17 +69,19 @@ const handler = async (m, { conn, command, text }) => {
 
   // ================= AUTO-KICK AL CITAR =================
   if (m.isGroup && m.quoted) {
-    const quotedJid = normalizeJid(m.quoted.sender || m.quoted.participant)
-    if (quotedJid && dbUsers[quotedJid]?.banned) {
+    const digits = digitsOnly(m.quoted.sender || m.quoted.participant)
+    const found = findBannedByDigits(digits)
+    if (found) {
+      const [realJid, data] = found
       try {
         const meta = await conn.groupMetadata(m.chat)
-        const participant = findParticipantByDigits(meta, digitsOnly(quotedJid))
-        if (participant) {
-          await conn.groupParticipantsUpdate(m.chat, [participant.id], 'remove')
+        const p = findParticipantByDigits(meta, digits)
+        if (p) {
+          await conn.groupParticipantsUpdate(m.chat, [p.id], 'remove')
           await sleep(500)
           await conn.sendMessage(m.chat, {
-            text: `${emoji} *Eliminación inmediata por LISTA NEGRA*\n${SEP}\n@${participant.id.split('@')[0]}\n📝 Motivo: ${dbUsers[quotedJid].banReason || 'No especificado'}\n${SEP}`,
-            mentions: [participant.id]
+            text: `${emoji} *Eliminación inmediata por LISTA NEGRA*\n${SEP}\n@${p.id.split('@')[0]}\n📝 Motivo: ${data.banReason || 'No especificado'}\n${SEP}`,
+            mentions: [p.id]
           })
         }
       } catch {}
@@ -91,13 +103,13 @@ const handler = async (m, { conn, command, text }) => {
     if (!bannedList[index])
       return conn.reply(m.chat, `${emoji} Índice inválido.`, m)
     userJid = bannedList[index][0]
-  } 
+  }
   else if (m.quoted) {
     userJid = normalizeJid(m.quoted.sender || m.quoted.participant)
-  } 
+  }
   else if (m.mentionedJid?.length) {
     userJid = normalizeJid(m.mentionedJid[0])
-  } 
+  }
   else if (text) {
     const num = extractPhoneNumber(text)
     if (num) {
@@ -129,14 +141,10 @@ const handler = async (m, { conn, command, text }) => {
       mentions: [userJid]
     })
 
-    // expulsión inmediata del grupo actual
     if (m.isGroup) {
-      try {
-        await conn.groupParticipantsUpdate(m.chat, [userJid], 'remove')
-      } catch {}
+      try { await conn.groupParticipantsUpdate(m.chat, [userJid], 'remove') } catch {}
     }
 
-    // expulsión global
     try {
       const groups = Object.keys(await conn.groupFetchAllParticipating())
       for (const gid of groups) {
@@ -196,11 +204,12 @@ const handler = async (m, { conn, command, text }) => {
 handler.all = async function (m) {
   try {
     if (!m.isGroup) return
-    const sender = normalizeJid(m.sender)
-    if (!global.db.data.users[sender]?.banned) return
+    const digits = digitsOnly(m.sender)
+    const found = findBannedByDigits(digits)
+    if (!found) return
 
     const meta = await this.groupMetadata(m.chat)
-    const p = findParticipantByDigits(meta, digitsOnly(sender))
+    const p = findParticipantByDigits(meta, digits)
     if (!p) return
 
     await this.groupParticipantsUpdate(m.chat, [p.id], 'remove')
@@ -225,11 +234,12 @@ handler.before = async function (m) {
     const meta = await this.groupMetadata(m.chat)
 
     for (const u of m.messageStubParameters || []) {
-      const ujid = normalizeJid(u)
-      const data = global.db.data.users[ujid]
-      if (!data?.banned) continue
+      const digits = digitsOnly(u)
+      const found = findBannedByDigits(digits)
+      if (!found) continue
 
-      const p = findParticipantByDigits(meta, digitsOnly(ujid))
+      const [, data] = found
+      const p = findParticipantByDigits(meta, digits)
       if (!p) continue
 
       await this.sendMessage(m.chat, {
