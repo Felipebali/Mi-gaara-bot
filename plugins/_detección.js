@@ -1,23 +1,14 @@
 // ✨ FATÍDICO PLUGIN DETECT — FELIXCAT BOT — FULL STUB SUPPORT ✨
-import fs from 'fs'
-import path from 'path'
-import chalk from 'chalk'
 import fetch from 'node-fetch'
 let { default: WAMessageStubType } = await import('@whiskeysockets/baileys')
 
 const lidCache = new Map()
 
-const handler = {}
-export default handler
-
 // =====================================================
 // COMANDO .evento (TOGGLE)
 // =====================================================
-handler.command = ['evento']
-handler.group = true
-handler.admin = true
-
-handler.handler = async function (m, { conn, isAdmin, isOwner }) {
+let handler = async function (m, { conn, isAdmin, isOwner }) {
+  if (!m.isGroup) return
   if (!isAdmin && !isOwner)
     return conn.reply(m.chat, '🚫 Solo admins pueden usar este comando.', m)
 
@@ -28,10 +19,18 @@ handler.handler = async function (m, { conn, isAdmin, isOwner }) {
 
   await conn.reply(
     m.chat,
-    `✨ *Detector de eventos*\n\nEstado: ${chat.detect ? '🟢 ACTIVADO' : '🔴 DESACTIVADO'}`,
+    `✨ *Detector de eventos*\n\nEstado: ${
+      chat.detect ? '🟢 ACTIVADO' : '🔴 DESACTIVADO'
+    }`,
     m
   )
 }
+
+handler.command = ['evento']
+handler.group = true
+handler.admin = true
+
+export default handler
 
 // =====================================================
 // BEFORE — DETECTOR DE EVENTOS
@@ -46,15 +45,12 @@ handler.before = async function (m, { conn, participants }) {
   if (primaryBot && conn.user.jid !== primaryBot) return
 
   const users = m.messageStubParameters?.[0] || ''
-  const usuario = await resolveLidToRealJid(m?.sender, conn, m?.chat)
+  const usuario = await resolveLidToRealJid(m.sender, conn, m.chat)
   const groupAdmins = participants.filter(p => p.admin)
 
-  const pp = await conn.profilePictureUrl(m.chat, 'image').catch(_ => null)
-    || 'https://files.catbox.moe/xr2m6u.jpg'
-
-  // ===============================
-  // MENSAJES
-  // ===============================
+  const pp =
+    (await conn.profilePictureUrl(m.chat, 'image').catch(() => null)) ||
+    'https://files.catbox.moe/xr2m6u.jpg'
 
   const nombre = `🌸✨ ¡NUEVO NOMBRE! ✨🌸
 
@@ -67,13 +63,12 @@ handler.before = async function (m, { conn, participants }) {
 
   const newlink = `🔗💫 ¡Enlace del grupo actualizado! 💫🔗
 
-✦ Gracias a: @${usuario.split('@')[0]}
-Ahora todos pueden unirse de nuevo 🌸`
+✦ Gracias a: @${usuario.split('@')[0]}`
 
   const edit = `🔧✨ Configuración del grupo ✨🔧
 
-@${usuario.split('@')[0]} ha decidido que ${
-    m.messageStubParameters[0] == 'on'
+@${usuario.split('@')[0]} decidió que ${
+    m.messageStubParameters[0] === 'on'
       ? 'solo los admins 🌟'
       : 'todos los miembros 🌼'
   } puedan modificar el grupo.`
@@ -87,66 +82,43 @@ Ahora todos pueden unirse de nuevo 🌸`
 
   const admingp = `🌟✨ ¡Admin nuevo! ✨🌟
 
-@${users.split('@')[0]} ahora es admin del grupo.
-🖇️ Acción realizada por: @${usuario.split('@')[0]} 💖`
+@${users.split('@')[0]} ahora es admin.
+🖇️ Acción de: @${usuario.split('@')[0]}`
 
   const noadmingp = `🌸⚡ ¡Admin removido! ⚡🌸
 
-@${users.split('@')[0]} ya no tiene permisos de admin.
-🖇️ Acción realizada por: @${usuario.split('@')[0]} 💌`
+@${users.split('@')[0]} ya no es admin.
+🖇️ Acción de: @${usuario.split('@')[0]}`
 
-  // ===============================
-  // RESPUESTAS POR STUB
-  // ===============================
-
-  // 21 — Cambio nombre
   if (m.messageStubType == 21)
-    return conn.sendMessage(m.chat, {
-      text: nombre,
-      mentions: [usuario, ...groupAdmins.map(v => v.id)]
-    })
+    return conn.sendMessage(m.chat, { text: nombre, mentions: [usuario] })
 
-  // 22 — Cambio foto
   if (m.messageStubType == 22)
     return conn.sendMessage(m.chat, {
       image: { url: pp },
       caption: foto,
-      mentions: [usuario, ...groupAdmins.map(v => v.id)]
+      mentions: [usuario]
     })
 
-  // 23 — Nuevo link
   if (m.messageStubType == 23)
-    return conn.sendMessage(m.chat, {
-      text: newlink,
-      mentions: [usuario, ...groupAdmins.map(v => v.id)]
-    })
+    return conn.sendMessage(m.chat, { text: newlink, mentions: [usuario] })
 
-  // 24 — Cambio descripción
   if (m.messageStubType == 24)
-    return conn.sendMessage(m.chat, {
-      text: descripcion,
-      mentions: [usuario, ...groupAdmins.map(v => v.id)]
-    })
+    return conn.sendMessage(m.chat, { text: descripcion, mentions: [usuario] })
 
-  // 25 — Editar configuración
   if (m.messageStubType == 25)
-    return conn.sendMessage(m.chat, {
-      text: edit,
-      mentions: [usuario, ...groupAdmins.map(v => v.id)]
-    })
+    return conn.sendMessage(m.chat, { text: edit, mentions: [usuario] })
 
-  // 29 — Dar admin
   if (m.messageStubType == 29)
     return conn.sendMessage(m.chat, {
       text: admingp,
-      mentions: [usuario, users, ...groupAdmins.map(v => v.id)].filter(Boolean)
+      mentions: [usuario, users].filter(Boolean)
     })
 
-  // 30 — Quitar admin
   if (m.messageStubType == 30)
     return conn.sendMessage(m.chat, {
       text: noadmingp,
-      mentions: [usuario, users, ...groupAdmins.map(v => v.id)].filter(Boolean)
+      mentions: [usuario, users].filter(Boolean)
     })
 }
 
@@ -156,43 +128,26 @@ Ahora todos pueden unirse de nuevo 🌸`
 async function resolveLidToRealJid(lid, conn, groupChatId, maxRetries = 3, retryDelay = 60000) {
   const inputJid = lid.toString()
 
-  if (!inputJid.endsWith('@lid') || !groupChatId?.endsWith('@g.us'))
+  if (!inputJid.endsWith('@lid') || !groupChatId.endsWith('@g.us'))
     return inputJid.includes('@') ? inputJid : `${inputJid}@s.whatsapp.net`
 
   if (lidCache.has(inputJid)) return lidCache.get(inputJid)
 
   const lidToFind = inputJid.split('@')[0]
-  let attempts = 0
 
-  while (attempts < maxRetries) {
+  for (let i = 0; i < maxRetries; i++) {
     try {
-      const metadata = await conn.groupMetadata(groupChatId)
-      if (!metadata?.participants) throw new Error()
-
-      for (const participant of metadata.participants) {
-        try {
-          if (!participant?.jid) continue
-          const check = await conn.onWhatsApp(participant.jid)
-          if (!check?.[0]?.lid) continue
-
-          if (check[0].lid.split('@')[0] === lidToFind) {
-            lidCache.set(inputJid, participant.jid)
-            return participant.jid
-          }
-        } catch {}
+      const meta = await conn.groupMetadata(groupChatId)
+      for (const p of meta.participants) {
+        const check = await conn.onWhatsApp(p.jid)
+        if (check?.[0]?.lid?.startsWith(lidToFind)) {
+          lidCache.set(inputJid, p.jid)
+          return p.jid
+        }
       }
-
-      lidCache.set(inputJid, inputJid)
-      return inputJid
-    } catch {
-      attempts++
-      if (attempts >= maxRetries) {
-        lidCache.set(inputJid, inputJid)
-        return inputJid
-      }
-      await new Promise(r => setTimeout(r, retryDelay))
-    }
+    } catch {}
+    await new Promise(r => setTimeout(r, retryDelay))
   }
 
   return inputJid
-    }
+}
