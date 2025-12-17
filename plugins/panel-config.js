@@ -30,26 +30,38 @@ let handler = async (m, { isAdmin, isOwner }) => {
 
   const chat = global.db.data.chats[m.chat] || {}
 
+  const on = '🟢 ACTIVADO'
+  const off = '🔴 DESACTIVADO'
+
   const panel = `
-╭━━━〔 ⚙️ PANEL DEL GRUPO 〕━━━╮
-│ Usa *.comando* para activar/desactivar
-│
-│ 🛡️ SEGURIDAD
-│ 🔗 AntiLink      : ${getChatValue(chat, 'antilink') ? '🟢' : '🔴'}
-│ 🔗 AntiLink 2    : ${getChatValue(chat, 'antilink2') ? '🟢' : '🔴'}
-│ 🚫 AntiFake      : ${getChatValue(chat, 'antifake') ? '🟢' : '🔴'}
-│ 🚫 AntiSpam      : ${getChatValue(chat, 'antispam') ? '🟢' : '🔴'}
-│ ⚡ AntiTagAll    : ${getChatValue(chat, 'antitagall') ? '🟢' : '🔴'}
-│
-│ 🛠️ ADMINISTRACIÓN
-│ 🎭 Evento grupo  : ${getChatValue(chat, 'evento') ? '🟢' : '🔴'}
-│ 🛡️ Solo Admins  : ${getChatValue(chat, 'onlyadmin') ? '🟢' : '🔴'}
-│
-│ 🎮 EXTRAS
-│ 🎮 Juegos        : ${getChatValue(chat, 'juegos') ? '🟢' : '🔴'}
-│ 🔞 NSFW          : ${getChatValue(chat, 'nsfw') ? '🟢' : '🔴'}
-│
-╰━━━━━━━━━━━━━━━━━━━━━━╯
+╔══════════════════════╗
+║   ⚙️ PANEL DEL GRUPO   ║
+╚══════════════════════╝
+📌 *Uso:* _.comando_ para activar / desactivar
+
+━━━━━━━━━━━━━━━━━━━━━━
+🛡️ *SEGURIDAD*
+━━━━━━━━━━━━━━━━━━━━━━
+🔗 AntiLink        » ${getChatValue(chat, 'antilink') ? on : off}
+🔗 AntiLink 2      » ${getChatValue(chat, 'antilink2') ? on : off}
+🚫 AntiFake        » ${getChatValue(chat, 'antifake') ? on : off}
+🚫 AntiSpam        » ${getChatValue(chat, 'antispam') ? on : off}
+⚡ AntiTagAll      » ${getChatValue(chat, 'antitagall') ? on : off}
+
+━━━━━━━━━━━━━━━━━━━━━━
+🛠️ *ADMINISTRACIÓN*
+━━━━━━━━━━━━━━━━━━━━━━
+🎭 Evento del grupo » ${getChatValue(chat, 'evento') ? on : off}
+🛡️ Solo Admins     » ${getChatValue(chat, 'onlyadmin') ? on : off}
+
+━━━━━━━━━━━━━━━━━━━━━━
+🎮 *EXTRAS*
+━━━━━━━━━━━━━━━━━━━━━━
+🎮 Juegos           » ${getChatValue(chat, 'juegos') ? on : off}
+🔞 NSFW             » ${getChatValue(chat, 'nsfw') ? on : off}
+
+━━━━━━━━━━━━━━━━━━━━━━
+🐾 *FelixCat Bot* • Panel de control
 `.trim()
 
   m.reply(panel)
