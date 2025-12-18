@@ -125,7 +125,6 @@ ${SEP}`,
       mentions: [userJid]
     })
 
-    // ===== EXPULSIÓN GLOBAL (KICK → AVISO) =====
     try {
       const groups = Object.keys(await conn.groupFetchAllParticipating())
       for (const jid of groups) {
@@ -222,15 +221,43 @@ handler.all = async function (m) {
 }
 
 // =====================================================
-// ========== AUTO-KICK + AVISO AL ENTRAR =================
+// ========== AUTO-KICK AL ENTRAR + BOT JOIN FIX =========
 // =====================================================
 
 handler.before = async function (m) {
   try {
-    if (![27, 31].includes(m.messageStubType)) return
     if (!m.isGroup) return
 
     const meta = await this.groupMetadata(m.chat)
+    const botJid = this.user?.jid
+
+    // ===== BOT ENTRA → LIMPIEZA TOTAL =====
+    if (m.messageStubType === 27 && m.messageStubParameters?.includes(botJid)) {
+      for (const p of meta.participants) {
+        const jid = normalizeJid(p.id)
+        const data = global.db.data.users[jid]
+        if (!data?.banned) continue
+
+        const reason = data.banReason || 'No especificado'
+
+        await this.groupParticipantsUpdate(m.chat, [p.id], 'remove')
+        await sleep(800)
+
+        await this.sendMessage(m.chat, {
+          text:
+`🚨 *LIMPIEZA AUTOMÁTICA — LISTA NEGRA*
+━━━━━━━━━━━━━━━━━━━━
+👤 @${p.id.split('@')[0]}
+📝 Motivo: ${reason}
+━━━━━━━━━━━━━━━━━━━━`,
+          mentions: [p.id]
+        })
+      }
+      return
+    }
+
+    // ===== USUARIO ENTRA =====
+    if (![27, 31].includes(m.messageStubType)) return
 
     for (const u of m.messageStubParameters || []) {
       const ujid = normalizeJid(u)
