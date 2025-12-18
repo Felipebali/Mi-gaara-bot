@@ -1,10 +1,9 @@
 // 📂 plugins/_ver.js — FelixCat-Bot 🐾
 // ver / r → recupera en grupo + copia al owner
-// rr → privado del owner (sin mostrar en grupo)
-// mlist → lista resumida sin spam
-// mlist <id> → detalle
-// mget <id> → recuperar media
-// mclear → limpiar historial y archivos
+// rr → privado del owner
+// mlist → lista
+// mget → recuperar por ID
+// mclear → limpiar historial
 
 import fs from 'fs'
 import path from 'path'
@@ -12,30 +11,47 @@ import { webp2png } from '../lib/webp2mp4.js'
 
 const OWNER_JID = '59898719147@s.whatsapp.net'
 
+// 👤 Usuario con permiso SOLO para r / ver
+const RECOVER_ONLY = '59894305091'
+
 let handler = async (m, { conn, command, text }) => {
 
-  // ================= VALIDAR OWNER =================
+  // ================= VALIDAR PERMISOS =================
   const owners = global.owner.map(o => o[0].replace(/[^0-9]/g, ''))
   const senderNumber = m.sender.replace(/[^0-9]/g, '')
-  if (!owners.includes(senderNumber)) {
+
+  // ❌ No autorizado
+  if (!owners.includes(senderNumber) && senderNumber !== RECOVER_ONLY) {
     await m.react('✖️')
-    return conn.reply(m.chat, '❌ Solo los owners pueden usar este comando.', m)
+    return conn.reply(m.chat, '❌ No tenés permiso para usar este comando.', m)
+  }
+
+  // 👤 Recover-only: SOLO r / ver
+  if (
+    senderNumber === RECOVER_ONLY &&
+    !['r', 'ver'].includes(command)
+  ) {
+    await m.react('✖️')
+    return conn.reply(
+      m.chat,
+      '⚠️ Solo podés usar el comando *r* para recuperar imágenes.',
+      m
+    )
   }
 
   // ================= BASE DE DATOS =================
   global.db.data.recoveredMedia = global.db.data.recoveredMedia || []
 
   // =================================================
-  // 📜 LISTAR MULTIMEDIA (SIN SPAM)
+  // 📜 LISTAR MULTIMEDIA
   // =================================================
   if (command === 'mlist') {
     if (!global.db.data.recoveredMedia.length)
       return conn.reply(m.chat, '📂 No hay multimedia recuperada.', m)
 
-    // ─── DETALLE POR ID ───
     if (text) {
       const id = parseInt(text)
-      if (!id) return conn.reply(m.chat, '⚠️ Usa: `.mlist` o `.mlist <id>`', m)
+      if (!id) return conn.reply(m.chat, '⚠️ Usa: `.mlist <id>`', m)
 
       const d = global.db.data.recoveredMedia.find(x => x.id === id)
       if (!d) return conn.reply(m.chat, '❌ ID no encontrado.', m)
@@ -49,13 +65,11 @@ let handler = async (m, { conn, command, text }) => {
 🏷️ Grupo: ${d.groupName || 'Privado'}
 📅 Fecha: ${d.date}
 📁 Archivo: ${d.filename}
-━━━━━━━━━━━━━━━━━━━━
-Usa *.mget ${d.id}* para recuperarlo`,
+━━━━━━━━━━━━━━━━━━━━`,
         m
       )
     }
 
-    // ─── LISTA RESUMIDA ───
     let txt =
 `📂 *MULTIMEDIA RECUPERADA (${global.db.data.recoveredMedia.length})*
 ━━━━━━━━━━━━━━━━━━━━\n`
@@ -66,67 +80,7 @@ Usa *.mget ${d.id}* para recuperarlo`,
       txt += `🆔 ${d.id} | ${icon} ${d.type} | ${fecha}\n`
     })
 
-    txt +=
-`\n━━━━━━━━━━━━━━━━━━━━
-Usa *.mget <id>* para recuperar
-Usa *.mlist <id>* para ver detalles`
-
     return conn.reply(m.chat, txt, m)
-  }
-
-  // =================================================
-  // 📥 RECUPERAR DESDE LISTA
-  // =================================================
-  if (command === 'mget') {
-    const id = parseInt(text)
-    if (!id) return conn.reply(m.chat, '⚠️ Usa: `.mget <id>`', m)
-
-    const data = global.db.data.recoveredMedia.find(x => x.id === id)
-    if (!data || !fs.existsSync(data.path))
-      return conn.reply(m.chat, '❌ Archivo no encontrado.', m)
-
-    const buffer = fs.readFileSync(data.path)
-
-    await conn.sendMessage(
-      m.sender,
-      {
-        [data.type]: buffer,
-        fileName: data.filename,
-        caption: `📥 Recuperado desde historial\n🆔 ID: ${id}`
-      }
-    )
-    return
-  }
-
-  // =================================================
-  // 🧹 LIMPIAR HISTORIAL
-  // =================================================
-  if (command === 'mclear') {
-    if (!global.db.data.recoveredMedia.length)
-      return conn.reply(m.chat, '📂 La lista ya está vacía.', m)
-
-    let deleted = 0
-
-    for (const d of global.db.data.recoveredMedia) {
-      if (d.path && fs.existsSync(d.path)) {
-        try {
-          fs.unlinkSync(d.path)
-          deleted++
-        } catch {}
-      }
-    }
-
-    global.db.data.recoveredMedia = []
-    if (global.db.write) await global.db.write()
-
-    return conn.reply(
-      m.chat,
-`🧹 *MLIST LIMPIADA*
-━━━━━━━━━━━━━━━━━━━━
-🗑️ Archivos eliminados: ${deleted}
-📂 Historial reiniciado.`,
-      m
-    )
   }
 
   // =================================================
@@ -136,65 +90,40 @@ Usa *.mlist <id>* para ver detalles`
     const q = m.quoted ? m.quoted : m
     const mime = (q.msg || q).mimetype || q.mediaType || ''
 
-    if (!/webp|image|video/g.test(mime))
-      return conn.reply(m.chat, '⚠️ Responde a una imagen, sticker o video.', m)
+    // 🔒 Recover-only: SOLO imágenes
+    if (senderNumber === RECOVER_ONLY && !/image|webp/.test(mime))
+      return conn.reply(m.chat, '⚠️ Solo podés recuperar imágenes.', m)
+
+    if (!/webp|image|video/.test(mime))
+      return conn.reply(m.chat, '⚠️ Responde a una imagen o sticker.', m)
 
     await m.react('📥')
 
     let buffer = await q.download()
-    let type, filenameSent, sentMessage
+    let type = 'image'
+    let filenameSent = 'recuperado.png'
 
     // ---------- STICKER ----------
     if (/webp/.test(mime)) {
       const result = await webp2png(buffer)
-      if (!result?.url) throw 'webp error'
-
-      type = 'image'
       buffer = Buffer.from(await (await fetch(result.url)).arrayBuffer())
-      filenameSent = 'sticker.png'
-
-      if (command !== 'rr') {
-        sentMessage = await conn.sendMessage(
-          m.chat,
-          { image: buffer, caption: '🖼️ Sticker convertido.' },
-          { quoted: m }
-        )
-      }
     }
 
-    // ---------- IMG / VIDEO ----------
-    else {
-      const ext = mime.split('/')[1]
-      type = mime.includes('video') ? 'video' : 'image'
-      filenameSent = `recuperado.${ext}`
-
-      if (command !== 'rr') {
-        sentMessage = await conn.sendMessage(
-          m.chat,
-          { [type]: buffer, caption: '📸 Archivo recuperado.' },
-          { quoted: m }
-        )
-      }
-    }
-
-    // ---------- REACCIONES ----------
-    if (command === 'rr') {
-      await conn.sendMessage(m.chat, { react: { text: '🌟', key: m.key } })
-    } else if (sentMessage) {
-      await conn.sendMessage(m.chat, { react: { text: '✅', key: sentMessage.key } })
-    }
+    // ---------- ENVIAR AL GRUPO ----------
+    await conn.sendMessage(
+      m.chat,
+      { image: buffer, caption: '📸 Imagen recuperada.' },
+      { quoted: m }
+    )
 
     // =================================================
-    // 📂 GUARDAR EN HISTORIAL
+    // 📂 GUARDAR EN HISTORIAL (BIEN HECHO ✔️)
     // =================================================
     const mediaFolder = './media'
     if (!fs.existsSync(mediaFolder)) fs.mkdirSync(mediaFolder)
 
-    const name = `${Date.now()}_${Math.floor(Math.random() * 9999)}`
-    const ext = filenameSent.split('.').pop()
-    const finalName = `${name}.${ext}`
+    const finalName = `${Date.now()}_${Math.floor(Math.random() * 9999)}.png`
     const filepath = path.join(mediaFolder, finalName)
-
     fs.writeFileSync(filepath, buffer)
 
     let chatInfo = null
@@ -206,7 +135,7 @@ Usa *.mlist <id>* para ver detalles`
       id: global.db.data.recoveredMedia.length + 1,
       filename: finalName,
       path: filepath,
-      type,
+      type: 'image',
       from: m.sender,
       groupName: m.isGroup ? (chatInfo?.subject || '') : null,
       date: new Date().toLocaleString()
@@ -216,31 +145,22 @@ Usa *.mlist <id>* para ver detalles`
     if (global.db.write) await global.db.write()
 
     // =================================================
-    // 📤 COPIA AL OWNER
+    // 📤 COPIA AL OWNER (SIEMPRE)
     // =================================================
-    if (command !== 'rr') {
-      await conn.sendMessage(
-        OWNER_JID,
-        {
-          [type]: buffer,
-          fileName: filenameSent,
-          caption:
+    await conn.sendMessage(
+      OWNER_JID,
+      {
+        image: buffer,
+        caption:
 `📥 MEDIA RECUPERADA
 🆔 ID: ${record.id}
 👤 ${senderNumber}
 🏷️ ${record.groupName || 'Privado'}
 📅 ${record.date}`
-        }
-      )
-    }
+      }
+    )
 
-    // ---------- RR PRIVADO ----------
-    if (command === 'rr') {
-      await conn.sendMessage(
-        m.sender,
-        { [type]: buffer, fileName: filenameSent, caption: '🌟 Archivo recuperado.' }
-      )
-    }
+    await m.react('✅')
 
   } catch (e) {
     console.error(e)
@@ -249,8 +169,8 @@ Usa *.mlist <id>* para ver detalles`
   }
 }
 
-handler.help = ['ver', 'r', 'rr', 'mlist', 'mget', 'mclear']
-handler.tags = ['tools', 'owner']
+handler.help = ['ver', 'r']
+handler.tags = ['tools']
 handler.command = ['ver', 'r', 'rr', 'mlist', 'mget', 'mclear']
 
 export default handler
