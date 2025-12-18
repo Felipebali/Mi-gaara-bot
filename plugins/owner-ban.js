@@ -1,4 +1,4 @@
-// 📂 plugins/propietario-listanegra.js — FELI 2025 — FIX REAL 🔥
+// 📂 plugins/propietario-listanegra.js — FELI 2025 — FIX DEFINITIVO 🔥🫣
 
 function sleep(ms) {
   return new Promise(r => setTimeout(r, ms))
@@ -34,6 +34,16 @@ function findParticipantByDigits(metadata, digits) {
   })
 }
 
+// 🔑 FIX CLAVE: quoted real en Baileys MD
+function getQuotedJid(m) {
+  if (!m.quoted) return null
+  return normalizeJid(
+    m.quoted.sender ||
+    m.quoted.participant ||
+    m.quoted.from
+  )
+}
+
 // =====================================================
 // ================= HANDLER PRINCIPAL =================
 // =====================================================
@@ -54,15 +64,22 @@ const handler = async (m, { conn, command, text }) => {
 
   let userJid = null
 
+  // índice
   if (command === 'remn' && /^\d+$/.test(text?.trim())) {
     const index = parseInt(text.trim()) - 1
     if (!bannedList[index])
       return conn.reply(m.chat, `${emoji} Número inválido.`, m)
     userJid = bannedList[index][0]
+
+  // citar (FIX REAL)
   } else if (m.quoted) {
-    userJid = normalizeJid(m.quoted.sender || m.quoted.participant)
+    userJid = getQuotedJid(m)
+
+  // mencionar
   } else if (m.mentionedJid?.length) {
     userJid = normalizeJid(m.mentionedJid[0])
+
+  // número en texto
   } else if (text) {
     const num = extractPhoneNumber(text)
     if (num) userJid = normalizeJid(num)
@@ -144,12 +161,10 @@ handler.all = async function (m) {
     if (!m.isGroup) return
     const dbUsers = global.db.data.users || {}
 
-    // ---------- HABLAR ----------
     let target = normalizeJid(m.sender)
 
-    // ---------- CITAR ----------
     if (m.quoted) {
-      target = normalizeJid(m.quoted.sender || m.quoted.participant)
+      target = getQuotedJid(m)
     }
 
     if (!target) return
