@@ -34,6 +34,17 @@ function findParticipantByDigits(metadata, digits) {
   })
 }
 
+// 🔥 FIX REAL PARA MENSAJES CITADOS
+function getQuotedJid(m) {
+  if (!m.quoted) return null
+  return normalizeJid(
+    m.quoted.sender ||
+    m.quoted.participant ||
+    m.quoted.key?.participant ||
+    m.quoted.key?.remoteJid
+  )
+}
+
 // =====================================================
 // ================= HANDLER PRINCIPAL =================
 // =====================================================
@@ -46,32 +57,42 @@ const handler = async (m, { conn, command, text }) => {
 
   const dbUsers = global.db.data.users || (global.db.data.users = {})
 
-  // ================= AUTO-KICK AL CITAR =================
+  // ================= AUTO-KICK AL CITAR (FIX DEFINITIVO) =================
   if (m.isGroup && m.quoted) {
-    const quotedJid = normalizeJid(m.quoted.sender || m.quoted.participant)
-    if (quotedJid && dbUsers[quotedJid]?.banned) {
-      try {
-        const reason = dbUsers[quotedJid].banReason || 'No especificado'
-        const meta = await conn.groupMetadata(m.chat)
-        const participant = findParticipantByDigits(meta, digitsOnly(quotedJid))
-        if (participant) {
-          await conn.groupParticipantsUpdate(m.chat, [participant.id], 'remove')
-          await sleep(700)
+    try {
+      const quotedJid = getQuotedJid(m)
+      if (!quotedJid) return
 
-          await conn.sendMessage(m.chat, {
-            text:
+      const data = dbUsers[quotedJid]
+      if (!data?.banned) return
+
+      const reason = data.banReason || 'No especificado'
+      const meta = await conn.groupMetadata(m.chat)
+
+      const participant = findParticipantByDigits(
+        meta,
+        digitsOnly(quotedJid)
+      )
+      if (!participant) return
+
+      await conn.groupParticipantsUpdate(m.chat, [participant.id], 'remove')
+      await sleep(700)
+
+      await conn.sendMessage(m.chat, {
+        text:
 `${emoji} *Eliminación inmediata por LISTA NEGRA*
 ${SEP}
 @${participant.id.split('@')[0]}
 📝 Motivo: ${reason}
 ${SEP}`,
-            mentions: [participant.id]
-          })
-        }
-      } catch {}
+        mentions: [participant.id]
+      })
+    } catch (e) {
+      console.error('AUTO-KICK CITA ERROR:', e)
     }
   }
 
+  // ================= REACCIONES =================
   const reactions = { addn: '✅', remn: '☢️', clrn: '🧹', listn: '📜' }
   if (reactions[command])
     await conn.sendMessage(m.chat, { react: { text: reactions[command], key: m.key } })
@@ -87,7 +108,7 @@ ${SEP}`,
       return conn.reply(m.chat, `${emoji} Número inválido.`, m)
     userJid = bannedList[index][0]
   } else if (m.quoted) {
-    userJid = normalizeJid(m.quoted.sender || m.quoted.participant)
+    userJid = getQuotedJid(m)
   } else if (m.mentionedJid?.length) {
     userJid = normalizeJid(m.mentionedJid[0])
   } else if (text) {
@@ -169,7 +190,7 @@ ${SEP}
 }
 
 // =====================================================
-// ================= AUTO-KICK SI HABLA (FIX REAL) ======
+// ================= AUTO-KICK SI HABLA =================
 // =====================================================
 
 handler.all = async function (m) {
