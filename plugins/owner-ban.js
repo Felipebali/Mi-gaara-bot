@@ -1,8 +1,8 @@
-// 📂 plugins/propietario-listanegra.js — FELI 2025 — FIX DEFINITIVO 🔥
-
 function sleep(ms) {
   return new Promise(r => setTimeout(r, ms))
 }
+
+const cleanedGroups = new Set()
 
 // ================= UTILIDADES =================
 
@@ -124,31 +124,6 @@ ${SEP}
 ${SEP}`,
       mentions: [userJid]
     })
-
-    try {
-      const groups = Object.keys(await conn.groupFetchAllParticipating())
-      for (const jid of groups) {
-        await sleep(800)
-        try {
-          const meta = await conn.groupMetadata(jid)
-          const participant = findParticipantByDigits(meta, digitsOnly(userJid))
-          if (!participant) continue
-
-          await conn.groupParticipantsUpdate(jid, [participant.id], 'remove')
-          await sleep(700)
-
-          await conn.sendMessage(jid, {
-            text:
-`🚫 *Usuario eliminado por LISTA NEGRA*
-━━━━━━━━━━━━━━━━━━━━
-👤 @${participant.id.split('@')[0]}
-📝 Motivo: ${reason}
-━━━━━━━━━━━━━━━━━━━━`,
-            mentions: [participant.id]
-          })
-        } catch {}
-      }
-    } catch {}
   }
 
   // ================= REMOVER =================
@@ -194,12 +169,13 @@ ${SEP}
 }
 
 // =====================================================
-// ================= AUTO-KICK SI HABLA =================
+// ================= AUTO-KICK SI HABLA (FIX REAL) ======
 // =====================================================
 
 handler.all = async function (m) {
   try {
     if (!m.isGroup) return
+
     const sender = normalizeJid(m.sender)
     if (!global.db.data.users[sender]?.banned) return
 
@@ -221,7 +197,7 @@ handler.all = async function (m) {
 }
 
 // =====================================================
-// ========== AUTO-KICK AL ENTRAR + BOT JOIN FIX =========
+// ========== LIMPIEZA AL ENTRAR EL BOT =================
 // =====================================================
 
 handler.before = async function (m) {
@@ -230,57 +206,30 @@ handler.before = async function (m) {
 
     const meta = await this.groupMetadata(m.chat)
     const botJid = this.user?.jid
+    const bot = meta.participants.find(p => p.id === botJid)
+    if (!bot?.admin) return
 
-    // ===== BOT ENTRA → LIMPIEZA TOTAL =====
-    if (m.messageStubType === 27 && m.messageStubParameters?.includes(botJid)) {
-      for (const p of meta.participants) {
-        const jid = normalizeJid(p.id)
-        const data = global.db.data.users[jid]
-        if (!data?.banned) continue
+    if (cleanedGroups.has(m.chat)) return
+    cleanedGroups.add(m.chat)
 
-        const reason = data.banReason || 'No especificado'
+    for (const p of meta.participants) {
+      const jid = normalizeJid(p.id)
+      const data = global.db.data.users[jid]
+      if (!data?.banned) continue
 
-        await this.groupParticipantsUpdate(m.chat, [p.id], 'remove')
-        await sleep(800)
+      const reason = data.banReason || 'No especificado'
 
-        await this.sendMessage(m.chat, {
-          text:
+      await this.groupParticipantsUpdate(m.chat, [p.id], 'remove')
+      await sleep(800)
+
+      await this.sendMessage(m.chat, {
+        text:
 `🚨 *LIMPIEZA AUTOMÁTICA — LISTA NEGRA*
 ━━━━━━━━━━━━━━━━━━━━
 👤 @${p.id.split('@')[0]}
 📝 Motivo: ${reason}
 ━━━━━━━━━━━━━━━━━━━━`,
-          mentions: [p.id]
-        })
-      }
-      return
-    }
-
-    // ===== USUARIO ENTRA =====
-    if (![27, 31].includes(m.messageStubType)) return
-
-    for (const u of m.messageStubParameters || []) {
-      const ujid = normalizeJid(u)
-      const data = global.db.data.users[ujid]
-      if (!data?.banned) continue
-
-      const participant = findParticipantByDigits(meta, digitsOnly(ujid))
-      if (!participant) continue
-
-      const reason = data.banReason || 'No especificado'
-
-      await this.groupParticipantsUpdate(m.chat, [participant.id], 'remove')
-      await sleep(700)
-
-      await this.sendMessage(m.chat, {
-        text:
-`🚨 *USUARIO EN LISTA NEGRA*
-━━━━━━━━━━━━━━━━━━━━
-👤 @${participant.id.split('@')[0]}
-📝 Motivo: ${reason}
-🚫 Expulsión automática
-━━━━━━━━━━━━━━━━━━━━`,
-        mentions: [participant.id]
+        mentions: [p.id]
       })
     }
   } catch {}
