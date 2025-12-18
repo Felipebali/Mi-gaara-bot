@@ -1,4 +1,4 @@
-// 📂 plugins/propietario-listanegra.js — FELI 2025 — FIX DEFINITIVO 🔥
+// 📂 plugins/propietario-listanegra.js — FELI 2025 — FIX REAL 🔥
 
 function sleep(ms) {
   return new Promise(r => setTimeout(r, ms))
@@ -34,20 +34,6 @@ function findParticipantByDigits(metadata, digits) {
   })
 }
 
-// 👉 CITAR = MENCIONAR = TEXTO
-function resolveTargetJid(m, text = '') {
-  if (m.quoted)
-    return normalizeJid(m.quoted.sender || m.quoted.participant)
-
-  if (m.mentionedJid?.length)
-    return normalizeJid(m.mentionedJid[0])
-
-  const num = extractPhoneNumber(text)
-  if (num) return normalizeJid(num)
-
-  return null
-}
-
 // =====================================================
 // ================= HANDLER PRINCIPAL =================
 // =====================================================
@@ -60,36 +46,6 @@ const handler = async (m, { conn, command, text }) => {
 
   const dbUsers = global.db.data.users || (global.db.data.users = {})
 
-  // ================= AUTO-KICK AL CITAR =================
-  if (m.isGroup && m.quoted) {
-    const quotedJid = normalizeJid(m.quoted.sender || m.quoted.participant)
-    const entry = Object.entries(dbUsers)
-      .find(([jid, d]) => d.banned && digitsOnly(jid) === digitsOnly(quotedJid))
-
-    if (entry) {
-      try {
-        const [realJid, data] = entry
-        const reason = data.banReason || 'No especificado'
-        const meta = await conn.groupMetadata(m.chat)
-        const participant = findParticipantByDigits(meta, digitsOnly(realJid))
-        if (participant) {
-          await conn.groupParticipantsUpdate(m.chat, [participant.id], 'remove')
-          await sleep(700)
-
-          await conn.sendMessage(m.chat, {
-            text:
-`${emoji} *Eliminación inmediata por LISTA NEGRA*
-${SEP}
-@${participant.id.split('@')[0]}
-📝 Motivo: ${reason}
-${SEP}`,
-            mentions: [participant.id]
-          })
-        }
-      } catch {}
-    }
-  }
-
   const reactions = { addn: '✅', remn: '☢️', clrn: '🧹', listn: '📜' }
   if (reactions[command])
     await conn.sendMessage(m.chat, { react: { text: reactions[command], key: m.key } })
@@ -98,14 +54,18 @@ ${SEP}`,
 
   let userJid = null
 
-  // índice solo para remn
   if (command === 'remn' && /^\d+$/.test(text?.trim())) {
     const index = parseInt(text.trim()) - 1
     if (!bannedList[index])
       return conn.reply(m.chat, `${emoji} Número inválido.`, m)
     userJid = bannedList[index][0]
-  } else {
-    userJid = resolveTargetJid(m, text)
+  } else if (m.quoted) {
+    userJid = normalizeJid(m.quoted.sender || m.quoted.participant)
+  } else if (m.mentionedJid?.length) {
+    userJid = normalizeJid(m.mentionedJid[0])
+  } else if (text) {
+    const num = extractPhoneNumber(text)
+    if (num) userJid = normalizeJid(num)
   }
 
   let reason = text?.replace(/@/g, '').replace(/\d{5,}/g, '').trim()
@@ -131,32 +91,6 @@ ${SEP}
 ${SEP}`,
       mentions: [userJid]
     })
-
-    // ===== EXPULSIÓN GLOBAL =====
-    try {
-      const groups = Object.keys(await conn.groupFetchAllParticipating())
-      for (const jid of groups) {
-        await sleep(800)
-        try {
-          const meta = await conn.groupMetadata(jid)
-          const participant = findParticipantByDigits(meta, digitsOnly(userJid))
-          if (!participant) continue
-
-          await conn.groupParticipantsUpdate(jid, [participant.id], 'remove')
-          await sleep(700)
-
-          await conn.sendMessage(jid, {
-            text:
-`🚫 *Usuario eliminado por LISTA NEGRA*
-━━━━━━━━━━━━━━━━━━━━
-👤 @${participant.id.split('@')[0]}
-📝 Motivo: ${reason}
-━━━━━━━━━━━━━━━━━━━━`,
-            mentions: [participant.id]
-          })
-        } catch {}
-      }
-    } catch {}
   }
 
   // ================= REMOVER =================
@@ -202,19 +136,29 @@ ${SEP}
 }
 
 // =====================================================
-// ================= AUTO-KICK SI HABLA =================
+// ============ AUTO-KICK (HABLAR + CITAR) ==============
 // =====================================================
 
 handler.all = async function (m) {
   try {
     if (!m.isGroup) return
-    const sender = normalizeJid(m.sender)
+    const dbUsers = global.db.data.users || {}
 
-    const entry = Object.entries(global.db.data.users)
-      .find(([jid, d]) => d.banned && digitsOnly(jid) === digitsOnly(sender))
+    // ---------- HABLAR ----------
+    let target = normalizeJid(m.sender)
+
+    // ---------- CITAR ----------
+    if (m.quoted) {
+      target = normalizeJid(m.quoted.sender || m.quoted.participant)
+    }
+
+    if (!target) return
+
+    const entry = Object.entries(dbUsers)
+      .find(([jid, d]) => d.banned && digitsOnly(jid) === digitsOnly(target))
     if (!entry) return
 
-    const [realJid] = entry
+    const [realJid, data] = entry
     const meta = await this.groupMetadata(m.chat)
     const participant = findParticipantByDigits(meta, digitsOnly(realJid))
     if (!participant) return
@@ -226,14 +170,16 @@ handler.all = async function (m) {
       text:
 `🚫 *Eliminado por LISTA NEGRA*
 ━━━━━━━━━━━━━━━━━━━━
-@${participant.id.split('@')[0]}`,
+@${participant.id.split('@')[0]}
+📝 Motivo: ${data.banReason || 'No especificado'}`,
       mentions: [participant.id]
     })
+
   } catch {}
 }
 
 // =====================================================
-// ========== AUTO-KICK + AVISO AL ENTRAR =================
+// ========== AUTO-KICK AL ENTRAR =======================
 // =====================================================
 
 handler.before = async function (m) {
@@ -256,8 +202,6 @@ handler.before = async function (m) {
       const participant = findParticipantByDigits(meta, digits)
       if (!participant) continue
 
-      const reason = data.banReason || 'No especificado'
-
       await this.groupParticipantsUpdate(m.chat, [participant.id], 'remove')
       await sleep(700)
 
@@ -266,9 +210,8 @@ handler.before = async function (m) {
 `🚨 *USUARIO EN LISTA NEGRA*
 ━━━━━━━━━━━━━━━━━━━━
 👤 @${participant.id.split('@')[0]}
-📝 Motivo: ${reason}
-🚫 Expulsión automática
-━━━━━━━━━━━━━━━━━━━━`,
+📝 Motivo: ${data.banReason || 'No especificado'}
+🚫 Expulsión automática`,
         mentions: [participant.id]
       })
     }
