@@ -34,6 +34,20 @@ function findParticipantByDigits(metadata, digits) {
   })
 }
 
+// 👉 CITAR = MENCIONAR = TEXTO
+function resolveTargetJid(m, text = '') {
+  if (m.quoted)
+    return normalizeJid(m.quoted.sender || m.quoted.participant)
+
+  if (m.mentionedJid?.length)
+    return normalizeJid(m.mentionedJid[0])
+
+  const num = extractPhoneNumber(text)
+  if (num) return normalizeJid(num)
+
+  return null
+}
+
 // =====================================================
 // ================= HANDLER PRINCIPAL =================
 // =====================================================
@@ -49,11 +63,15 @@ const handler = async (m, { conn, command, text }) => {
   // ================= AUTO-KICK AL CITAR =================
   if (m.isGroup && m.quoted) {
     const quotedJid = normalizeJid(m.quoted.sender || m.quoted.participant)
-    if (quotedJid && dbUsers[quotedJid]?.banned) {
+    const entry = Object.entries(dbUsers)
+      .find(([jid, d]) => d.banned && digitsOnly(jid) === digitsOnly(quotedJid))
+
+    if (entry) {
       try {
-        const reason = dbUsers[quotedJid].banReason || 'No especificado'
+        const [realJid, data] = entry
+        const reason = data.banReason || 'No especificado'
         const meta = await conn.groupMetadata(m.chat)
-        const participant = findParticipantByDigits(meta, digitsOnly(quotedJid))
+        const participant = findParticipantByDigits(meta, digitsOnly(realJid))
         if (participant) {
           await conn.groupParticipantsUpdate(m.chat, [participant.id], 'remove')
           await sleep(700)
@@ -79,23 +97,15 @@ ${SEP}`,
   const bannedList = Object.entries(dbUsers).filter(([_, d]) => d.banned)
 
   let userJid = null
-  let numberDigits = null
 
+  // índice solo para remn
   if (command === 'remn' && /^\d+$/.test(text?.trim())) {
     const index = parseInt(text.trim()) - 1
     if (!bannedList[index])
       return conn.reply(m.chat, `${emoji} Número inválido.`, m)
     userJid = bannedList[index][0]
-  } else if (m.quoted) {
-    userJid = normalizeJid(m.quoted.sender || m.quoted.participant)
-  } else if (m.mentionedJid?.length) {
-    userJid = normalizeJid(m.mentionedJid[0])
-  } else if (text) {
-    const num = extractPhoneNumber(text)
-    if (num) {
-      numberDigits = num
-      userJid = normalizeJid(num)
-    }
+  } else {
+    userJid = resolveTargetJid(m, text)
   }
 
   let reason = text?.replace(/@/g, '').replace(/\d{5,}/g, '').trim()
@@ -108,9 +118,6 @@ ${SEP}`,
 
   // ================= ADD =================
   if (command === 'addn') {
-    if (numberDigits && !m.quoted && !m.mentionedJid)
-      return conn.reply(m.chat, `${emoji} Usa mencionar o citar, no escribas números.`, m)
-
     dbUsers[userJid].banned = true
     dbUsers[userJid].banReason = reason
     dbUsers[userJid].bannedBy = m.sender
@@ -125,7 +132,7 @@ ${SEP}`,
       mentions: [userJid]
     })
 
-    // ===== EXPULSIÓN GLOBAL (KICK → AVISO) =====
+    // ===== EXPULSIÓN GLOBAL =====
     try {
       const groups = Object.keys(await conn.groupFetchAllParticipating())
       for (const jid of groups) {
@@ -202,10 +209,14 @@ handler.all = async function (m) {
   try {
     if (!m.isGroup) return
     const sender = normalizeJid(m.sender)
-    if (!global.db.data.users[sender]?.banned) return
 
+    const entry = Object.entries(global.db.data.users)
+      .find(([jid, d]) => d.banned && digitsOnly(jid) === digitsOnly(sender))
+    if (!entry) return
+
+    const [realJid] = entry
     const meta = await this.groupMetadata(m.chat)
-    const participant = findParticipantByDigits(meta, digitsOnly(sender))
+    const participant = findParticipantByDigits(meta, digitsOnly(realJid))
     if (!participant) return
 
     await this.groupParticipantsUpdate(m.chat, [participant.id], 'remove')
@@ -234,10 +245,15 @@ handler.before = async function (m) {
 
     for (const u of m.messageStubParameters || []) {
       const ujid = normalizeJid(u)
-      const data = global.db.data.users[ujid]
-      if (!data?.banned) continue
+      const digits = digitsOnly(ujid)
 
-      const participant = findParticipantByDigits(meta, digitsOnly(ujid))
+      const entry = Object.entries(global.db.data.users)
+        .find(([jid, d]) => d.banned && digitsOnly(jid) === digits)
+
+      if (!entry) continue
+
+      const [realJid, data] = entry
+      const participant = findParticipantByDigits(meta, digits)
       if (!participant) continue
 
       const reason = data.banReason || 'No especificado'
