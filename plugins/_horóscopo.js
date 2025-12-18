@@ -55,17 +55,11 @@ let handler = async (m, { conn, text }) => {
 ┃ 📅 *Fecha:* ${fecha.trim()}
 ╰━━━━━━━━━━━━━━━━━━━━╯
 
-💖 *AMOR*
+🔮 *HORÓSCOPO GENERAL*
 ${mensaje.trim()}
 
-💼 *TRABAJO*
-${mensaje.trim()}
-
-🧘 *SALUD*
-${mensaje.trim()}
-
-🔮 *Que los astros te acompañen*
-✨ *FelixCat Bot*
+✨ *Que los astros te acompañen*
+🐾 *FelixCat Bot*
 `
 
     const msg = await conn.sendMessage(
