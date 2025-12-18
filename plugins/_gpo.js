@@ -1,28 +1,35 @@
-// 📂 plugins/gpo.js
-const ownerNumbers = ['59898719147@s.whatsapp.net', '59896026646@s.whatsapp.net', '59892363485@s.whatsapp.net']; // Dueños
+// 📂 plugins/gpo.js — FIX OWNER 🔥
+
+const ownerNumbers = [
+  '59898719147',
+  '59896026646',
+  '59892363485'
+]; // SOLO números
 
 let handler = async (m, { conn }) => {
   try {
-    const sender = m.sender;
+    const senderNumber = m.sender.replace(/[^0-9]/g, '');
 
-    // Solo owners pueden usarlo
-    if (!ownerNumbers.includes(sender)) return m.reply('🚫 Solo los dueños del bot pueden usar este comando.');
+    // Validar owner
+    if (!ownerNumbers.includes(senderNumber)) {
+      return m.reply('🚫 Solo los dueños del bot pueden usar este comando.');
+    }
 
-    const groupId = m.chat; // JID del grupo
+    const groupId = m.chat;
 
-    // Obtener foto de perfil del grupo
+    // Obtener foto del grupo
     let ppUrl = null;
     try {
       ppUrl = await conn.profilePictureUrl(groupId, 'image').catch(() => null);
     } catch {}
+
     if (!ppUrl) return m.reply('❌ Este grupo no tiene foto de perfil.');
 
-    // Enviar la foto del grupo
     await conn.sendMessage(
       m.chat,
       {
         image: { url: ppUrl },
-        caption: `📸 Foto del grupo`
+        caption: '📸 Foto del grupo'
       },
       { quoted: m }
     );
@@ -36,5 +43,6 @@ let handler = async (m, { conn }) => {
 handler.command = /^(gpo)$/i;
 handler.tags = ['owner', 'tools'];
 handler.help = ['gpo'];
-handler.group = true; // solo funciona en grupos
+handler.group = true;
+
 export default handler;
