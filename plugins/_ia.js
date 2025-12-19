@@ -3,20 +3,27 @@ import axios from 'axios'
 import fetch from 'node-fetch'
 
 const handler = async (m, { conn, text, command, usedPrefix }) => {
-  // ================= SEGURIDAD =================
+  // ================= VALIDACIÓN SEGURA =================
   if (!text) {
-    throw `🤖 Escribí algo para hablar conmigo.\nEjemplo:\n${usedPrefix + command} Hola bot`
+    return m.reply(
+      `🤖 Escribí algo para hablar conmigo.\nEjemplo:\n${usedPrefix + command} Hola bot`
+    )
   }
 
   try {
     const resSimi = await simitalk(text, 'es')
+
+    if (!resSimi?.resultado?.simsimi) {
+      return m.reply('❌ No obtuve respuesta. Probá de nuevo.')
+    }
+
     await conn.sendMessage(
       m.chat,
       { text: resSimi.resultado.simsimi },
       { quoted: m }
     )
   } catch (e) {
-    throw '❌ No pude responder en este momento. Intentá más tarde.'
+    return m.reply('❌ No pude responder en este momento. Intentá más tarde.')
   }
 }
 
@@ -30,16 +37,13 @@ export default handler
 // ================= SIMI CORE =================
 async function simitalk(ask, language = 'es', apikeyyy = 'iJ6FxuA9vxlvz5cKQCt3') {
   if (!ask) {
-    return {
-      status: false,
-      resultado: { msg: 'Debes ingresar un texto.' }
-    }
+    return { status: false }
   }
 
   // ===== OPCIÓN 1 =====
   try {
     const response11 = await chatsimsimi(ask, language)
-    if (!response11?.message) throw new Error('Respuesta inválida')
+    if (!response11?.message) throw new Error()
     return {
       status: true,
       resultado: { simsimi: response11.message }
@@ -51,7 +55,8 @@ async function simitalk(ask, language = 'es', apikeyyy = 'iJ6FxuA9vxlvz5cKQCt3')
     const response1 = await axios.get(
       `https://delirius-apiofc.vercel.app/tools/simi?text=${encodeURIComponent(ask)}`
     )
-    if (!response1?.data?.data?.message) throw new Error('API vacía')
+
+    if (!response1?.data?.data?.message) throw new Error()
 
     const trad1 = await translate(response1.data.data.message, {
       to: language,
@@ -72,7 +77,7 @@ async function simitalk(ask, language = 'es', apikeyyy = 'iJ6FxuA9vxlvz5cKQCt3')
       )}&lc=${language}`
     )
 
-    if (!response2?.data?.message) throw new Error('Sin mensaje')
+    if (!response2?.data?.message) throw new Error()
 
     return {
       status: true,
@@ -106,6 +111,6 @@ async function chatsimsimi(ask, language) {
     )
     return response.data
   } catch {
-    return { success: false }
+    return null
   }
 }
