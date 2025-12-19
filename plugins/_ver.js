@@ -1,30 +1,35 @@
-// 📂 plugins/_ver.js — FelixCat-Bot 🐾
 // ver / r → recupera en el grupo
-// m → guarda y envía al privado, NO se muestra en el grupo, SIN PREFIJO
+// m → guarda y envía SOLO al privado, sin mostrar nada en el grupo (SIN PREFIJO)
 
 import fs from 'fs'
 import path from 'path'
+import fetch from 'node-fetch'
 import { webp2png } from '../lib/webp2mp4.js'
 
 let handler = async (m, { conn, command }) => {
 
   const isM = m.text?.toLowerCase() === 'm'
 
-  // SI NO ES ver/r NI m → ignorar
+  // Solo ver / r o "m"
   if (!['ver', 'r'].includes(command) && !isM) return
 
-  // VALIDAR OWNER (solo owners pueden usar ver/r y m)
+  // ===== VALIDAR OWNER (silencio total si no lo es) =====
   const owners = global.owner.map(o => o[0].replace(/[^0-9]/g, ''))
   const senderNumber = m.sender.replace(/[^0-9]/g, '')
-  if (!owners.includes(senderNumber)) return  // ❗ Silencio total si NO es owner
+  if (!owners.includes(senderNumber)) return
 
   try {
     const q = m.quoted
-    if (!q) return m.reply('⚠️ Respondé a una imagen, video o sticker.')
+    if (!q) {
+      if (!isM) await m.reply('⚠️ Respondé a una imagen, video o sticker.')
+      return
+    }
 
     const mime = q.mimetype || q.mediaType || ''
-    if (!/webp|image|video/g.test(mime))
-      return m.reply('⚠️ El mensaje citado no contiene multimedia.')
+    if (!/webp|image|video/.test(mime)) {
+      if (!isM) await m.reply('⚠️ El mensaje citado no contiene multimedia.')
+      return
+    }
 
     if (!isM) await m.react('📥')
 
@@ -34,10 +39,10 @@ let handler = async (m, { conn, command }) => {
     let sentMessage = null
 
     // ============================
-    // STICKER WEBP → PNG
+    // STICKER → PNG
     // ============================
     if (/webp/.test(mime)) {
-      let result = await webp2png(buffer)
+      const result = await webp2png(buffer)
 
       if (result?.url) {
         type = 'image'
@@ -55,12 +60,12 @@ let handler = async (m, { conn, command }) => {
     }
 
     // ============================
-    // FOTO o VIDEO normal
+    // IMAGEN / VIDEO
     // ============================
     else {
-      const ext = mime.split('/')[1]
       type = mime.startsWith('video') ? 'video' : 'image'
-      filenameSent = 'recuperado.' + ext
+      const ext = mime.split('/')[1] || (type === 'video' ? 'mp4' : 'jpg')
+      filenameSent = `recuperado.${ext}`
 
       if (!isM) {
         sentMessage = await conn.sendMessage(
@@ -74,23 +79,23 @@ let handler = async (m, { conn, command }) => {
     // ============================
     // REACCIÓN SOLO ver / r
     // ============================
-    if (!isM && sentMessage) {
+    if (!isM && sentMessage?.key) {
       await conn.sendMessage(m.chat, {
         react: { text: '✅', key: sentMessage.key }
       })
     }
 
     // ============================
-    // GUARDAR MEDIA
+    // GUARDAR EN /media
     // ============================
     const mediaFolder = './media'
-    if (!fs.existsSync(mediaFolder)) fs.mkdirSync(mediaFolder)
+    fs.mkdirSync(mediaFolder, { recursive: true })
 
-    global.db.data.mediaList = global.db.data.mediaList || []
+    global.db.data.mediaList ||= []
 
-    const filename = `${Date.now()}_${Math.floor(Math.random() * 9999)}`
-    const extFile = filenameSent.split('.').pop()
-    const finalName = `${filename}.${extFile}`
+    const baseName = `${Date.now()}_${Math.floor(Math.random() * 9999)}`
+    const extFile = filenameSent?.split('.').pop() || 'bin'
+    const finalName = `${baseName}.${extFile}`
     const filepath = path.join(mediaFolder, finalName)
 
     fs.writeFileSync(filepath, buffer)
@@ -109,11 +114,11 @@ let handler = async (m, { conn, command }) => {
       groupId: m.isGroup ? m.chat : null,
       groupName: m.isGroup ? (chatInfo?.subject || '') : null,
       date: new Date().toLocaleString(),
-      savedByVer: true
+      savedBy: isM ? 'm' : command
     })
 
     // ============================
-    // 📤 MODO M → SOLO PRIVADO
+    // 📤 MODO m → SOLO PRIVADO
     // ============================
     if (isM) {
       await conn.sendMessage(
@@ -125,8 +130,10 @@ let handler = async (m, { conn, command }) => {
 
   } catch (e) {
     console.error(e)
-    if (!isM) await m.react('✖️')
-    m.reply('⚠️ Error al recuperar el archivo.')
+    if (!isM) {
+      await m.react('✖️')
+      await m.reply('⚠️ Error al recuperar el archivo.')
+    }
   }
 }
 
@@ -137,7 +144,6 @@ handler.command = ['ver', 'r']
 
 // 🔥 "m" SIN PREFIJO
 handler.customPrefix = /^m$/i
-// ❗ Necesario para activar customPrefix
 handler.command = new RegExp()
 
 export default handler
