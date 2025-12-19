@@ -3,12 +3,7 @@
  * .antillamada → Activa/desactiva el bloqueo automático
  */
 
-let handler = async (m, { conn, remoteJid }) => {
-  // ===============================
-  // COMANDO TOGGLE
-  // ===============================
-  if (!m.command || !['antillamada', 'anticall'].includes(m.command)) return
-
+let handler = async (m, { conn }) => {
   // Inicializar config si no existe
   if (!global.db.data.settings) {
     global.db.data.settings = {}
@@ -30,30 +25,24 @@ let handler = async (m, { conn, remoteJid }) => {
   }
 
   // Responder
-  return await conn.sendText(
-    remoteJid,
-    config.enabled
+  await conn.sendMessage(m.chat, {
+    text: config.enabled
       ? "✅ *Anti-llamadas ACTIVADO*\n\nSe bloqueará automáticamente a quien llame."
       : "🔴 *Anti-llamadas DESACTIVADO*\n\nNo se bloqueará a quien llame."
-  )
+  })
 }
 
 // ===============================
-// EVENTO DE LLAMADAS (before)
+// EVENTO DE LLAMADAS
 // ===============================
 handler.before = async (m, { conn }) => {
   try {
-    // Detectar llamada (Baileys)
     if (!m.message?.callLogMessage) return
 
     const anticall = global.db?.data?.settings?.anticall
     if (!anticall?.enabled) return
 
-    const call = m.message.callLogMessage
     const from = m.chat
-
-    // Solo llamadas entrantes
-    if (call.isVideo === false && call.isVoice === false) return
 
     // Grupos: solo aviso
     if (from.endsWith('@g.us')) {
