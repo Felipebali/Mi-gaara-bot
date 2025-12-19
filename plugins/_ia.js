@@ -1,116 +1,69 @@
-import translate from '@vitalets/google-translate-api'
-import axios from 'axios'
-import fetch from 'node-fetch'
+import translate from '@vitalets/google-translate-api';
+import axios from 'axios';
+import fetch from 'node-fetch';
+const handler = (m) => m;
 
-const handler = async (m, { conn, text, command, usedPrefix }) => {
-  // ================= VALIDACIÓN SEGURA =================
-  if (!text) {
-    return m.reply(
-      `🤖 Escribí algo para hablar conmigo.\nEjemplo:\n${usedPrefix + command} Hola bot`
-    )
+handler.before = async (m) => {
+  const chat = global.db.data.chats[m.chat];
+  if (chat.simi) {
+    if (/^.*false|disnable|(turn)?off|0/i.test(m.text)) return;
+    let textodem = m.text;
+    if (m.text.includes('serbot') || m.text.includes('bots')|| m.text.includes('jadibot')|| m.text.includes('menu')|| m.text.includes('play')|| m.text.includes('play2') || m.text.includes('playdoc') || m.text.includes('tiktok') || m.text.includes('facebook') || m.text.includes('menu2') ||  m.text.includes('infobot') || m.text.includes('estado') ||  m.text.includes('ping') ||  m.text.includes('instalarbot') ||  m.text.includes('sc') ||  m.text.includes('sticker') ||  m.text.includes('s') || m.text.includes('wm') ||  m.text.includes('qc')) return
+    try {
+      const ressimi = await simitalk(textodem);
+      await m.conn.sendMessage(m.chat, { text: ressimi.resultado.simsimi }, { quoted: m });
+    } catch {
+      throw '*[❗] La API de Simsimi presenta errores.*';
+    }
+    return !0;
   }
+  return true;
+};
+export default handler;
 
-  try {
-    const resSimi = await simitalk(text, 'es')
-
-    if (!resSimi?.resultado?.simsimi) {
-      return m.reply('❌ No obtuve respuesta. Probá de nuevo.')
-    }
-
-    await conn.sendMessage(
-      m.chat,
-      { text: resSimi.resultado.simsimi },
-      { quoted: m }
-    )
-  } catch (e) {
-    return m.reply('❌ No pude responder en este momento. Intentá más tarde.')
-  }
-}
-
-// ================= CONFIG =================
-handler.help = ['simi', 'bot', 'alexa', 'cortana']
-handler.tags = ['fun']
-handler.command = /^((sim)?simi|bot|alexa|cortana)$/i
-
-export default handler
-
-// ================= SIMI CORE =================
-async function simitalk(ask, language = 'es', apikeyyy = 'iJ6FxuA9vxlvz5cKQCt3') {
-  if (!ask) {
-    return { status: false }
-  }
-
-  // ===== OPCIÓN 1 =====
-  try {
-    const response11 = await chatsimsimi(ask, language)
-    if (!response11?.message) throw new Error()
-    return {
-      status: true,
-      resultado: { simsimi: response11.message }
-    }
-  } catch {}
-
-  // ===== OPCIÓN 2 =====
-  try {
-    const response1 = await axios.get(
-      `https://delirius-apiofc.vercel.app/tools/simi?text=${encodeURIComponent(ask)}`
-    )
-
-    if (!response1?.data?.data?.message) throw new Error()
-
-    const trad1 = await translate(response1.data.data.message, {
-      to: language,
-      autoCorrect: true
-    })
-
-    return {
-      status: true,
-      resultado: { simsimi: trad1.text }
-    }
-  } catch {}
-
-  // ===== OPCIÓN 3 =====
-  try {
-    const response2 = await axios.get(
-      `https://api.anbusec.xyz/api/v1/simitalk?apikey=${apikeyyy}&ask=${encodeURIComponent(
-        ask
-      )}&lc=${language}`
-    )
-
-    if (!response2?.data?.message) throw new Error()
-
-    return {
-      status: true,
-      resultado: { simsimi: response2.data.message }
-    }
-  } catch (error) {
-    return {
-      status: false,
-      resultado: {
-        msg: 'Todas las APIs fallaron.',
-        error: error.message
-      }
-    }
-  }
-}
-
-// ================= API SIMI =================
-async function chatsimsimi(ask, language) {
-  try {
-    const response = await axios.post(
-      'https://simi.anbuinfosec.live/api/chat',
-      { ask, lc: language },
-      {
-        headers: {
-          'User-Agent':
-            'Mozilla/5.0 (Linux; Android 13) AppleWebKit/537.36 Chrome Mobile',
-          'Content-Type': 'application/json',
-          Referer: 'https://simi.anbuinfosec.live/'
+async function simitalk(ask, apikeyyy = "iJ6FxuA9vxlvz5cKQCt3", language = "es") {
+    if (!ask) return { status: false, resultado: { msg: "Debes ingresar un texto para hablar con simsimi." }};
+    try {
+        const response11 = await chatsimsimi(ask, language);
+        if (response11.message == 'indefinida' || response11.message == '' || !response11.message) response11 = XD // Se usa "XD" para causar error y usar otra opción.  
+        return { status: true, resultado: { simsimi: response11.message }};        
+    } catch (error1) {  
+    try {
+        const response1 = await axios.get(`https://delirius-apiofc.vercel.app/tools/simi?text=${encodeURIComponent(ask)}`);
+        const trad1 = await translate(`${response1.data.data.message}`, {to: language, autoCorrect: true});
+        if (trad1.text == 'indefinida' || response1 == '' || !response1.data) trad1 = XD // Se usa "XD" para causar error y usar otra opción.  
+        return { status: true, resultado: { simsimi: trad1.text }};        
+    } catch {
+        try {
+            const response2 = await axios.get(`https://api.anbusec.xyz/api/v1/simitalk?apikey=${apikeyyy}&ask=${ask}&lc=${language}`);
+            return { status: true, resultado: { simsimi: response2.data.message }};       
+        } catch (error2) {
+            return { status: false, resultado: { msg: "Todas las API's fallarón. Inténtalo de nuevo más tarde.", error: error2.message }};
         }
-      }
-    )
-    return response.data
-  } catch {
-    return null
-  }
+    }
+}}
+
+async function chatsimsimi(ask, language) {
+    try {
+        const response = await axios.post(
+        'https://simi.anbuinfosec.live/api/chat',
+        {
+            'ask': ask,
+            'lc': language
+        },
+        {
+            headers: {
+            'sec-ch-ua-platform': '"Android"',
+            'Referer': 'https://simi.anbuinfosec.live/',
+            'User-Agent': 'Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Mobile Safari/537.36',
+            'sec-ch-ua': '"Chromium";v="136", "Google Chrome";v="136", "Not.A/Brand";v="99"',
+            'Content-Type': 'application/json',
+            'sec-ch-ua-mobile': '?1'
+            }
+        }
+        );
+        return response.data;
+    } catch (error) {
+        return { success: false, message: 'An error occurred.', author: 'https://facebook.com/anbuinfosec' };
+    }
 }
