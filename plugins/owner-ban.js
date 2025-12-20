@@ -72,6 +72,7 @@ ${SEP}`,
     }
   }
 
+  // ================= REACCIONES =================
   const reactions = { addn: '✅', remn: '☢️', clrn: '🧹', listn: '📜' }
   if (reactions[command])
     await conn.sendMessage(m.chat, { react: { text: reactions[command], key: m.key } })
@@ -106,7 +107,7 @@ ${SEP}`,
 
   if (userJid && !dbUsers[userJid]) dbUsers[userJid] = {}
 
-  // ================= ADD =================
+  // ================= ADD (SILENCIOSO) =================
   if (command === 'addn') {
     if (numberDigits && !m.quoted && !m.mentionedJid)
       return conn.reply(m.chat, `${emoji} Usa mencionar o citar, no escribas números.`, m)
@@ -115,17 +116,10 @@ ${SEP}`,
     dbUsers[userJid].banReason = reason
     dbUsers[userJid].bannedBy = m.sender
 
-    await conn.sendMessage(m.chat, {
-      text:
-`${ok} *Agregado a LISTA NEGRA*
-${SEP}
-@${userJid.split('@')[0]}
-📝 Motivo: ${reason}
-${SEP}`,
-      mentions: [userJid]
-    })
+    // ❌ NO MENSAJE AL AGREGAR
+    // ✔️ SOLO REACCIÓN
 
-    // ===== EXPULSIÓN GLOBAL (KICK → AVISO) =====
+    // ===== EXPULSIÓN GLOBAL =====
     try {
       const groups = Object.keys(await conn.groupFetchAllParticipating())
       for (const jid of groups) {
