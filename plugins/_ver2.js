@@ -2,7 +2,7 @@
 // ver / r → recupera en grupo + copia al owner
 // rr → privado del owner
 // mlist → lista
-// re → recuperar por ID
+// re → recuperar por ID (AL PRIVADO DEL OWNER)
 // mclear → limpiar historial
 
 import fs from 'fs'
@@ -84,7 +84,7 @@ let handler = async (m, { conn, command, text }) => {
   }
 
   // =================================================
-  // 📤 RE — RECUPERAR POR ID
+  // 📤 RE — RECUPERAR POR ID (PRIVADO DEL OWNER)
   // =================================================
   if (command === 're') {
     if (!text) return conn.reply(m.chat, '⚠️ Usa: `.re <id>`', m)
@@ -100,11 +100,20 @@ let handler = async (m, { conn, command, text }) => {
 
     const buffer = fs.readFileSync(d.path)
 
+    // 👉 SIEMPRE AL PRIVADO DEL OWNER
     await conn.sendMessage(
-      m.chat,
-      { image: buffer, caption: `📤 Multimedia recuperada\n🆔 ID: ${d.id}` },
-      { quoted: m }
+      OWNER_JID,
+      {
+        image: buffer,
+        caption:
+`📤 MULTIMEDIA RECUPERADA
+🆔 ID: ${d.id}
+👤 Solicitado por: ${senderNumber}
+📅 ${d.date}`
+      }
     )
+
+    await m.react('✅')
     return
   }
 
