@@ -2,7 +2,7 @@
 // ver / r → recupera en grupo + copia al owner
 // rr → privado del owner
 // mlist → lista
-// mget → recuperar por ID
+// re → recuperar por ID
 // mclear → limpiar historial
 
 import fs from 'fs'
@@ -84,6 +84,31 @@ let handler = async (m, { conn, command, text }) => {
   }
 
   // =================================================
+  // 📤 RE — RECUPERAR POR ID
+  // =================================================
+  if (command === 're') {
+    if (!text) return conn.reply(m.chat, '⚠️ Usa: `.re <id>`', m)
+
+    const id = parseInt(text)
+    if (!id) return conn.reply(m.chat, '⚠️ ID inválido.', m)
+
+    const d = global.db.data.recoveredMedia.find(x => x.id === id)
+    if (!d) return conn.reply(m.chat, '❌ ID no encontrado.', m)
+
+    if (!fs.existsSync(d.path))
+      return conn.reply(m.chat, '⚠️ El archivo ya no existe.', m)
+
+    const buffer = fs.readFileSync(d.path)
+
+    await conn.sendMessage(
+      m.chat,
+      { image: buffer, caption: `📤 Multimedia recuperada\n🆔 ID: ${d.id}` },
+      { quoted: m }
+    )
+    return
+  }
+
+  // =================================================
   // 📥 RECUPERACIÓN NORMAL
   // =================================================
   try {
@@ -100,8 +125,6 @@ let handler = async (m, { conn, command, text }) => {
     await m.react('📥')
 
     let buffer = await q.download()
-    let type = 'image'
-    let filenameSent = 'recuperado.png'
 
     // ---------- STICKER ----------
     if (/webp/.test(mime)) {
@@ -117,7 +140,7 @@ let handler = async (m, { conn, command, text }) => {
     )
 
     // =================================================
-    // 📂 GUARDAR EN HISTORIAL (BIEN HECHO ✔️)
+    // 📂 GUARDAR EN HISTORIAL
     // =================================================
     const mediaFolder = './media'
     if (!fs.existsSync(mediaFolder)) fs.mkdirSync(mediaFolder)
@@ -171,6 +194,6 @@ let handler = async (m, { conn, command, text }) => {
 
 handler.help = ['ver', 'r']
 handler.tags = ['tools']
-handler.command = ['ver', 'r', 'rr', 'mlist', 'mget', 'mclear']
+handler.command = ['ver', 'r', 'rr', 'mlist', 're', 'mclear']
 
 export default handler
