@@ -2,8 +2,12 @@
 // Activador: letra "C" o "c" (sin prefijo)
 // SOLO DUEÑOS ESPECÍFICOS pueden activarlo
 // Mención visible a un usuario al azar + mención oculta al resto
+// NO repite la última frase en el grupo
 
 const OWNERS = ['59896026646@s.whatsapp.net', '59898719147@s.whatsapp.net']
+
+// Guarda la última frase usada por grupo
+const lastMessage = {}
 
 let handler = async (m, { conn, groupMetadata }) => {
   try {
@@ -23,7 +27,6 @@ let handler = async (m, { conn, groupMetadata }) => {
 
     const usuarioAzar = participantes[Math.floor(Math.random() * participantes.length)]
     const mencionesOcultas = participantes.filter(u => u !== usuarioAzar)
-
     const user = `@${usuarioAzar.split('@')[0]}`
 
     const frases = [
@@ -72,7 +75,15 @@ let handler = async (m, { conn, groupMetadata }) => {
       `😈 Hoy el sacrificio fue ${user}`,
     ]
 
-    const mensaje = frases[Math.floor(Math.random() * frases.length)]
+    let mensaje
+    let intentos = 0
+
+    do {
+      mensaje = frases[Math.floor(Math.random() * frases.length)]
+      intentos++
+    } while (mensaje === lastMessage[m.chat] && intentos < 10)
+
+    lastMessage[m.chat] = mensaje
 
     await conn.sendMessage(m.chat, {
       text: mensaje,
@@ -89,4 +100,4 @@ handler.customPrefix = /^\s*c\s*$/i
 handler.command = ['']
 handler.group = true
 
-export default handler 
+export default handler
