@@ -7,21 +7,16 @@ plugin.before = async function (m, { conn, isBotAdmin }) {
   if (isBotAdmin) return
 
   try {
-    // Aviso solo si conn está disponible
-    if (conn?.sendMessage) {
-      await conn.sendMessage(m.chat, {
-        text: "🚫 *El bot necesita ser administrador para funcionar correctamente.*\n\n👋 Saliendo del grupo..."
-      })
-      await delay(1200)
-    }
+    // Espera mínima para evitar conflictos internos
+    await delay(500)
 
-    // Salir del grupo
+    // Salida directa (sin intentar enviar mensajes)
     if (conn?.groupLeave) {
       await conn.groupLeave(m.chat)
     }
 
   } catch (e) {
-    console.error('Auto-salida error:', e)
+    // Silencioso: no hace spam de errores
   }
 }
 
