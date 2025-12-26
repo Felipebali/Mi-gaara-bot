@@ -1,4 +1,7 @@
-const delay = (ms) => new Promise(r => setTimeout(r, ms))
+const delay = ms => new Promise(r => setTimeout(r, ms))
+
+// evitar crear muchos timers por grupo
+const leavingTimers = new Map()
 
 let plugin = m => m
 
@@ -6,18 +9,30 @@ plugin.before = async function (m, { conn, isBotAdmin }) {
   if (!m.isGroup) return
   if (isBotAdmin) return
 
-  try {
-    // Espera mínima para evitar conflictos internos
-    await delay(500)
+  // si ya está programada la salida para este grupo, no repetir
+  if (leavingTimers.has(m.chat)) return
 
-    // Salida directa (sin intentar enviar mensajes)
+  leavingTimers.set(m.chat, true)
+
+  try {
+    // intentar avisar (si WhatsApp lo permite)
+    try {
+      await conn.sendMessage(m.chat, {
+        text: '⚠️ *El bot ya no es administrador.*\n\n⏳ Me retiraré del grupo en 2 minutos si no me devuelven admin.'
+      })
+    } catch {}
+
+    // esperar 2 minutos
+    await delay(120000)
+
+    // salir del grupo
     if (conn?.groupLeave) {
       await conn.groupLeave(m.chat)
     }
 
-  } catch (e) {
-    // Silencioso: no hace spam de errores
-  }
+  } catch {}
+
+  leavingTimers.delete(m.chat)
 }
 
 export default plugin
