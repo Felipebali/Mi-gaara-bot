@@ -13,6 +13,19 @@ const ytDlpPath = "yt-dlp"
 global.db = global.db || {}
 global.db.users = global.db.users || {}
 
+// 🚫 PALABRAS / ARTISTAS PROHIBIDOS
+const forbiddenWords = [
+  "roa",
+  "peke77",
+  "callejero fino",
+  "anuel",
+  "l-gante",
+  "lgante",
+  "hades",
+  "bad bunny",
+  "badbunny"
+]
+
 // TEXTOS
 const txt = {
   banSpam: "⛔ Fuiste baneado por spam.",
@@ -91,6 +104,21 @@ let handler = async (m, { conn, args, text, isOwner, command }) => {
     user.commandAttempts = 0
   }
 
+  // 🧱 FILTRO ANTES DE BUSCAR
+  const userQuery = text.toLowerCase()
+  if (!isOwner) {
+    for (const word of forbiddenWords) {
+      if (userQuery.includes(word)) {
+        await m.react("🤢")
+        return conn.sendMessage(
+          m.chat,
+          { text: "🚫 *Ese artista o contenido no está permitido en este bot.*" },
+          { quoted: m }
+        )
+      }
+    }
+  }
+
   await m.react("⌛")
 
   try {
@@ -106,10 +134,18 @@ let handler = async (m, { conn, args, text, isOwner, command }) => {
 
     const titleLower = yt_play[0].title.toLowerCase()
 
-    // 🚫 ANTI-ANUEL
-    if (titleLower.includes("anuel") && !isOwner) {
-      await m.react("🤢")
-      return
+    // 🧱 FILTRO SOBRE EL RESULTADO
+    if (!isOwner) {
+      for (const word of forbiddenWords) {
+        if (titleLower.includes(word)) {
+          await m.react("🤢")
+          return conn.sendMessage(
+            m.chat,
+            { text: "🚫 *Ese artista o contenido no está permitido en este bot.*" },
+            { quoted: m }
+          )
+        }
+      }
     }
 
     const url = yt_play[0].url
