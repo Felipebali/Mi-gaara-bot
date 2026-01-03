@@ -1,6 +1,7 @@
 import fg from 'api-dylux';
 
-const emoji = '🎵'; // ← NECESARIO para tu sistema de menú
+// 👇👇👇 ESTO ES LO QUE TU BOT NECESITA
+global.emoji = '🎵';
 
 const handler = async (m, { conn, text, args, usedPrefix, command }) => {
   try {
@@ -43,6 +44,5 @@ const handler = async (m, { conn, text, args, usedPrefix, command }) => {
 handler.help = ["tiktok"];
 handler.tags = ["descargas"];
 handler.command = ["tt", "tiktok", "ttdl"];
-handler.emoji = emoji; // ← CLAVE para que no crashee el bot
 
 export default handler;
