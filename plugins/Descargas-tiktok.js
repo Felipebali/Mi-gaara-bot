@@ -1,15 +1,18 @@
 import fg from 'api-dylux';
 
+const emoji = '🎵'; // ← NECESARIO para tu sistema de menú
+
 const handler = async (m, { conn, text, args, usedPrefix, command }) => {
   try {
     if (!args[0]) {
-      return conn.sendMessage(m.chat, { text: `⚡️ Debes ingresar un enlace de TikTok.\n\n📌 *Ejemplo:* ${usedPrefix + command} https://vm.tiktok.com/ZMreHF2dC/` }, { quoted: m });
+      return conn.sendMessage(m.chat, {
+        text: `⚡️ Debes ingresar un enlace de TikTok.\n\n📌 *Ejemplo:* ${usedPrefix + command} https://vm.tiktok.com/ZMreHF2dC/`
+      }, { quoted: m });
     }
 
     if (!/(?:https:?\/{2})?(?:w{3}|vm|vt|t)?\.?tiktok\.com\/([^\s&]+)/gi.test(text)) {
       return conn.sendMessage(m.chat, { text: `❎ Enlace de TikTok inválido.` }, { quoted: m });
     }
-
 
     if (typeof m.react === 'function') m.react('⌛');
 
@@ -23,7 +26,7 @@ const handler = async (m, { conn, text, args, usedPrefix, command }) => {
 ┃ ❒ *Título:* ${title}
 ┃ ❒ *Duración:* ${duration}
 ╰━━━━━━━━━━━━━━━━━━━━━━⬣
-`.trim()
+`.trim();
 
     await conn.sendMessage(m.chat, {
       video: { url: play },
@@ -31,6 +34,7 @@ const handler = async (m, { conn, text, args, usedPrefix, command }) => {
     }, { quoted: m });
 
     if (typeof m.react === 'function') m.react('✅');
+
   } catch (e) {
     return conn.sendMessage(m.chat, { text: `❌ *Error:* ${e.message}` }, { quoted: m });
   }
@@ -39,5 +43,6 @@ const handler = async (m, { conn, text, args, usedPrefix, command }) => {
 handler.help = ["tiktok"];
 handler.tags = ["descargas"];
 handler.command = ["tt", "tiktok", "ttdl"];
+handler.emoji = emoji; // ← CLAVE para que no crashee el bot
 
 export default handler;
