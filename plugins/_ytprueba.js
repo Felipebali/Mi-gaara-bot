@@ -1,108 +1,98 @@
 import { exec } from "child_process"
-import path from "path"
 import fs from "fs"
+import path from "path"
 
-const ytDlpPath = "./yt-dlp"
-const cookiesPath = "./cookies.txt"
-const tempDir = "./tmp"
+const ytDlp = path.join(process.cwd(), "yt-dlp")
+const cookies = path.join(process.cwd(), "cookies.txt")
+const tmp = path.join(process.cwd(), "tmp")
 
-if (!fs.existsSync(tempDir)) fs.mkdirSync(tempDir)
+if (!fs.existsSync(tmp)) fs.mkdirSync(tmp)
 
-// 🧹 limpiar tmp
+// Limpieza
 function cleanTmp() {
-  for (const f of fs.readdirSync(tempDir)) {
-    fs.unlinkSync(path.join(tempDir, f))
+  for (const f of fs.readdirSync(tmp)) {
+    fs.unlinkSync(path.join(tmp, f))
   }
 }
 
-// ⚙️ ejecutar yt-dlp (ignora warnings)
+// Ejecutar comandos
 function run(cmd) {
   return new Promise((resolve, reject) => {
-    exec(cmd, { maxBuffer: 1024 * 1024 * 100 }, (err, stdout, stderr) => {
+    exec(cmd, { maxBuffer: 1024 * 1024 * 200 }, (err, stdout, stderr) => {
       if (err && !stdout) return reject(stderr || err)
       resolve(stdout + stderr)
     })
   })
 }
 
-// 🔍 buscar video
-async function searchYouTube(query) {
-  const out = await run(`${ytDlpPath} "ytsearch1:${query}" --print "%(id)s"`)
-  const id = out.trim()
+// Buscar video
+async function search(query) {
+  const res = await run(`${ytDlp} "ytsearch1:${query}" --print "%(id)s"`)
+  const id = res.trim()
   if (!id) throw "No se encontró resultado"
   return `https://www.youtube.com/watch?v=${id}`
 }
 
-// 🎵 audio seguro
-async function downloadAudio(query) {
+// Descargar audio
+async function getAudio(q) {
   cleanTmp()
+  const url = q.startsWith("http") ? q : await search(q)
 
-  const url = query.startsWith("http") ? query : await searchYouTube(query)
-  const outFile = path.join(tempDir, "audio.%(ext)s")
-
-  const cmd = `${ytDlpPath} "${url}" \
-  --no-check-certificate \
-  --compat-options no-python-version-warning \
-  --cookies "${cookiesPath}" \
-  -f "bestaudio/best" \
-  --extract-audio \
-  --audio-format mp3 \
-  --audio-quality 0 \
-  --force-overwrites \
-  -o "${outFile}"`
+  const cmd = `${ytDlp} "${url}" \
+  --cookies "${cookies}" \
+  -x --audio-format mp3 \
+  -o "${tmp}/audio.%(ext)s"`
 
   await run(cmd)
 
-  const file = fs.readdirSync(tempDir).find(f => f.endsWith(".mp3"))
+  const file = fs.readdirSync(tmp).find(v => v.endsWith(".mp3"))
   if (!file) throw "No se pudo generar el audio"
-  return file
+  return path.join(tmp, file)
 }
 
-// 🎬 video seguro
-async function downloadVideo(query) {
+// Descargar video
+async function getVideo(q) {
   cleanTmp()
+  const url = q.startsWith("http") ? q : await search(q)
 
-  const url = query.startsWith("http") ? query : await searchYouTube(query)
-  const outFile = path.join(tempDir, "video.%(ext)s")
-
-  const cmd = `${ytDlpPath} "${url}" \
-  --no-check-certificate \
-  --compat-options no-python-version-warning \
-  --cookies "${cookiesPath}" \
-  -f "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best" \
+  const cmd = `${ytDlp} "${url}" \
+  --cookies "${cookies}" \
+  -f "bv*+ba/b" \
   --merge-output-format mp4 \
-  --force-overwrites \
-  -o "${outFile}"`
+  -o "${tmp}/video.%(ext)s"`
 
   await run(cmd)
 
-  const file = fs.readdirSync(tempDir).find(f => f.endsWith(".mp4"))
+  const file = fs.readdirSync(tmp).find(v => v.endsWith(".mp4"))
   if (!file) throw "No se pudo generar el video"
-  return file
+  return path.join(tmp, file)
 }
 
-// 🧠 handler
+// Handler
 let handler = async (m, { conn, text, command }) => {
-  if (!text) return conn.reply(m.chat, "🎧 Escribí el nombre del video o canción", m)
+  if (!text) return conn.reply(m.chat, "✏️ Escribí el nombre de la canción o video", m)
 
   try {
-    await conn.reply(m.chat, "🔎 Descargando…", m)
+    await conn.reply(m.chat, "⏳ Descargando, esperá…", m)
 
     if (command === "yt3") {
-      const file = await downloadAudio(text)
-      const filePath = path.join(tempDir, file)
-      await conn.sendMessage(m.chat, { audio: fs.readFileSync(filePath), mimetype: "audio/mpeg" }, { quoted: m })
+      const file = await getAudio(text)
+      await conn.sendMessage(m.chat, {
+        audio: fs.readFileSync(file),
+        mimetype: "audio/mpeg"
+      }, { quoted: m })
     }
 
     if (command === "yt4") {
-      const file = await downloadVideo(text)
-      const filePath = path.join(tempDir, file)
-      await conn.sendMessage(m.chat, { video: fs.readFileSync(filePath) }, { quoted: m })
+      const file = await getVideo(text)
+      await conn.sendMessage(m.chat, {
+        video: fs.readFileSync(file)
+      }, { quoted: m })
     }
 
   } catch (e) {
-    console.error("YT ERROR:", e)
-    conn.reply(m.chat, "❌ " + e.toString().slice(0, 300), m)
+    console.log(e)
+    conn.reply(m.chat, "❌ Error al descargar", m)
   }
 }
 
