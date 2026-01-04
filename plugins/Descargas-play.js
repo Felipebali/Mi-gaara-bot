@@ -1,9 +1,7 @@
 import yts from 'yt-search'
-import ytdl from 'ytdl-core'
 import fetch from 'node-fetch'
 
-const LimitAud = 725 * 1024 * 1024 // 725MB
-const LimitVid = 425 * 1024 * 1024 // 425MB
+const LimitAud = 725 * 1024 * 1024 // 725MB para fallback
 
 const handler = async (m, { conn, command, text, usedPrefix }) => {
     if (!text) return conn.reply(
@@ -14,7 +12,7 @@ const handler = async (m, { conn, command, text, usedPrefix }) => {
 
     // Buscar video
     const searchResult = await yts(text)
-    if (!searchResult || !searchResult.videos || !searchResult.videos.length)
+    if (!searchResult?.videos?.length)
         return conn.reply(m.chat, '❌ No se encontró ningún video', m)
 
     const video = searchResult.videos[0]
@@ -36,50 +34,45 @@ const handler = async (m, { conn, command, text, usedPrefix }) => {
         caption: infoText
     }, { quoted: m })
 
-    // Descargar audio automáticamente si el comando es .play o .ytmp3
+    // Descargar y enviar audio automáticamente si el comando es .play o .ytmp3
     if (/^(play|ytmp3)$/i.test(command)) {
         await sendAudio(conn, m, video.url, video.title)
     }
 }
 
-// Función para descargar y enviar audio
+// Descargar y enviar audio de YouTube usando API Zenkey
 async function sendAudio(conn, m, url, title) {
-    let mediaUrl
     try {
-        // Primero intentar ytdl
-        const info = await ytdl.getInfo(url)
-        const format = ytdl.chooseFormat(info.formats, { quality: 'highestaudio' })
-        mediaUrl = format.url
-    } catch {
-        // Si falla, usar API de respaldo
-        try {
-            const res = await fetch(`https://api.zenkey.my.id/api/download/ytmp3?apikey=zenkey&url=${encodeURIComponent(url)}`)
-            const data = await res.json()
-            mediaUrl = data?.result?.download?.url || null
-        } catch {
-            mediaUrl = null
+        const res = await fetch(`https://api.zenkey.my.id/api/download/ytmp3?apikey=zenkey&url=${encodeURIComponent(url)}`)
+        const data = await res.json()
+
+        if (!data.status || !data.result?.download?.url)
+            return conn.reply(m.chat, '❌ No se pudo descargar el audio', m)
+
+        const mediaUrl = data.result.download.url
+        const size = await getFileSize(mediaUrl)
+
+        // Si es demasiado grande, enviamos como documento
+        if (size > LimitAud) {
+            await conn.sendMessage(m.chat, {
+                document: { url: mediaUrl },
+                mimetype: 'audio/mpeg',
+                fileName: `${title}.mp3`
+            }, { quoted: m })
+        } else {
+            await conn.sendMessage(m.chat, {
+                audio: { url: mediaUrl },
+                mimetype: 'audio/mpeg'
+            }, { quoted: m })
         }
-    }
 
-    if (!mediaUrl) return conn.reply(m.chat, '❌ No se pudo descargar el audio', m)
-
-    // Obtener tamaño
-    const size = await getFileSize(mediaUrl)
-
-    // Enviar como documento si es grande, si no también como documento para evitar errores
-    try {
-        await conn.sendMessage(m.chat, {
-            document: { url: mediaUrl },
-            mimetype: 'audio/mpeg',
-            fileName: `${title}.mp3`
-        }, { quoted: m })
     } catch (e) {
         console.error(e)
-        await conn.reply(m.chat, '❌ Error al enviar el audio', m)
+        await conn.reply(m.chat, '❌ Error al descargar/enviar el audio', m)
     }
 }
 
-// FUNCIONES AUXILIARES
+// AUXILIARES
 async function getFileSize(url) {
     try {
         const res = await fetch(url, { method: 'HEAD' })
@@ -110,7 +103,7 @@ function secondString(seconds) {
     return dDisplay + hDisplay + mDisplay + sDisplay
 }
 
-handler.command = /^(ytmp3|ytmp4|play|play2)$/i
+handler.command = /^(ytmp3|play)$/i
 handler.register = true
 
 export default handler
