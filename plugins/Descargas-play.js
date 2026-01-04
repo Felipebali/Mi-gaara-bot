@@ -30,87 +30,52 @@ const handler = async (m, { conn, command, text, usedPrefix }) => {
 ⌘━━─≪ YT PLAY ≫─━━⌘
 `.trim()
 
-    // Solo mostrar preview con mini URL
+    // Enviar info
     await conn.sendMessage(m.chat, {
         image: { url: video.thumbnail },
         caption: infoText
     }, { quoted: m })
+
+    // Descargar audio automáticamente si el comando es .play o .ytmp3
+    if (/^(play|ytmp3)$/i.test(command)) {
+        await sendAudio(conn, m, video.url, video.title)
+    }
 }
 
-// Comando para descargar audio/video
-handler.command = /^(ytmp3|ytmp4|play|play2)$/i
-handler.register = true
-handler.before = async (m, { conn, command, text }) => {
-    if (!['ytmp3', 'ytmp4'].includes(command)) return
-
-    if (!text && !m.quoted) return conn.reply(m.chat, '❌ Envía el link o menciona el mensaje con el video de YouTube', m)
-    const url = text || m.quoted?.text
-    const isAudio = command === 'ytmp3'
-
-    // Función para descargar con ytdl-core
-    const downloadYTDL = async (url) => {
+// Función para descargar y enviar audio
+async function sendAudio(conn, m, url, title) {
+    let mediaUrl
+    try {
+        // Primero intentar ytdl
+        const info = await ytdl.getInfo(url)
+        const format = ytdl.chooseFormat(info.formats, { quality: 'highestaudio' })
+        mediaUrl = format.url
+    } catch {
+        // Si falla, usar API de respaldo
         try {
-            const info = await ytdl.getInfo(url)
-            const format = ytdl.chooseFormat(info.formats, isAudio ? { quality: 'highestaudio' } : { quality: 'highest', filter: 'audioandvideo' })
-            return format.url
-        } catch {
-            return null
-        }
-    }
-
-    // Función API respaldo
-    const downloadAPI = async (url) => {
-        try {
-            const type = isAudio ? 'ytmp3' : 'ytmp4'
-            const res = await fetch(`https://api.zenkey.my.id/api/download/${type}?apikey=zenkey&url=${encodeURIComponent(url)}`)
+            const res = await fetch(`https://api.zenkey.my.id/api/download/ytmp3?apikey=zenkey&url=${encodeURIComponent(url)}`)
             const data = await res.json()
-            if (data.status && data.result?.download?.url) return data.result.download.url
-            return null
+            mediaUrl = data?.result?.download?.url || null
         } catch {
-            return null
+            mediaUrl = null
         }
     }
 
-    let mediaUrl = await downloadYTDL(url)
-    if (!mediaUrl) mediaUrl = await downloadAPI(url)
-    if (!mediaUrl) return conn.reply(m.chat, '❌ No se pudo descargar el contenido', m)
+    if (!mediaUrl) return conn.reply(m.chat, '❌ No se pudo descargar el audio', m)
 
     // Obtener tamaño
     const size = await getFileSize(mediaUrl)
-    const limit = isAudio ? LimitAud : LimitVid
 
+    // Enviar como documento si es grande, si no también como documento para evitar errores
     try {
-        if (isAudio) {
-            if (size > LimitAud) {
-                await conn.sendMessage(m.chat, {
-                    document: { url: mediaUrl },
-                    mimetype: 'audio/mpeg',
-                    fileName: `audio.mp3`
-                }, { quoted: m })
-            } else {
-                await conn.sendMessage(m.chat, {
-                    audio: { url: mediaUrl },
-                    mimetype: 'audio/mpeg'
-                }, { quoted: m })
-            }
-        } else {
-            if (size > LimitVid) {
-                await conn.sendMessage(m.chat, {
-                    document: { url: mediaUrl },
-                    fileName: `video.mp4`,
-                    mimetype: 'video/mp4'
-                }, { quoted: m })
-            } else {
-                await conn.sendMessage(m.chat, {
-                    video: { url: mediaUrl },
-                    mimetype: 'video/mp4',
-                    caption: 'Aquí está tu video'
-                }, { quoted: m })
-            }
-        }
+        await conn.sendMessage(m.chat, {
+            document: { url: mediaUrl },
+            mimetype: 'audio/mpeg',
+            fileName: `${title}.mp3`
+        }, { quoted: m })
     } catch (e) {
         console.error(e)
-        await conn.reply(m.chat, '❌ Error al enviar el archivo', m)
+        await conn.reply(m.chat, '❌ Error al enviar el audio', m)
     }
 }
 
@@ -144,5 +109,8 @@ function secondString(seconds) {
     const sDisplay = s > 0 ? s + (s === 1 ? ' segundo' : ' segundos') : ''
     return dDisplay + hDisplay + mDisplay + sDisplay
 }
+
+handler.command = /^(ytmp3|ytmp4|play|play2)$/i
+handler.register = true
 
 export default handler
