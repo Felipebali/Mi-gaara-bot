@@ -1,6 +1,7 @@
 import yts from "yt-search"
 import fs, { promises, existsSync, mkdirSync } from "fs"
 import path from "path"
+import fetch from "node-fetch"
 
 // BASE DE DATOS
 global.db = global.db || {}
@@ -101,12 +102,28 @@ let handler = async (m, { conn, args, text, isOwner, command }) => {
 
     const isAudio = command === "play" || command === "audio"
 
-    // 2️⃣ ENVIAR PREVIEW + LINK DIRECTO
+    // 2️⃣ ENVIAR PREVIEW + LINK
     const previewText = txt.sendPreview(isAudio, video.title, video.url)
     await conn.sendMessage(m.chat, { text: previewText }, { quoted: m })
 
-    // ✅ OPCIONAL: enviar archivo directo si es un link que Boxmine puede descargar
-    // Nota: Boxmine Free NO permite descargas grandes, así que usamos solo el link
+    // 3️⃣ DESCARGAR AUDIO SI ES `.play` O `.audio`
+    if (isAudio) {
+      const audioUrl = `https://api.sumanjay.cf/youtube?url=${encodeURIComponent(video.url)}&format=audio` // API pública gratuita
+      const audioRes = await fetch(audioUrl)
+      const audioData = await audioRes.arrayBuffer()
+      const buffer = Buffer.from(audioData)
+
+      // TEMPORAL
+      const fileName = path.join("./tmp", Math.random().toString(36).substring(2, 10) + ".mp3")
+      await promises.writeFile(fileName, buffer)
+
+      // ENVIAR WHATSAPP
+      await conn.sendMessage(m.chat, { audio: buffer, mimetype: "audio/mpeg" }, { quoted: m })
+
+      // BORRAR TEMPORAL
+      await promises.unlink(fileName)
+    }
+
   } catch (e) {
     console.error("Error play:", e)
     return conn.sendMessage(m.chat, { text: "⚠️ Error al procesar la solicitud." }, { quoted: m })
