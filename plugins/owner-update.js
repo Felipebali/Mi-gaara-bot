@@ -8,7 +8,13 @@ const REPO = 'https://github.com/Felipebali/Mi-gaara-bot.git' // tu repo
 function scanPlugins() {
   const dir = path.join(process.cwd(), 'plugins')
   if (!fs.existsSync(dir)) return []
-  return fs.readdirSync(dir).filter(f => f.endsWith('.js')).sort()
+  return fs.readdirSync(dir)
+    .filter(f => f.endsWith('.js'))
+    .sort()
+    .map(f => ({
+      name: f,
+      mtime: fs.statSync(path.join(dir, f)).mtimeMs
+    }))
 }
 
 let handler = async (m, { conn }) => {
@@ -70,20 +76,27 @@ let handler = async (m, { conn }) => {
   }
 
   const now = scanPlugins()
-  const added = now.filter(x => !before.includes(x))
-  const removed = before.filter(x => !now.includes(x))
+  const added = now.filter(p => !before.find(b => b.name === p.name)).map(p => p.name)
+  const removed = before.filter(b => !now.find(p => p.name === b.name)).map(b => b.name)
+  const updated = now.filter(p => {
+    const old = before.find(b => b.name === p.name)
+    return old && old.mtime !== p.mtime
+  }).map(p => p.name)
 
-  if ((added && added.length) || (removed && removed.length)) {
+  if (added.length || removed.length || updated.length) {
     hasUpdates = true
     msg += '🧩 *Cambios en plugins:*\n'
-    added?.forEach(p => msg += `• ➕ ${p}\n`)
-    removed?.forEach(p => msg += `• ❌ ${p} (eliminado)\n`)
+    added.forEach(p => msg += `• ➕ ${p}\n`)
+    removed.forEach(p => msg += `• ❌ ${p} (eliminado)\n`)
+    updated.forEach(p => msg += `• 🔄 ${p} (modificado)\n`)
+  } else if (!hasUpdates) {
+    msg += '✅ *No hay nuevas actualizaciones ni cambios en plugins.*\n'
   }
 
   fs.writeFileSync(SNAPSHOT, JSON.stringify(now, null, 2))
   await conn.reply(m.chat, msg, m)
 
-  // ── Solo reiniciar si hubo actualizaciones ──
+  // ── Solo reiniciar si hubo actualizaciones reales ──
   if (hasUpdates) {
     setTimeout(() => {
       console.log('♻️ Bot reiniciándose tras actualización...')
