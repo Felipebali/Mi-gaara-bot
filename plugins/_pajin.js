@@ -17,53 +17,54 @@ let handler = async (m, { conn, participants }) => {
     let who = m.sender;
     const senderName = '@' + who.split('@')[0];
 
-    // NÚMERO ESPECIAL VIP
+    // NÚMERO VIP especial para pajin2
     const VIP_NUMBER = '59898116138'; // sin + ni @c.us
 
     // -----------------------------------------
-    // DECIDIR si es .pajin o .pajin2
+    // DECIDIR si es .pajin2
     const isPajin2 = handler.command.includes('pajin2');
 
-    // 🎲 Selección aleatoria de usuarios distintos
-    const others = participants.map(p => p.id).filter(jid => jid !== who && jid !== conn.user.jid);
-
-    if (others.length === 0) return conn.sendMessage(m.chat, { text: '❌ No hay usuarios suficientes para hacer travesuras 😏' });
-
-    let user1 = others[Math.floor(Math.random() * others.length)];
-    let user2;
-    do {
-      user2 = others[Math.floor(Math.random() * others.length)];
-    } while (user2 === user1 && others.length > 1);
-
-    const user1Name = '@' + user1.split('@')[0];
-    const user2Name = '@' + user2.split('@')[0];
-
     let frase;
+    let mentions = [];
 
-    if (isPajin2 || who.includes(VIP_NUMBER)) {
-      // Mensaje especial VIP
+    if (isPajin2 && who.includes(VIP_NUMBER)) {
+      // Mensaje especial solo para él
       const frasesVIP = [
-        `🌟 ¡Alerta VIP! ${senderName} está haciendo travesuras secretas con ${user1Name} y ${user2Name} 😏✨`,
-        `😎 ${senderName} desata su modo pajero VIP con ${user1Name} y ${user2Name} 🫣🔥`,
-        `💫 ¡Exclusivo! ${senderName} se confiesa travieso con ${user1Name} y ${user2Name} 😈`
+        `🌟 ${senderName}, estás en modo travieso VIP 😏✨`,
+        `😎 ${senderName}, nadie puede resistir tu modo pajero VIP 😈🔥`,
+        `💫 ¡Exclusivo! ${senderName}, confesión traviesa activada 😈`
       ];
       frase = frasesVIP[Math.floor(Math.random() * frasesVIP.length)];
+      mentions = [who]; // Solo se menciona a él
     } else {
-      // Mensajes normales
+      // Mensaje normal, elegir 2 usuarios aleatorios del grupo
+      const others = participants.map(p => p.id).filter(jid => jid !== who && jid !== conn.user.jid);
+      if (others.length < 2) return conn.sendMessage(m.chat, { text: '❌ No hay suficientes usuarios para hacer travesuras 😏' });
+
+      let user1 = others[Math.floor(Math.random() * others.length)];
+      let user2;
+      do {
+        user2 = others[Math.floor(Math.random() * others.length)];
+      } while (user2 === user1);
+
+      const user1Name = '@' + user1.split('@')[0];
+      const user2Name = '@' + user2.split('@')[0];
+
       const frasesNormales = [
-        `😏 ${senderName} está haciendo cosas de pajero con ${user1Name} y ${user2Name} 🤭`,
-        `😂 ${senderName} no puede resistirse a pensar en cosas traviesas sobre ${user1Name} y ${user2Name} 😳`,
-        `😎 ${senderName} está en modo pajero total con ${user1Name} y ${user2Name} 😈`,
-        `🤣 ${senderName} tiene pensamientos muy traviesos sobre ${user1Name} y ${user2Name} 😏`,
-        `😅 ${senderName} confiesa que está haciendo cosas de pajero con ${user1Name} y ${user2Name} 🤫`
+        `😏 ${user1Name} y ${user2Name} están en modo pajero 🤭`,
+        `😂 Estos dos traviesos: ${user1Name} y ${user2Name} 😳`,
+        `😎 ${user1Name} y ${user2Name} hacen cosas traviesas 😈`,
+        `🤣 Mirá lo que hacen ${user1Name} y ${user2Name} 😏`,
+        `😅 Confesión traviesa: ${user1Name} y ${user2Name} 🤫`
       ];
       frase = frasesNormales[Math.floor(Math.random() * frasesNormales.length)];
+      mentions = [user1, user2]; // Solo se mencionan los aleatorios
     }
 
-    // 🧾 Mensaje final con menciones clickeables
+    // 🧾 Enviar mensaje
     await conn.sendMessage(
       m.chat,
-      { text: frase, mentions: [who, user1, user2] },
+      { text: frase, mentions },
       { quoted: m }
     );
 
