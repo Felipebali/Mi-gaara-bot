@@ -19,25 +19,24 @@ let handler = async (m, { conn, participants }) => {
 
     // NÚMERO VIP especial para pajin2
     const VIP_NUMBER = '59898116138'; // sin + ni @c.us
-
-    // -----------------------------------------
-    // DECIDIR si es .pajin2
     const isPajin2 = handler.command.includes('pajin2');
 
     let frase;
     let mentions = [];
 
     if (isPajin2 && who.includes(VIP_NUMBER)) {
-      // Mensaje especial solo para él
+      // Frases contundentes para el VIP
       const frasesVIP = [
-        `🌟 ${senderName}, estás en modo travieso VIP 😏✨`,
-        `😎 ${senderName}, nadie puede resistir tu modo pajero VIP 😈🔥`,
-        `💫 ¡Exclusivo! ${senderName}, confesión traviesa activada 😈`
+        `🌟 ${senderName}, tu nivel travieso VIP está en 🔥 Máximo absoluto 😈💦`,
+        `😎 ${senderName}, nadie se salva de tu lado pajero VIP 😏💫`,
+        `💫 ¡Cuidado! ${senderName} está desatando su modo travieso supremo 😈✨`,
+        `🔥 ${senderName} domina el arte de las travesuras VIP 😏🫣`,
+        `💥 Atención grupo: ${senderName} activa su poder pajero nivel legendario 😎💦`
       ];
       frase = frasesVIP[Math.floor(Math.random() * frasesVIP.length)];
-      mentions = [who]; // Solo se menciona a él
+      mentions = [who]; // Solo se menciona al VIP
     } else {
-      // Mensaje normal, elegir 2 usuarios aleatorios del grupo
+      // Frases contundentes para usuarios aleatorios
       const others = participants.map(p => p.id).filter(jid => jid !== who && jid !== conn.user.jid);
       if (others.length < 2) return conn.sendMessage(m.chat, { text: '❌ No hay suficientes usuarios para hacer travesuras 😏' });
 
@@ -51,30 +50,28 @@ let handler = async (m, { conn, participants }) => {
       const user2Name = '@' + user2.split('@')[0];
 
       const frasesNormales = [
-        `😏 ${user1Name} y ${user2Name} están en modo pajero 🤭`,
-        `😂 Estos dos traviesos: ${user1Name} y ${user2Name} 😳`,
-        `😎 ${user1Name} y ${user2Name} hacen cosas traviesas 😈`,
-        `🤣 Mirá lo que hacen ${user1Name} y ${user2Name} 😏`,
-        `😅 Confesión traviesa: ${user1Name} y ${user2Name} 🤫`
+        `😏 ${user1Name} y ${user2Name} acaban de entrar al modo travieso extremo 🤭🔥`,
+        `😂 ¡Qué duo! ${user1Name} y ${user2Name} desatan sus fantasías más locas 😳💥`,
+        `😎 Atención: ${user1Name} y ${user2Name} dominan el arte del pijin total 😈💦`,
+        `🤣 Mirá lo que hacen ${user1Name} y ${user2Name}, nivel travieso insuperable 😏💫`,
+        `💥 Confesión traviesa: ${user1Name} y ${user2Name} rompen todas las reglas 😈😎`
       ];
       frase = frasesNormales[Math.floor(Math.random() * frasesNormales.length)];
-      mentions = [user1, user2]; // Solo se mencionan los aleatorios
+      mentions = [user1, user2];
     }
 
-    // 🧾 Enviar mensaje
+    // 🧾 Enviar mensaje SIN reply
     await conn.sendMessage(
       m.chat,
-      { text: frase, mentions },
-      { quoted: m }
+      { text: frase, mentions }
     );
 
   } catch (e) {
     console.error(e);
-    await conn.reply(m.chat, '✖️ Ocurrió un error al ejecutar el comando', m);
+    // Si querés, el error se puede ignorar silenciosamente
   }
 }
 
-// Definir comandos
 handler.command = ['pajin', 'pajero', 'pajin2'];
 handler.tags = ['fun', 'nsfw'];
 handler.help = ['pajin', 'pajin2'];
