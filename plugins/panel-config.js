@@ -1,4 +1,4 @@
-// plugins/grupo-configuracion.js — Panel limpio (EVENTO)
+// plugins/grupo-configuracion.js — Panel limpio (EVENTO + Welcome)
 
 const aliasMap = {
   antifake: ["antifake", "antiFake"],
@@ -9,7 +9,8 @@ const aliasMap = {
   evento: ["evento", "detect"],
   onlyadmin: ["onlyadmin", "onlyAdmin", "soloAdmins", "modoadmin"],
   nsfw: ["nsfw"],
-  juegos: ["juegos", "games"]
+  juegos: ["juegos", "games"],
+  welcome: ["welcome", "bienvenida"]
 }
 
 function getChatValue(chat, key) {
@@ -53,6 +54,11 @@ let handler = async (m, { isAdmin, isOwner }) => {
 ━━━━━━━━━━━━━━━━━━━━━━
 🎭 Evento del grupo » ${getChatValue(chat, 'evento') ? on : off}
 🛡️ Solo Admins     » ${getChatValue(chat, 'onlyadmin') ? on : off}
+
+━━━━━━━━━━━━━━━━━━━━━━
+🎉 *BIENVENIDA*
+━━━━━━━━━━━━━━━━━━━━━━
+👋 Mensaje Welcome  » ${getChatValue(chat, 'welcome') ? on : off}
 
 ━━━━━━━━━━━━━━━━━━━━━━
 🎮 *EXTRAS*
