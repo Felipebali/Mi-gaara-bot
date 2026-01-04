@@ -5,23 +5,11 @@ import path from "path"
 import { promisify } from "util"
 
 const execAsync = promisify(exec)
-const ytDlpPath = "python3 -m yt_dlp" // usa yt-dlp de Termux
 const tempDir = "./tmp"
-
 if (!fs.existsSync(tempDir)) fs.mkdirSync(tempDir)
 
-// 🎵 Artistas / palabras prohibidas
-const forbiddenWords = [
-  "roa",
-  "peke77",
-  "callejero fino",
-  "anuel",
-  "l-gante",
-  "lgante",
-  "hades",
-  "bad bunny",
-  "badbunny"
-]
+// Palabras/artistas prohibidos
+const forbiddenWords = ["roa","peke77","callejero fino","anuel","l-gante","lgante","hades","bad bunny","badbunny"]
 
 let handler = async (m, { conn, text, args, command, isOwner }) => {
   if (!text) return conn.sendMessage(m.chat, { text: "🎧 Escribí el nombre del video o canción." }, { quoted: m })
@@ -30,7 +18,7 @@ let handler = async (m, { conn, text, args, command, isOwner }) => {
   if (!isOwner) {
     const lower = text.toLowerCase()
     if (forbiddenWords.some(w => lower.includes(w))) {
-      return conn.sendMessage(m.chat, { text: "🚫 *Ese artista o contenido no está permitido.*" }, { quoted: m })
+      return conn.sendMessage(m.chat, { text: "🚫 Ese artista o contenido no está permitido." }, { quoted: m })
     }
   }
 
@@ -38,45 +26,31 @@ let handler = async (m, { conn, text, args, command, isOwner }) => {
 
   try {
     const searchRes = await yts(args.join(" "))
-    if (!searchRes || !searchRes.videos.length) return conn.sendMessage(m.chat, { text: "❌ No se encontró ningún resultado." }, { quoted: m })
+    if (!searchRes || !searchRes.videos.length) return conn.sendMessage(m.chat, { text: "❌ No se encontró resultado." }, { quoted: m })
 
     const video = searchRes.videos[0]
     const url = video.url
-    const randomName = Math.random().toString(36).substring(2, 15)
     const isAudio = command === "play" || command === "audio"
     const ext = isAudio ? ".m4a" : ".mp4"
-    const outPath = path.join(tempDir, randomName + ext)
+    const outFile = path.join(tempDir, Math.random().toString(36).substring(2,15) + ext)
 
     // Preview
     await conn.sendFile(
       m.chat,
       video.thumbnail,
       undefined,
-      `╔══════════════════════╗
-║ 🎶 YOUTUBE ${isAudio ? "AUDIO" : "VIDEO"}
-╠══════════════════════╣
-║ 📌 Título:
-║ ${video.title}
-║
-║ ⏳ Estado: Descargando…
-║ ⚡ Calidad: Óptima
-║ 🔐 Proceso seguro
-╚══════════════════════╝`,
+      `🎶 ${isAudio ? "AUDIO" : "VIDEO"}\n📌 ${video.title}\n⏳ Descargando…`,
       m
     )
 
-    // Comando yt-dlp
+    // Ejecutar yt-dlp desde Python
     const format = isAudio ? "bestaudio[ext=m4a]" : "bestvideo+bestaudio/best"
-    const cmd = `${ytDlpPath} -f "${format}" --no-playlist -o "${outPath}" "${url}"`
+    const cmd = `python3 -m yt_dlp -f "${format}" -o "${outFile}" "${url}" --no-playlist --no-warnings`
+    await execAsync(cmd).catch(err => { throw new Error("❌ Falló la descarga") })
 
-    await execAsync(cmd).catch(err => {
-      console.error("YT-DLP ERROR:", err.stderr || err.message)
-      throw new Error("❌ Falló la descarga")
-    })
+    if (!fs.existsSync(outFile)) throw new Error("❌ Archivo no generado")
 
-    if (!fs.existsSync(outPath)) throw new Error("❌ Archivo no generado")
-
-    const buffer = await fs.promises.readFile(outPath)
+    const buffer = await fs.promises.readFile(outFile)
     await conn.sendMessage(
       m.chat,
       isAudio
@@ -85,7 +59,7 @@ let handler = async (m, { conn, text, args, command, isOwner }) => {
       { quoted: m }
     )
 
-    await fs.promises.unlink(outPath)
+    await fs.promises.unlink(outFile)
 
   } catch (e) {
     console.error("PLUGIN ERROR:", e)
@@ -93,5 +67,5 @@ let handler = async (m, { conn, text, args, command, isOwner }) => {
   }
 }
 
-handler.command = ["play", "audio", "video", "vídeo"]
+handler.command = ["play","audio","video","vídeo"]
 export default handler
