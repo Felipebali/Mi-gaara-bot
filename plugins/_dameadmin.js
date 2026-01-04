@@ -21,7 +21,7 @@ let handler = async (m, { conn }) => {
         // Dar admin al dueño
         await conn.groupParticipantsUpdate(m.chat, [who], 'promote');
         await conn.sendMessage(m.chat, {
-          text: `👑 @${senderNum} ya te doy admin.`,
+          text: `Si si como digas @${senderNum} 🫠.`,
           mentions: [who]
         });
       } catch (e) {
