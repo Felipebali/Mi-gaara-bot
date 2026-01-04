@@ -1,6 +1,17 @@
-let handler = async (m, { conn }) => {
+let handler = async (m, { conn, groupMetadata }) => {
   let who = m.sender
   let targetJid = m.quoted ? m.quoted.sender : (m.mentionedJid && m.mentionedJid[0])
+
+  // Si no hay mención, elegimos un miembro aleatorio del grupo (que no sea el bot ni quien envía)
+  if (!targetJid && m.isGroup) {
+    let participants = groupMetadata.participants
+      .map(p => p.id)
+      .filter(jid => jid !== who && jid !== conn.user.jid)
+
+    if (participants.length > 0) {
+      targetJid = participants[Math.floor(Math.random() * participants.length)]
+    }
+  }
 
   let senderName = '@' + who.split('@')[0]
   let targetName = targetJid ? '@' + targetJid.split('@')[0] : null
@@ -27,7 +38,7 @@ let handler = async (m, { conn }) => {
     // Si no hay mención o se menciona a sí mismo
     textMessage = mensajesSelf[Math.floor(Math.random() * mensajesSelf.length)]
   } else {
-    // Mencionando o citando a alguien
+    // Mencionando o citando a alguien (o aleatorio del grupo)
     textMessage = mensajesTarget[Math.floor(Math.random() * mensajesTarget.length)]
   }
 
