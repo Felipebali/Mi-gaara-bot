@@ -1,91 +1,84 @@
 import yts from "yt-search"
 import { exec } from "child_process"
 import { promisify } from "util"
+import fs from "fs"
 import path from "path"
-import { existsSync, promises } from "fs"
 
 const execAsync = promisify(exec)
-const ytDlpPath = process.platform === "win32" ? "./node_modules/gs/ygs.exe" : "./node_modules/gs/ygs"
-const cookiesPath = "./lib/cookies.txt"
 const tempDir = "./tmp"
+const ytDlpPath = "./yt-dlp"
+const cookiesPath = "./cookies.txt"
 
 // Crear carpeta tmp si no existe
-if (!existsSync(tempDir)) promises.mkdir(tempDir, { recursive: true })
+if (!fs.existsSync(tempDir)) fs.mkdirSync(tempDir)
 
-// ══════════════════════════════════════════════════════
-// 🕐 ANTI-SPAM (2 minutos)
+// Palabras/artistas prohibidos
+const forbiddenWords = ["roa","peke77","callejero fino","anuel","l-gante","lgante","hades","bad bunny","badbunny"]
+
+// Usuarios en cooldown
 const userCooldowns = {}
 
-let handler = async (m, { conn, args, text, isOwner, sender }) => {
-  try {
-    // Cooldown
-    if (!isOwner) {
-      const now = Date.now()
-      const cooldownTime = 2 * 60 * 1000
-      const lastUse = userCooldowns[sender] || 0
-      const timeLeft = lastUse + cooldownTime - now
+let handler = async (m, { conn, text, args, command, isOwner }) => {
+  if (!text && !args?.length) return conn.sendMessage(m.chat, { text: "🎧 Escribí el nombre del video o canción." }, { quoted: m })
 
-      if (timeLeft > 0) {
-        const seconds = Math.ceil(timeLeft / 1000)
-        const minutes = Math.floor(seconds / 60)
-        const secs = seconds % 60
-        const timeStr = minutes > 0 ? `${minutes}m ${secs}s` : `${secs}s`
-        return conn.sendMessage(m.chat, { text: `⏰ Espera ${timeStr} antes de usar *.play* de nuevo.` }, { quoted: m })
-      }
-      userCooldowns[sender] = now
+  // Cooldown para usuarios (2 min)
+  if (!isOwner) {
+    const now = Date.now()
+    const last = userCooldowns[m.sender] || 0
+    if (now - last < 120000) {
+      const wait = Math.ceil((120000 - (now - last)) / 1000)
+      return conn.sendMessage(m.chat, { text: `⏰ Esperá ${wait} segundos antes de usar el comando nuevamente.` }, { quoted: m })
     }
+    userCooldowns[m.sender] = now
+  }
 
-    // Query
-    let query = (text || "").replace(/^\.play\s*/i, "").trim()
-    if (!query && args?.length > 0) query = args.join(" ").trim()
-    if (!query) return conn.sendMessage(m.chat, { text: "❗ Debes ingresar un artista y una canción.\nEjemplo: .play Canserbero - mundo de piedra" }, { quoted: m })
+  const query = (text || args.join(" ")).trim()
+  const lower = query.toLowerCase()
 
-    await conn.sendMessage(m.chat, { react: { text: "⌛", key: m.key } })
+  // Filtrar palabras prohibidas
+  if (!isOwner && forbiddenWords.some(w => lower.includes(w))) {
+    return conn.sendMessage(m.chat, { text: "🚫 Ese artista o contenido no está permitido." }, { quoted: m })
+  }
 
-    // Buscar video
-    const searchRes = await yts.search({ query, hl: "es", gl: "ES" })
-    if (!searchRes?.videos?.length) return conn.sendMessage(m.chat, { text: "❌ No se encontró ningún resultado." }, { quoted: m })
+  await m.react("⌛")
+
+  try {
+    const searchRes = await yts(query)
+    if (!searchRes || !searchRes.videos.length) return conn.sendMessage(m.chat, { text: "❌ No se encontró resultado." }, { quoted: m })
 
     const video = searchRes.videos[0]
     const url = video.url
-    const randomFileName = Math.random().toString(36).substring(2, 15)
-    const outputPath = path.join(tempDir, `${randomFileName}.m4a`)
+    const isAudio = command === "play" || command === "audio"
+    const ext = isAudio ? ".m4a" : ".mp4"
+    const output = path.join(tempDir, Math.random().toString(36).substring(2, 15) + ext)
+    const format = isAudio ? "bestaudio[ext=m4a]" : "bestvideo+bestaudio/best"
+    const messageType = isAudio ? "audio" : "video"
+    const mimeType = isAudio ? "audio/mp4" : undefined
 
-    // Preview
+    // Enviar preview
     await conn.sendMessage(
       m.chat,
-      {
-        image: { url: video.thumbnail },
-        caption: `🎧 *${video.title}*\n⏳ Descargando audio...`
-      },
+      { image: { url: video.thumbnail }, caption: `🎶 ${isAudio ? "AUDIO" : "VIDEO"}\n📌 ${video.title}\n⏳ Descargando…` },
       { quoted: m }
     )
 
     // Descargar con yt-dlp
-    const cookiesFlag = existsSync(cookiesPath) ? `--cookies "${cookiesPath}"` : ""
-    const cmd = `${ytDlpPath} -f "bestaudio[ext=m4a]/bestaudio/best" ${cookiesFlag} --extractor-args "youtube:player_client=default" --no-warnings -o "${outputPath}" "${url}"`
+    const cookiesFlag = fs.existsSync(cookiesPath) ? `--cookies "${cookiesPath}"` : ""
+    const cmd = `${ytDlpPath} -f "${format}" ${cookiesFlag} -o "${output}" "${url}" --no-warnings --no-playlist`
 
-    try { await execAsync(cmd) }
-    catch (error) { console.error("❌ Error yt-dlp:", error.message) }
+    await execAsync(cmd)
 
-    // Verificar archivo
-    const tmpFiles = await promises.readdir(tempDir)
-    const foundFile = tmpFiles.find(f => f.startsWith(randomFileName))
-    const finalPath = foundFile ? path.join(tempDir, foundFile) : outputPath
+    if (!fs.existsSync(output)) throw new Error("❌ Archivo no generado")
 
-    if (!existsSync(finalPath)) return conn.sendMessage(m.chat, { text: "❌ Error: archivo no generado." }, { quoted: m })
-
-    // Enviar audio
-    const buffer = await promises.readFile(finalPath)
-    await conn.sendMessage(m.chat, { audio: buffer, mimetype: "audio/mp4" }, { quoted: m })
-    await promises.unlink(finalPath)
-    await conn.sendMessage(m.chat, { react: { text: "✨", key: m.key } })
-
-  } catch (error) {
-    console.error("❌ Error en plugin .play:", error.message)
-    await conn.sendMessage(m.chat, { text: "⚠️ Error al descargar el audio." }, { quoted: m })
+    const buffer = await fs.promises.readFile(output)
+    await conn.sendMessage(m.chat, isAudio ? { audio: buffer, mimetype } : { video: buffer }, { quoted: m })
+    await fs.promises.unlink(output)
+    await m.react("✨")
+  } catch (e) {
+    console.error("❌ Error en plugin play:", e)
+    await conn.sendMessage(m.chat, { text: "⚠️ Error al descargar el video o audio." }, { quoted: m })
   }
 }
 
-handler.command = ["play", "audio"]
+handler.command = ["play","audio","video","vídeo"]
 export default handler
