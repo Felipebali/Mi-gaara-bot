@@ -1,5 +1,4 @@
 import yts from "yt-search"
-import fetch from "node-fetch"
 import fs, { promises, existsSync, mkdirSync } from "fs"
 import path from "path"
 
@@ -26,16 +25,15 @@ const txt = {
   advSpam: (time, atts) =>
     `⚠️ Esperá ${time} antes de volver a usar el comando.\nIntentos: ${atts}/4`,
   ingresarTitulo: "🎵 Escribí el nombre del video.",
-  sendPreview: (isAudio, title) =>
+  sendPreview: (isAudio, title, url) =>
     `╔══════════════════════╗
 ║ 🎶 YOUTUBE ${isAudio ? "AUDIO" : "VIDEO"}
 ╠══════════════════════╣
 ║ 📌 Título:
 ║ ${title}
 ║
-║ ⏳ Estado: Descargando…
-║ ⚡ Calidad: Óptima
-║ 🔐 Proceso seguro
+║ ⏳ Estado: Preparado para descarga
+║ 🔗 Link: ${url}
 ╚══════════════════════╝`,
 }
 
@@ -77,6 +75,7 @@ let handler = async (m, { conn, args, text, isOwner, command }) => {
     user.commandAttempts = 0
   }
 
+  // FILTRO DE ARTISTAS / PALABRAS
   const queryLower = text.toLowerCase()
   if (!isOwner) {
     for (const word of forbiddenWords)
@@ -100,35 +99,17 @@ let handler = async (m, { conn, args, text, isOwner, command }) => {
           return conn.sendMessage(m.chat, { text: "🚫 *Ese artista o contenido no está permitido en este bot.*" }, { quoted: m })
     }
 
-    await conn.sendFile(m.chat, video.thumbnail, undefined, txt.sendPreview(command === "play" || command === "audio", video.title), m)
-
-    // 2️⃣ USAR API PÚBLICA PARA DESCARGA
-    const apiUrl = `https://api.botcah.xyz/api/yt/play?url=${encodeURIComponent(video.url)}`
-    const apiRes = await fetch(apiUrl)
-    const data = await apiRes.json()
-
-    if (!data || !data.result) return conn.sendMessage(m.chat, { text: "⚠️ Error al descargar el video vía API." }, { quoted: m })
-
     const isAudio = command === "play" || command === "audio"
-    const downloadUrl = isAudio ? data.result.audio : data.result.video
-    const extension = isAudio ? ".mp3" : ".mp4"
-    const messageType = isAudio ? "audio" : "video"
-    const mimeType = isAudio ? "audio/mpeg" : "video/mp4"
 
-    // 3️⃣ DESCARGAR A TMP
-    const randomFileName = Math.random().toString(36).substring(2, 15)
-    const filePath = path.join("./tmp", randomFileName + extension)
-    const fileBuffer = Buffer.from(await (await fetch(downloadUrl)).arrayBuffer())
-    await promises.writeFile(filePath, fileBuffer)
+    // 2️⃣ ENVIAR PREVIEW + LINK DIRECTO
+    const previewText = txt.sendPreview(isAudio, video.title, video.url)
+    await conn.sendMessage(m.chat, { text: previewText }, { quoted: m })
 
-    // 4️⃣ ENVIAR A WHATSAPP
-    await conn.sendMessage(m.chat, { [messageType]: fileBuffer, mimetype: mimeType }, { quoted: m })
-
-    // 5️⃣ ELIMINAR TEMPORAL
-    await promises.unlink(filePath)
+    // ✅ OPCIONAL: enviar archivo directo si es un link que Boxmine puede descargar
+    // Nota: Boxmine Free NO permite descargas grandes, así que usamos solo el link
   } catch (e) {
     console.error("Error play:", e)
-    return conn.sendMessage(m.chat, { text: "⚠️ Error al descargar el video." }, { quoted: m })
+    return conn.sendMessage(m.chat, { text: "⚠️ Error al procesar la solicitud." }, { quoted: m })
   }
 }
 
