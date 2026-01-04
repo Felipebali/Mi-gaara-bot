@@ -6,6 +6,11 @@ let handler = async (m, { conn, args }) => {
         let q = m.quoted ? m.quoted : m;
         let mime = (q.msg || q).mimetype || q.mediaType || '';
 
+        // Verificar si es "ver una vez"
+        if ((q.msg || q).viewOnce) {
+            return m.reply('⚡ No se puede hacer sticker de fotos de "ver una vez"');
+        }
+
         if (/webp|image|video/g.test(mime)) {
             if (/video/g.test(mime)) {
                 if ((q.msg || q).seconds > 8)
