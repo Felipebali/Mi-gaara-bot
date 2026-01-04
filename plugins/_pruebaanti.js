@@ -33,8 +33,8 @@ let handler = async (m, { conn, isAdmin, isOwner, command }) => {
         case 'modoadmin':
             chat.modoadmin = !chat.modoadmin;
             await conn.sendMessage(m.chat, { text: chat.modoadmin
-                ? '🔥 ModoAdmin ACTIVADO! Solo *admins* tendrán control absoluto del grupo 💪'
-                : '😌 ModoAdmin DESACTIVADO! Ahora todos los miembros pueden interactuar libremente...'
+                ? '🔥 ModoAdmin ACTIVADO! Solo *admins* tendrán control absoluto del bot 💪'
+                : '😌 ModoAdmin DESACTIVADO! Ahora todos los miembros pueden interactuar libremente con el bot'
             });
             break;
     }
