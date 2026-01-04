@@ -1,64 +1,52 @@
-import { exec, execSync } from "child_process"
+import { exec } from "child_process"
 import path from "path"
 import fs from "fs"
 
-// 🛠️ FIX PERMISOS PARA BOXMINE
-try {
-  fs.chmodSync("yt-dlp", 0o755)
-} catch {
-  try { execSync("chmod +x yt-dlp") } catch {}
-}
-
-const ytDlpPath = path.join(process.cwd(), "yt-dlp")
-const cookiesPath = path.join(process.cwd(), "cookies.txt")
-const tempDir = path.join(process.cwd(), "tmp")
+const ytDlpPath = "./yt-dlp"
+const cookiesPath = "./cookies.txt"
+const tempDir = "./tmp"
 
 if (!fs.existsSync(tempDir)) fs.mkdirSync(tempDir)
 
-// 🧹 Limpia temporales
+// 🧹 limpiar tmp
 function cleanTmp() {
   for (const f of fs.readdirSync(tempDir)) {
     fs.unlinkSync(path.join(tempDir, f))
   }
 }
 
-// ⚙️ Ejecuta comandos (IGNORA WARNINGS)
+// ⚙️ ejecutar yt-dlp
 function run(cmd) {
   return new Promise((resolve, reject) => {
     exec(cmd, { maxBuffer: 1024 * 1024 * 100 }, (err, stdout, stderr) => {
-
-      // yt-dlp genera warnings por stderr aunque todo salga bien
-      if (stderr && !err) return resolve(stdout)
-
-      // Error real
-      if (err) return reject(stderr || err)
-
-      resolve(stdout)
+      if (err && !stdout) return reject(stderr || err)
+      resolve(stdout + stderr)
     })
   })
 }
 
-// 🔍 Buscar en YouTube
+// 🔍 buscar video
 async function searchYouTube(query) {
-  const cmd = `${ytDlpPath} "ytsearch1:${query}" --print "%(id)s"`
-  const id = (await run(cmd)).trim()
-  if (!id) throw "No se encontró ningún resultado"
+  const out = await run(`${ytDlpPath} "ytsearch1:${query}" --print "%(id)s"`)
+  const id = out.trim()
+  if (!id) throw "No se encontró resultado"
   return `https://www.youtube.com/watch?v=${id}`
 }
 
-// 🎵 Descargar audio
+// 🎵 audio
 async function downloadAudio(query) {
   cleanTmp()
-  const url = query.startsWith("http") ? query : await searchYouTube(query)
-  const out = path.join(tempDir, "%(title)s.%(ext)s")
 
-  const cmd = `${ytDlpPath} \
+  const url = query.startsWith("http") ? query : await searchYouTube(query)
+
+  const outFile = path.join(tempDir, "audio.%(ext)s")
+
+  const cmd = `${ytDlpPath} "${url}" \
   --no-check-certificate \
   --compat-options no-python-version-warning \
   --cookies "${cookiesPath}" \
   -x --audio-format mp3 \
-  --force-overwrites \
-  -o "${out}" "${url}"`
+  -o "${outFile}"`
 
   await run(cmd)
 
@@ -67,20 +55,21 @@ async function downloadAudio(query) {
   return file
 }
 
-// 🎬 Descargar video
+// 🎬 video
 async function downloadVideo(query) {
   cleanTmp()
-  const url = query.startsWith("http") ? query : await searchYouTube(query)
-  const out = path.join(tempDir, "%(title)s.%(ext)s")
 
-  const cmd = `${ytDlpPath} \
+  const url = query.startsWith("http") ? query : await searchYouTube(query)
+
+  const outFile = path.join(tempDir, "video.%(ext)s")
+
+  const cmd = `${ytDlpPath} "${url}" \
   --no-check-certificate \
   --compat-options no-python-version-warning \
   --cookies "${cookiesPath}" \
   -f "bv*+ba/b" \
   --merge-output-format mp4 \
-  --force-overwrites \
-  -o "${out}" "${url}"`
+  -o "${outFile}"`
 
   await run(cmd)
 
@@ -89,16 +78,17 @@ async function downloadVideo(query) {
   return file
 }
 
-// 🧠 HANDLER
+// 🧠 handler
 let handler = async (m, { conn, text, command }) => {
-  if (!text) return conn.reply(m.chat, "🎧 Escribí el nombre de la canción o video", m)
+  if (!text) return conn.reply(m.chat, "🎧 Escribí el nombre del video o canción", m)
 
   try {
-    await conn.reply(m.chat, "🔎 Buscando y descargando...", m)
+    await conn.reply(m.chat, "🔎 Descargando…", m)
 
     if (command === "yt3") {
       const file = await downloadAudio(text)
       const filePath = path.join(tempDir, file)
+
       await conn.sendMessage(m.chat, {
         audio: fs.readFileSync(filePath),
         mimetype: "audio/mpeg"
@@ -108,6 +98,7 @@ let handler = async (m, { conn, text, command }) => {
     if (command === "yt4") {
       const file = await downloadVideo(text)
       const filePath = path.join(tempDir, file)
+
       await conn.sendMessage(m.chat, {
         video: fs.readFileSync(filePath)
       }, { quoted: m })
@@ -115,7 +106,7 @@ let handler = async (m, { conn, text, command }) => {
 
   } catch (e) {
     console.error("YT ERROR:", e)
-    conn.reply(m.chat, "⚠️ Descarga completada con advertencias.", m)
+    conn.reply(m.chat, "❌ " + e.toString().slice(0, 300), m)
   }
 }
 
