@@ -12,7 +12,7 @@ function scanPlugins() {
 }
 
 let handler = async (m, { conn }) => {
-  let msg = '🔄 *Verificando actualizaciones del bot...*\n\n'
+  let msg = '🔄 Verificando actualizaciones del bot...\n\n'
   let hasUpdates = false
 
   try {
@@ -46,7 +46,7 @@ let handler = async (m, { conn }) => {
       execSync('git reset --hard origin/main', { stdio: 'inherit' })
       // ── Restaurar backups ──
       Object.keys(backups).forEach(f => {
-        if (fs.lstatSync(f).isDirectory && backupDirs.includes(f)) {
+        if (fs.lstatSync(f).isDirectory() && backupDirs.includes(f)) {
           Object.keys(backups[f]).forEach(file => {
             fs.writeFileSync(path.join(f, file), backups[f][file])
           })
@@ -75,9 +75,9 @@ let handler = async (m, { conn }) => {
 
   if ((added && added.length) || (removed && removed.length)) {
     hasUpdates = true
-    msg += '🧩 *Cambios en plugins:*\n'
-    added?.forEach(p => msg += `• ➕ ${p}\n`)
-    removed?.forEach(p => msg += `• ❌ ${p} (eliminado)\n`)
+    msg += '🧩 Cambios en plugins:\n'
+    added.forEach(p => msg += `• ➕ ${p}\n`)
+    removed.forEach(p => msg += `• ❌ ${p} (eliminado)\n`)
   }
 
   fs.writeFileSync(SNAPSHOT, JSON.stringify(now, null, 2))
