@@ -2,7 +2,7 @@ import { exec, execSync } from "child_process"
 import path from "path"
 import fs from "fs"
 
-// 🛠️ FIX PERMISOS PARA BOXMINE (se ejecuta cada vez que el bot inicia)
+// 🛠️ FIX PERMISOS PARA BOXMINE
 try {
   fs.chmodSync("yt-dlp", 0o755)
 } catch {
@@ -22,11 +22,16 @@ function cleanTmp() {
   }
 }
 
-// ⚙️ Ejecuta comandos
+// ⚙️ Ejecuta comandos (NO rompe con warnings)
 function run(cmd) {
   return new Promise((resolve, reject) => {
     exec(cmd, { maxBuffer: 1024 * 1024 * 80 }, (err, stdout, stderr) => {
-      if (err) return reject(stderr || err)
+
+      // yt-dlp tira warnings por stderr aunque todo salga bien
+      if (err && !stdout) {
+        return reject(stderr || err)
+      }
+
       resolve(stdout)
     })
   })
