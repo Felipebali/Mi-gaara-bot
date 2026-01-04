@@ -21,12 +21,7 @@ let handler = async (m, { conn }) => {
     const backupDirs = ['GaaraSessions']
     const backups = {}
 
-    // Respaldar archivos individuales
-    backupFiles.forEach(f => {
-      if (fs.existsSync(f)) backups[f] = fs.readFileSync(f)
-    })
-
-    // Respaldar carpetas (como GaaraSessions)
+    backupFiles.forEach(f => { if (fs.existsSync(f)) backups[f] = fs.readFileSync(f) })
     backupDirs.forEach(d => {
       if (fs.existsSync(d)) {
         backups[d] = fs.readdirSync(d).reduce((acc, file) => {
@@ -40,23 +35,30 @@ let handler = async (m, { conn }) => {
     try { execSync('git init', { stdio: 'ignore' }) } catch {}
     try { execSync(`git remote add origin ${REPO}`, { stdio: 'ignore' }) } catch {}
 
-    // ── Hacer pull seguro ──
+    // ── Traer cambios pero sin reiniciar aún ──
     execSync('git fetch origin main', { stdio: 'inherit' })
-    execSync('git reset --hard origin/main', { stdio: 'inherit' })
-    hasUpdates = true
 
-    // ── Restaurar archivos y sesiones ──
-    Object.keys(backups).forEach(f => {
-      if (fs.lstatSync(f).isDirectory && backupDirs.includes(f)) {
-        Object.keys(backups[f]).forEach(file => {
-          fs.writeFileSync(path.join(f, file), backups[f][file])
-        })
-      } else {
-        fs.writeFileSync(f, backups[f])
-      }
-    })
+    // ── Verificar si hay diferencias reales ──
+    const diff = execSync('git diff --name-status origin/main', { encoding: 'utf8' }).trim()
+    if (diff) hasUpdates = true
 
-    msg += '✅ *GitHub:* Bot actualizado correctamente.\n\n'
+    if (hasUpdates) {
+      execSync('git reset --hard origin/main', { stdio: 'inherit' })
+      // ── Restaurar backups ──
+      Object.keys(backups).forEach(f => {
+        if (fs.lstatSync(f).isDirectory && backupDirs.includes(f)) {
+          Object.keys(backups[f]).forEach(file => {
+            fs.writeFileSync(path.join(f, file), backups[f][file])
+          })
+        } else {
+          fs.writeFileSync(f, backups[f])
+        }
+      })
+      msg += '✅ *GitHub:* Bot actualizado correctamente.\n\n'
+    } else {
+      msg += '✅ *No hay actualizaciones de GitHub.*\n\n'
+    }
+
   } catch (err) {
     msg += `❌ Error al actualizar desde GitHub:\n${err.message}\n\n`
   }
@@ -76,12 +78,9 @@ let handler = async (m, { conn }) => {
     msg += '🧩 *Cambios en plugins:*\n'
     added?.forEach(p => msg += `• ➕ ${p}\n`)
     removed?.forEach(p => msg += `• ❌ ${p} (eliminado)\n`)
-  } else if (!hasUpdates) {
-    msg += '✅ *No hay nuevas actualizaciones ni plugins.*\n'
   }
 
   fs.writeFileSync(SNAPSHOT, JSON.stringify(now, null, 2))
-
   await conn.reply(m.chat, msg, m)
 
   // ── Solo reiniciar si hubo actualizaciones ──
