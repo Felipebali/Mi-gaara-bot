@@ -115,8 +115,6 @@ let handler = async (m, { conn }) => {
       console.log('♻️ Bot reiniciándose tras actualización...')
       process.exit(0)
     }, 1500)
-  } else {
-    console.log('⚡ No hubo cambios, no se reinicia el bot.')
   }
 }
 
