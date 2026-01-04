@@ -5,7 +5,7 @@ import fs from "fs"
 // 🛠️ FIX PERMISOS PARA BOXMINE (se ejecuta cada vez que el bot inicia)
 try {
   fs.chmodSync("yt-dlp", 0o755)
-} catch (e) {
+} catch {
   try { execSync("chmod +x yt-dlp") } catch {}
 }
 
@@ -25,7 +25,7 @@ function cleanTmp() {
 // ⚙️ Ejecuta comandos
 function run(cmd) {
   return new Promise((resolve, reject) => {
-    exec(cmd, { maxBuffer: 1024 * 1024 * 50 }, (err, stdout, stderr) => {
+    exec(cmd, { maxBuffer: 1024 * 1024 * 80 }, (err, stdout, stderr) => {
       if (err) return reject(stderr || err)
       resolve(stdout)
     })
@@ -45,7 +45,15 @@ async function downloadAudio(query) {
   cleanTmp()
   const url = query.startsWith("http") ? query : await searchYouTube(query)
   const out = path.join(tempDir, "%(title)s.%(ext)s")
-  const cmd = `${ytDlpPath} --cookies "${cookiesPath}" -x --audio-format mp3 -o "${out}" "${url}"`
+
+  const cmd = `${ytDlpPath} \
+  --no-check-certificate \
+  --compat-options no-python-version-warning \
+  --cookies "${cookiesPath}" \
+  -x --audio-format mp3 \
+  --force-overwrites \
+  -o "${out}" "${url}"`
+
   await run(cmd)
 
   const file = fs.readdirSync(tempDir).find(f => f.endsWith(".mp3"))
@@ -58,7 +66,16 @@ async function downloadVideo(query) {
   cleanTmp()
   const url = query.startsWith("http") ? query : await searchYouTube(query)
   const out = path.join(tempDir, "%(title)s.%(ext)s")
-  const cmd = `${ytDlpPath} --cookies "${cookiesPath}" -f mp4 -o "${out}" "${url}"`
+
+  const cmd = `${ytDlpPath} \
+  --no-check-certificate \
+  --compat-options no-python-version-warning \
+  --cookies "${cookiesPath}" \
+  -f "bv*+ba/b" \
+  --merge-output-format mp4 \
+  --force-overwrites \
+  -o "${out}" "${url}"`
+
   await run(cmd)
 
   const file = fs.readdirSync(tempDir).find(f => f.endsWith(".mp4"))
