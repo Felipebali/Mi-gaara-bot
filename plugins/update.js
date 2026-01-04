@@ -5,7 +5,7 @@ import { execSync } from 'child_process'
 const SNAPSHOT = '.last_update_snapshot.json'
 const REPO = 'https://github.com/Felipebali/Mi-gaara-bot.git' // tu repo
 
-// ── Escanear plugins y obtener fecha de modificación ──
+// ── Escanear plugins y guardar contenido ──
 function scanPlugins() {
   const dir = path.join(process.cwd(), 'plugins')
   if (!fs.existsSync(dir)) return []
@@ -14,8 +14,18 @@ function scanPlugins() {
     .sort()
     .map(f => ({
       name: f,
-      mtime: fs.statSync(path.join(dir, f)).mtimeMs
+      content: fs.readFileSync(path.join(dir, f), 'utf8').split('\n')
     }))
+}
+
+// ── Contar líneas modificadas entre dos versiones ──
+function countLineDiff(oldLines, newLines) {
+  const maxLen = Math.max(oldLines.length, newLines.length)
+  let changed = 0
+  for (let i = 0; i < maxLen; i++) {
+    if ((oldLines[i] || '') !== (newLines[i] || '')) changed++
+  }
+  return changed
 }
 
 let handler = async (m, { conn }) => {
@@ -29,41 +39,41 @@ let handler = async (m, { conn }) => {
     const backups = {}
 
     backupFiles.forEach(f => { if (fs.existsSync(f)) backups[f] = fs.readFileSync(f) })
-    backupDirs.forEach(d => {
-      if (fs.existsSync(d)) {
-        backups[d] = fs.readdirSync(d).reduce((acc, file) => {
-          acc[file] = fs.readFileSync(path.join(d, file))
-          return acc
-        }, {})
-      }
+    backupDirs.forEach(d => {  
+      if (fs.existsSync(d)) {  
+        backups[d] = fs.readdirSync(d).reduce((acc, file) => {  
+          acc[file] = fs.readFileSync(path.join(d, file))  
+          return acc  
+        }, {})  
+      }  
     })
 
-    // ── Inicializar git si no existe ──
-    try { execSync('git init', { stdio: 'ignore' }) } catch {}
-    try { execSync(`git remote add origin ${REPO}`, { stdio: 'ignore' }) } catch {}
+    // ── Inicializar git si no existe ──  
+    try { execSync('git init', { stdio: 'ignore' }) } catch {}  
+    try { execSync(`git remote add origin ${REPO}`, { stdio: 'ignore' }) } catch {}  
 
-    // ── Traer cambios ──
-    execSync('git fetch origin main', { stdio: 'inherit' })
+    // ── Traer cambios pero sin reiniciar aún ──  
+    execSync('git fetch origin main', { stdio: 'inherit' })  
 
-    // ── Verificar si hay diferencias reales ──
-    const diff = execSync('git diff --name-status origin/main', { encoding: 'utf8' }).trim()
-    if (diff) hasUpdates = true
+    // ── Verificar si hay diferencias reales ──  
+    const diff = execSync('git diff --name-status origin/main', { encoding: 'utf8' }).trim()  
+    if (diff) hasUpdates = true  
 
-    if (hasUpdates) {
-      execSync('git reset --hard origin/main', { stdio: 'inherit' })
-      // ── Restaurar backups ──
-      Object.keys(backups).forEach(f => {
-        if (fs.lstatSync(f).isDirectory() && backupDirs.includes(f)) {
-          Object.keys(backups[f]).forEach(file => {
-            fs.writeFileSync(path.join(f, file), backups[f][file])
-          })
-        } else {
-          fs.writeFileSync(f, backups[f])
-        }
-      })
-      msg += '✅ *GitHub:* Bot actualizado correctamente.\n\n'
-    } else {
-      msg += '✅ *No hay actualizaciones de GitHub.*\n\n'
+    if (hasUpdates) {  
+      execSync('git reset --hard origin/main', { stdio: 'inherit' })  
+      // ── Restaurar backups ──  
+      Object.keys(backups).forEach(f => {  
+        if (fs.lstatSync(f).isDirectory() && backupDirs.includes(f)) {  
+          Object.keys(backups[f]).forEach(file => {  
+            fs.writeFileSync(path.join(f, file), backups[f][file])  
+          })  
+        } else {  
+          fs.writeFileSync(f, backups[f])  
+        }  
+      })  
+      msg += '✅ *GitHub:* Bot actualizado correctamente.\n\n'  
+    } else {  
+      msg += '✅ *No hay actualizaciones de GitHub.*\n\n'  
     }
 
   } catch (err) {
@@ -77,12 +87,11 @@ let handler = async (m, { conn }) => {
   }
 
   const now = scanPlugins()
-
   const added = now.filter(n => !before.find(b => b.name === n.name))
   const removed = before.filter(b => !now.find(n => n.name === b.name))
   const modified = now.filter(n => {
     const b = before.find(b => b.name === n.name)
-    return b && b.mtime !== n.mtime
+    return b && countLineDiff(b.content, n.content) > 0
   })
 
   if (added.length || removed.length || modified.length) {
@@ -90,7 +99,11 @@ let handler = async (m, { conn }) => {
     msg += '🧩 Cambios en plugins:\n'
     added.forEach(p => msg += `• ➕ ${p.name}\n`)
     removed.forEach(p => msg += `• ❌ ${p.name} (eliminado)\n`)
-    modified.forEach(p => msg += `• ✏️ ${p.name} (modificado)\n`)
+    modified.forEach(p => {
+      const b = before.find(b => b.name === p.name)
+      const changedLines = countLineDiff(b.content, p.content)
+      msg += `• ✏️ ${p.name} +++--- (${changedLines} líneas modificadas)\n`
+    })
   }
 
   fs.writeFileSync(SNAPSHOT, JSON.stringify(now, null, 2))
@@ -102,6 +115,8 @@ let handler = async (m, { conn }) => {
       console.log('♻️ Bot reiniciándose tras actualización...')
       process.exit(0)
     }, 1500)
+  } else {
+    console.log('⚡ No hubo cambios, no se reinicia el bot.')
   }
 }
 
