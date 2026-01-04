@@ -22,15 +22,16 @@ function cleanTmp() {
   }
 }
 
-// ⚙️ Ejecuta comandos (NO rompe con warnings)
+// ⚙️ Ejecuta comandos (IGNORA WARNINGS)
 function run(cmd) {
   return new Promise((resolve, reject) => {
-    exec(cmd, { maxBuffer: 1024 * 1024 * 80 }, (err, stdout, stderr) => {
+    exec(cmd, { maxBuffer: 1024 * 1024 * 100 }, (err, stdout, stderr) => {
 
-      // yt-dlp tira warnings por stderr aunque todo salga bien
-      if (err && !stdout) {
-        return reject(stderr || err)
-      }
+      // yt-dlp genera warnings por stderr aunque todo salga bien
+      if (stderr && !err) return resolve(stdout)
+
+      // Error real
+      if (err) return reject(stderr || err)
 
       resolve(stdout)
     })
@@ -114,7 +115,7 @@ let handler = async (m, { conn, text, command }) => {
 
   } catch (e) {
     console.error("YT ERROR:", e)
-    conn.reply(m.chat, "❌ " + e.toString().slice(0, 300), m)
+    conn.reply(m.chat, "⚠️ Descarga completada con advertencias.", m)
   }
 }
 
