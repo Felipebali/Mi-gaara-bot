@@ -24,7 +24,7 @@ let handler = async (m, { conn, isAdmin }) => {
     }
 
     // Mensaje final sin citar el comando
-    await conn.sendMessage(m.chat, { text: '🎉 Todas las solicitudes pendientes fueron aprobadas.' }, { quoted: null });
+    await conn.sendMessage(m.chat, { text: 'Ya se aprobaron todas, no jodas, gracias! 🙌🏻.' }, { quoted: null });
 
   } catch (err) {
     console.error('Error general al aprobar solicitudes:', err);
