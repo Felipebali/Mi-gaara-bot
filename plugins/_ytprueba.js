@@ -15,7 +15,7 @@ function cleanTmp() {
   }
 }
 
-// ⚙️ ejecutar yt-dlp
+// ⚙️ ejecutar yt-dlp (ignora warnings)
 function run(cmd) {
   return new Promise((resolve, reject) => {
     exec(cmd, { maxBuffer: 1024 * 1024 * 100 }, (err, stdout, stderr) => {
@@ -33,19 +33,22 @@ async function searchYouTube(query) {
   return `https://www.youtube.com/watch?v=${id}`
 }
 
-// 🎵 audio
+// 🎵 audio seguro
 async function downloadAudio(query) {
   cleanTmp()
 
   const url = query.startsWith("http") ? query : await searchYouTube(query)
-
   const outFile = path.join(tempDir, "audio.%(ext)s")
 
   const cmd = `${ytDlpPath} "${url}" \
   --no-check-certificate \
   --compat-options no-python-version-warning \
   --cookies "${cookiesPath}" \
-  -x --audio-format mp3 \
+  -f "bestaudio/best" \
+  --extract-audio \
+  --audio-format mp3 \
+  --audio-quality 0 \
+  --force-overwrites \
   -o "${outFile}"`
 
   await run(cmd)
@@ -55,20 +58,20 @@ async function downloadAudio(query) {
   return file
 }
 
-// 🎬 video
+// 🎬 video seguro
 async function downloadVideo(query) {
   cleanTmp()
 
   const url = query.startsWith("http") ? query : await searchYouTube(query)
-
   const outFile = path.join(tempDir, "video.%(ext)s")
 
   const cmd = `${ytDlpPath} "${url}" \
   --no-check-certificate \
   --compat-options no-python-version-warning \
   --cookies "${cookiesPath}" \
-  -f "bv*+ba/b" \
+  -f "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best" \
   --merge-output-format mp4 \
+  --force-overwrites \
   -o "${outFile}"`
 
   await run(cmd)
@@ -88,20 +91,13 @@ let handler = async (m, { conn, text, command }) => {
     if (command === "yt3") {
       const file = await downloadAudio(text)
       const filePath = path.join(tempDir, file)
-
-      await conn.sendMessage(m.chat, {
-        audio: fs.readFileSync(filePath),
-        mimetype: "audio/mpeg"
-      }, { quoted: m })
+      await conn.sendMessage(m.chat, { audio: fs.readFileSync(filePath), mimetype: "audio/mpeg" }, { quoted: m })
     }
 
     if (command === "yt4") {
       const file = await downloadVideo(text)
       const filePath = path.join(tempDir, file)
-
-      await conn.sendMessage(m.chat, {
-        video: fs.readFileSync(filePath)
-      }, { quoted: m })
+      await conn.sendMessage(m.chat, { video: fs.readFileSync(filePath) }, { quoted: m })
     }
 
   } catch (e) {
