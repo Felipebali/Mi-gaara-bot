@@ -17,6 +17,11 @@ let handler = async (m, { conn, args }) => {
     let mime = (q.msg || q).mimetype || q.mediaType || ''
     let txt = args.join(' ')
 
+    // BLOQUEAR fotos o videos "ver una vez"
+    if (q.msg?.viewOnce) {
+      return conn.reply(m.chat, '❌ No se puede hacer sticker de fotos o videos que sean "ver una vez".', m)
+    }
+
     if (/webp|image|video/g.test(mime) && q.download) {
 
       // Limita duración del video
