@@ -4,8 +4,16 @@ import crypto from "crypto";
 import axios from "axios";
 
 const cooldowns = {}; // Registro de cooldown por usuario
-const COOLDOWN_TIME = 2 * 60 * 1000; // 2 minutos en milisegundos
-const MAX_WARNS = 3; // Número máximo de advertencias antes de expulsar
+const COOLDOWN_TIME = 2 * 60 * 1000; // 2 minutos
+const MAX_WARNS = 3; // Máx. advertencias
+
+// ============================
+// Palabras prohibidas
+// ============================
+const forbiddenArtists = [
+  "roa", "peke77", "callejero fino", "anuel",
+  "l gante", "hades", "bad bunny"
+];
 
 // ============================
 // Base de datos de usuarios
@@ -16,26 +24,35 @@ global.db.users = global.db.users || {};
 const handler = async (m, { conn, text, command }) => {
   const user = m.sender;
   const chatId = m.chat;
-
   const now = Date.now();
+
+  // ============================
+  // Filtro de palabras prohibidas
+  // ============================
+  if (text?.toLowerCase()) {
+    const lowerText = text.toLowerCase();
+    for (let word of forbiddenArtists) {
+      if (lowerText.includes(word)) {
+        await m.react('🤢');
+        return conn.reply(chatId, `⚠️ No se permite reproducir contenido de "${word}".`, m);
+      }
+    }
+  }
 
   // ============================
   // Control de cooldown + warn
   // ============================
   if (cooldowns[user] && now - cooldowns[user] < COOLDOWN_TIME) {
-
-    // Inicializar usuario si no existe
     global.db.users[user] = global.db.users[user] || {};
     global.db.users[user].warns = (global.db.users[user].warns || 0) + 1;
 
     const warns = global.db.users[user].warns;
 
-    // Expulsar si supera el máximo
     if (warns >= MAX_WARNS) {
       try {
         await conn.groupParticipantsUpdate(chatId, [user], "remove");
-        delete global.db.users[user].warns; // resetear warns
-        delete cooldowns[user]; // resetear cooldown
+        delete global.db.users[user].warns;
+        delete cooldowns[user];
         return conn.reply(chatId, `⚠️ Usuario ${user.split("@")[0]} expulsado automáticamente por exceder ${MAX_WARNS} advertencias.`, m);
       } catch (e) {
         console.error("Error al expulsar usuario:", e);
@@ -48,17 +65,9 @@ const handler = async (m, { conn, text, command }) => {
       `⚠️ Advertencia registrada (${warns}/${MAX_WARNS})`, m);
   }
 
-  // Actualiza último uso
   cooldowns[user] = now;
+  setTimeout(() => { delete cooldowns[user]; }, COOLDOWN_TIME);
 
-  // Reset automático del cooldown después de 2 minutos
-  setTimeout(() => {
-    delete cooldowns[user];
-  }, COOLDOWN_TIME);
-
-  // ============================
-  // Validación de texto
-  // ============================
   if (!text?.trim())
     return conn.reply(chatId, `⚠️ Ingresa el nombre o enlace del video.`, m);
 
@@ -118,8 +127,9 @@ handler.command = handler.help = ['play', 'play2', 'mp3', 'mp4'];
 handler.tags = ['download'];
 export default handler;
 
-//=================
+// =========================
 // Funciones auxiliares
+// =========================
 
 async function getVid(url) {
   try {
@@ -180,4 +190,4 @@ function formatViews(v) {
   if (v >= 1e6) return (v / 1e6).toFixed(1) + "M";
   if (v >= 1e3) return (v / 1e3).toFixed(1) + "K";
   return v.toString();
-}
+  }
