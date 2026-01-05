@@ -25,14 +25,17 @@ let handler = async (m, { conn }) => {
   try {
     // ── Respaldar archivos importantes ──
     const backupFiles = ['config.js', '.env']
-    const backupDirs = ['GaaraSessions']
+    const backupDirs = ['GaaraSessions', 'plugins']
+    const excludeFiles = ['owner-ban.js', 'grupo-warn.js'] // NO borrar ni restaurar
     const backups = {}
 
     backupFiles.forEach(f => { if (fs.existsSync(f)) backups[f] = fs.readFileSync(f) })
     backupDirs.forEach(d => {
       if (fs.existsSync(d)) {
         backups[d] = fs.readdirSync(d).reduce((acc, file) => {
-          acc[file] = fs.readFileSync(path.join(d, file))
+          if (!excludeFiles.includes(file)) {
+            acc[file] = fs.readFileSync(path.join(d, file))
+          }
           return acc
         }, {})
       }
@@ -51,7 +54,8 @@ let handler = async (m, { conn }) => {
 
     if (hasUpdates) {
       execSync('git reset --hard origin/main', { stdio: 'inherit' })
-      // ── Restaurar backups ──
+
+      // ── Restaurar backups excluyendo archivos protegidos ──
       Object.keys(backups).forEach(f => {
         if (fs.lstatSync(f).isDirectory() && backupDirs.includes(f)) {
           Object.keys(backups[f]).forEach(file => {
@@ -61,6 +65,7 @@ let handler = async (m, { conn }) => {
           fs.writeFileSync(f, backups[f])
         }
       })
+
       msg += '✅ *GitHub:* Bot actualizado correctamente.\n\n'
     } else {
       msg += '✅ *No hay actualizaciones de GitHub.*\n\n'
@@ -89,8 +94,12 @@ let handler = async (m, { conn }) => {
     hasUpdates = true
     msg += '🧩 Cambios en plugins:\n'
     added.forEach(p => msg += `• ➕ ${p.name}\n`)
-    removed.forEach(p => msg += `• ❌ ${p.name} (eliminado)\n`)
-    modified.forEach(p => msg += `• ✏️ ${p.name} (modificado)\n`)
+    removed.forEach(p => {
+      if (!excludeFiles.includes(p.name)) msg += `• ❌ ${p.name} (eliminado)\n`
+    })
+    modified.forEach(p => {
+      if (!excludeFiles.includes(p.name)) msg += `• ✏️ ${p.name} (modificado)\n`
+    })
   }
 
   fs.writeFileSync(SNAPSHOT, JSON.stringify(now, null, 2))
