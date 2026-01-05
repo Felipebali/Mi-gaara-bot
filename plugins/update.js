@@ -5,7 +5,6 @@ import { execSync } from 'child_process'
 const SNAPSHOT = '.last_update_snapshot.json'
 const REPO = 'https://github.com/Felipebali/Mi-gaara-bot.git' // tu repo
 
-// ── Escanear plugins y obtener fecha de modificación ──
 function scanPlugins() {
   const dir = path.join(process.cwd(), 'plugins')
   if (!fs.existsSync(dir)) return []
@@ -24,7 +23,7 @@ let handler = async (m, { conn }) => {
 
   try {
     // ── Respaldar archivos importantes ──
-    const backupFiles = ['config.js', '.env', 'owner-ban.js', 'grupo-warn.js'] // archivos críticos protegidos
+    const backupFiles = ['config.js', '.env', 'owner-ban.js', 'grupo-warn.js']
     const backupDirs = ['GaaraSessions']
     const backups = {}
 
@@ -61,7 +60,7 @@ let handler = async (m, { conn }) => {
           fs.writeFileSync(f, backups[f])
         }
       })
-      msg += '✅ *GitHub:* Bot actualizado correctamente.\n\n'
+      msg += '✅ *GitHub:* Bot actualizado correctamente (sin reinicio).\n\n'
     } else {
       msg += '✅ *No hay actualizaciones de GitHub.*\n\n'
     }
@@ -96,13 +95,7 @@ let handler = async (m, { conn }) => {
   fs.writeFileSync(SNAPSHOT, JSON.stringify(now, null, 2))
   await conn.reply(m.chat, msg, m)
 
-  // ── Solo reiniciar si hubo actualizaciones ──
-  if (hasUpdates) {
-    setTimeout(() => {
-      console.log('♻️ Bot reiniciándose tras actualización...')
-      process.exit(0)
-    }, 1500)
-  }
+  // 🔹 Aquí NO reiniciamos más
 }
 
 handler.command = ['update','up']
