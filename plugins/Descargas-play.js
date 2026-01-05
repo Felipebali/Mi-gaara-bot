@@ -1,11 +1,66 @@
-import yts from "yt-search"
-import fetch from "node-fetch"
-import crypto from "crypto"
-import axios from "axios"
+import yts from "yt-search";
+import fetch from "node-fetch";
+import crypto from "crypto";
+import axios from "axios";
 
-const handler = async (m, { conn, text, usedPrefix, command }) => {
+const cooldowns = {}; // Registro de cooldown por usuario
+const COOLDOWN_TIME = 2 * 60 * 1000; // 2 minutos en milisegundos
+const MAX_WARNS = 3; // Número máximo de advertencias antes de expulsar
+
+// ============================
+// Base de datos de usuarios
+// ============================
+global.db = global.db || {};
+global.db.users = global.db.users || {};
+
+const handler = async (m, { conn, text, command }) => {
+  const user = m.sender;
+  const chatId = m.chat;
+
+  const now = Date.now();
+
+  // ============================
+  // Control de cooldown + warn
+  // ============================
+  if (cooldowns[user] && now - cooldowns[user] < COOLDOWN_TIME) {
+
+    // Inicializar usuario si no existe
+    global.db.users[user] = global.db.users[user] || {};
+    global.db.users[user].warns = (global.db.users[user].warns || 0) + 1;
+
+    const warns = global.db.users[user].warns;
+
+    // Expulsar si supera el máximo
+    if (warns >= MAX_WARNS) {
+      try {
+        await conn.groupParticipantsUpdate(chatId, [user], "remove");
+        delete global.db.users[user].warns; // resetear warns
+        delete cooldowns[user]; // resetear cooldown
+        return conn.reply(chatId, `⚠️ Usuario ${user.split("@")[0]} expulsado automáticamente por exceder ${MAX_WARNS} advertencias.`, m);
+      } catch (e) {
+        console.error("Error al expulsar usuario:", e);
+      }
+    }
+
+    const remaining = Math.ceil((COOLDOWN_TIME - (now - cooldowns[user])) / 1000);
+    return conn.reply(chatId, 
+      `⚠️ Espera ${remaining} segundo(s) antes de usar este comando de nuevo.\n` +
+      `⚠️ Advertencia registrada (${warns}/${MAX_WARNS})`, m);
+  }
+
+  // Actualiza último uso
+  cooldowns[user] = now;
+
+  // Reset automático del cooldown después de 2 minutos
+  setTimeout(() => {
+    delete cooldowns[user];
+  }, COOLDOWN_TIME);
+
+  // ============================
+  // Validación de texto
+  // ============================
   if (!text?.trim())
-    return conn.reply(m.chat, `⚠️ Ingresa el nombre o enlace del video.`, m);
+    return conn.reply(chatId, `⚠️ Ingresa el nombre o enlace del video.`, m);
 
   await m.react('🔎');
 
@@ -17,7 +72,7 @@ const handler = async (m, { conn, text, usedPrefix, command }) => {
     ? search.videos.find(v => v.videoId === videoMatch[1]) || search.videos[0]
     : search.videos[0];
 
-  if (!result) return conn.reply(m.chat, "❌ No se encontraron resultados.", m);
+  if (!result) return conn.reply(chatId, "❌ No se encontraron resultados.", m);
 
   const { title, thumbnail, timestamp, views, ago, url, author } = result;
   const vistas = formatViews(views);
@@ -36,29 +91,26 @@ const handler = async (m, { conn, text, usedPrefix, command }) => {
 📅 *Publicado:* ${ago || 'N/A'}
 🔗 *Link:* ${url}`;
 
-  await conn.sendMessage(m.chat, { image: { url: thumbnail }, caption: info }, { quoted: fkontak });
+  await conn.sendMessage(chatId, { image: { url: thumbnail }, caption: info }, { quoted: fkontak });
 
   try {
     if (['play', 'mp3'].includes(command)) {
       await m.react('🎧');
       const audio = await savetube.download(url, "audio");
       if (!audio?.status) throw audio?.error || "Error al obtener el audio";
-      await conn.sendMessage(m.chat, { audio: { url: audio.result.download }, mimetype: 'audio/mpeg', fileName: `${title}.mp3` }, { quoted: fkontak });
+      await conn.sendMessage(chatId, { audio: { url: audio.result.download }, mimetype: 'audio/mpeg', fileName: `${title}.mp3` }, { quoted: fkontak });
       await m.react('✔️');
-    }
-
-    else if (['play2', 'mp4'].includes(command)) {
+    } else if (['play2', 'mp4'].includes(command)) {
       await m.react('🎬');
       const video = await getVid(url);
       if (!video?.url) throw "No se pudo obtener el video.";
-      await conn.sendMessage(m.chat, { video: { url: video.url }, mimetype: 'video/mp4', fileName: `${title}.mp4`, caption: `🎥 ${title}` }, { quoted: fkontak });
+      await conn.sendMessage(chatId, { video: { url: video.url }, mimetype: 'video/mp4', fileName: `${title}.mp4`, caption: `🎥 ${title}` }, { quoted: fkontak });
       await m.react('✔️');
     }
-
   } catch (e) {
     await m.react('✖️');
     console.error(e);
-    conn.reply(m.chat, `⚠️ Error: ${e?.message || e}`, m);
+    conn.reply(chatId, `⚠️ Error: ${e?.message || e}`, m);
   }
 };
 
