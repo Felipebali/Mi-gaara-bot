@@ -5,9 +5,6 @@ import { execSync } from 'child_process'
 const SNAPSHOT = '.last_update_snapshot.json'
 const REPO = 'https://github.com/Felipebali/Mi-gaara-bot.git' // tu repo
 
-// Archivos especiales que NO se deben borrar ni sobrescribir
-const specialFiles = ['owner-ban.js', 'grupo-warn.js']
-
 // ── Escanear plugins y obtener fecha de modificación ──
 function scanPlugins() {
   const dir = path.join(process.cwd(), 'plugins')
@@ -28,27 +25,16 @@ let handler = async (m, { conn }) => {
   try {
     // ── Respaldar archivos importantes ──
     const backupFiles = ['config.js', '.env']
-    const backupDirs = ['GaaraSessions', 'plugins']
+    const backupDirs = ['GaaraSessions']
     const backups = {}
 
     backupFiles.forEach(f => { if (fs.existsSync(f)) backups[f] = fs.readFileSync(f) })
     backupDirs.forEach(d => {
       if (fs.existsSync(d)) {
-        backups[d] = {}
-        fs.readdirSync(d).forEach(file => {
-          backups[d][file] = fs.readFileSync(path.join(d, file))
-        })
-      }
-    })
-
-    // ── Respaldar archivos especiales temporalmente ──
-    const tempSpecial = {}
-    specialFiles.forEach(f => {
-      const filePath = path.join('plugins', f)
-      if (fs.existsSync(filePath)) {
-        const tempPath = path.join(process.cwd(), `.temp_${f}`)
-        fs.renameSync(filePath, tempPath)
-        tempSpecial[f] = tempPath
+        backups[d] = fs.readdirSync(d).reduce((acc, file) => {
+          acc[file] = fs.readFileSync(path.join(d, file))
+          return acc
+        }, {})
       }
     })
 
@@ -64,10 +50,8 @@ let handler = async (m, { conn }) => {
     if (diff) hasUpdates = true
 
     if (hasUpdates) {
-      // ── Git reset ──
       execSync('git reset --hard origin/main', { stdio: 'inherit' })
-
-      // ── Restaurar backups de directorios y archivos importantes ──
+      // ── Restaurar backups ──
       Object.keys(backups).forEach(f => {
         if (fs.lstatSync(f).isDirectory() && backupDirs.includes(f)) {
           Object.keys(backups[f]).forEach(file => {
@@ -77,13 +61,6 @@ let handler = async (m, { conn }) => {
           fs.writeFileSync(f, backups[f])
         }
       })
-
-      // ── Restaurar archivos especiales desde temporal ──
-      Object.keys(tempSpecial).forEach(f => {
-        const tempPath = tempSpecial[f]
-        fs.renameSync(tempPath, path.join('plugins', f))
-      })
-
       msg += '✅ *GitHub:* Bot actualizado correctamente.\n\n'
     } else {
       msg += '✅ *No hay actualizaciones de GitHub.*\n\n'
@@ -112,12 +89,8 @@ let handler = async (m, { conn }) => {
     hasUpdates = true
     msg += '🧩 Cambios en plugins:\n'
     added.forEach(p => msg += `• ➕ ${p.name}\n`)
-    removed.forEach(p => {
-      if (!specialFiles.includes(p.name)) msg += `• ❌ ${p.name} (eliminado)\n`
-    })
-    modified.forEach(p => {
-      if (!specialFiles.includes(p.name)) msg += `• ✏️ ${p.name} (modificado)\n`
-    })
+    removed.forEach(p => msg += `• ❌ ${p.name} (eliminado)\n`)
+    modified.forEach(p => msg += `• ✏️ ${p.name} (modificado)\n`)
   }
 
   fs.writeFileSync(SNAPSHOT, JSON.stringify(now, null, 2))
