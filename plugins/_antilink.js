@@ -1,20 +1,3 @@
-// 📂 plugins/antilink.js
-
-const groupLinkRegex = /chat.whatsapp.com\/(invite\/)?([0-9A-Za-z]{20,24})/i;
-const channelRegex = /whatsapp\.com\/channel\/[0-9A-Za-z]{15,50}/i;
-const anyLinkRegex = /https?:\/\/[^\s]+/i;
-
-// Enlaces permitidos
-const allowedLinks = /(tiktok.com|youtube.com|youtu.be|link.clashroyale.com)/i;
-const tagallLink = "https://miunicolink.local/tagall-FelixCat";
-const igLinkRegex = /(https?:\/\/)?(www.)?instagram.com\/[^\s]+/i;
-const clashLinkRegex = /(https?:\/\/)?(link.clashroyale.com)\/[^\s]+/i;
-
-// Dueños exentos total
-const owners = ["59896026646", "59898719147", "59892363485"];
-
-if (!global.groupInviteCodes) global.groupInviteCodes = {};
-
 export async function before(m, { conn, isAdmin, isBotAdmin }) {
   if (!m.isGroup) return true;
   if (!isBotAdmin) return true;
@@ -36,7 +19,6 @@ export async function before(m, { conn, isAdmin, isBotAdmin }) {
   const number = who.replace(/\D/g, "");
 
   const isOwner = owners.includes(number);
-
   const isGroupLink = groupLinkRegex.test(text);
   const isChannel = channelRegex.test(text);
   const isAnyLink = anyLinkRegex.test(text);
@@ -58,6 +40,9 @@ export async function before(m, { conn, isAdmin, isBotAdmin }) {
     } catch {}
   }
 
+  // 🔹 PERMITIR TODO A ADMINES
+  if (isAdmin) return true; // ✅ Aquí permitimos cualquier link a admins
+
   // 🔹 TAGALL → eliminar siempre
   if (isTagall) {
     await deleteMessageSafe();
@@ -68,12 +53,9 @@ export async function before(m, { conn, isAdmin, isBotAdmin }) {
     return false;
   }
 
-  // ⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐
-  // 🔥 ANTI-CANAL: borrar SIEMPRE EXCEPTO ADMIN u OWNER
-  // ⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐
+  // 🔥 ANTI-CANAL: borrar SIEMPRE EXCEPTO OWNER (admin ya está permitido)
   if (isChannel) {
-    if (isAdmin || isOwner) return true; // PERMITIDO para admin/owner
-
+    if (isOwner) return true; // PERMITIDO solo para owner
     await deleteMessageSafe();
     await conn.sendMessage(m.chat, {
       text: `🚫 Link de *canal* eliminado @${who.split("@")[0]}.`,
