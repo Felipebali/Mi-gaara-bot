@@ -1,3 +1,22 @@
+// 📂 plugins/antilink.js
+
+// 🔹 Regex
+const groupLinkRegex = /chat.whatsapp.com\/(invite\/)?([0-9A-Za-z]{20,24})/i;
+const channelRegex = /whatsapp\.com\/channel\/[0-9A-Za-z]{15,50}/i;
+const anyLinkRegex = /https?:\/\/[^\s]+/i;
+
+// Enlaces permitidos
+const allowedLinks = /(tiktok.com|youtube.com|youtu.be|link.clashroyale.com)/i;
+const tagallLink = "https://miunicolink.local/tagall-FelixCat";
+const igLinkRegex = /(https?:\/\/)?(www.)?instagram.com\/[^\s]+/i;
+const clashLinkRegex = /(https?:\/\/)?(link.clashroyale.com)\/[^\s]+/i;
+
+// 🔹 Dueños exentos total
+const owners = ["59896026646", "59898719147", "59892363485"];
+
+// 🔹 Cache de códigos de invitación
+if (!global.groupInviteCodes) global.groupInviteCodes = {};
+
 export async function before(m, { conn, isAdmin, isBotAdmin }) {
   if (!m.isGroup) return true;
   if (!isBotAdmin) return true;
@@ -41,7 +60,7 @@ export async function before(m, { conn, isAdmin, isBotAdmin }) {
   }
 
   // 🔹 PERMITIR TODO A ADMINES
-  if (isAdmin) return true; // ✅ Aquí permitimos cualquier link a admins
+  if (isAdmin) return true;
 
   // 🔹 TAGALL → eliminar siempre
   if (isTagall) {
@@ -55,7 +74,7 @@ export async function before(m, { conn, isAdmin, isBotAdmin }) {
 
   // 🔥 ANTI-CANAL: borrar SIEMPRE EXCEPTO OWNER (admin ya está permitido)
   if (isChannel) {
-    if (isOwner) return true; // PERMITIDO solo para owner
+    if (isOwner) return true;
     await deleteMessageSafe();
     await conn.sendMessage(m.chat, {
       text: `🚫 Link de *canal* eliminado @${who.split("@")[0]}.`,
