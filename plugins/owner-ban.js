@@ -3,9 +3,13 @@
 import fs from 'fs'
 import path from 'path'
 
-const BLACKLIST_FILE = path.join('./database', 'blacklist.json')
+const DATABASE_DIR = './database'
+const BLACKLIST_FILE = path.join(DATABASE_DIR, 'blacklist.json')
 
-// Asegurarnos que exista el archivo
+// 🔹 Crear carpeta si no existe
+if (!fs.existsSync(DATABASE_DIR)) fs.mkdirSync(DATABASE_DIR, { recursive: true })
+
+// 🔹 Crear archivo si no existe
 if (!fs.existsSync(BLACKLIST_FILE)) fs.writeFileSync(BLACKLIST_FILE, JSON.stringify({}))
 
 function sleep(ms) {
