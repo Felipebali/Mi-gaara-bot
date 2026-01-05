@@ -16,7 +16,8 @@ function sleep(ms) {
 
 function normalizeJid(jid = '') {
     if (!jid) return null
-    jid = jid.toString().trim().replace(/^+/, '')
+    // 🔹 Corregido regex: escapamos el + inicial
+    jid = jid.toString().trim().replace(/^\+/, '')
     if (jid.endsWith('@c.us')) return jid.replace('@c.us', '@s.whatsapp.net')
     if (jid.endsWith('@s.whatsapp.net')) return jid
     if (jid.includes('@')) return jid
