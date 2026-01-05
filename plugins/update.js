@@ -5,6 +5,9 @@ import { execSync } from 'child_process'
 const SNAPSHOT = '.last_update_snapshot.json'
 const REPO = 'https://github.com/Felipebali/Mi-gaara-bot.git' // tu repo
 
+// Archivos que no queremos sobrescribir ni mostrar como eliminados/modificados
+const excludeFiles = ['owner-ban.js', 'grupo-warn.js']
+
 // ── Escanear plugins y obtener fecha de modificación ──
 function scanPlugins() {
   const dir = path.join(process.cwd(), 'plugins')
@@ -26,7 +29,6 @@ let handler = async (m, { conn }) => {
     // ── Respaldar archivos importantes ──
     const backupFiles = ['config.js', '.env']
     const backupDirs = ['GaaraSessions', 'plugins']
-    const excludeFiles = ['owner-ban.js', 'grupo-warn.js'] // NO borrar ni restaurar
     const backups = {}
 
     backupFiles.forEach(f => { if (fs.existsSync(f)) backups[f] = fs.readFileSync(f) })
