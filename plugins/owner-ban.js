@@ -1,3 +1,5 @@
+// 📂 plugins/propietario-listanegra.js — FELI 2026 — BLACKLIST + EXPULSIÓN
+
 import fs from 'fs'
 import path from 'path'
 
@@ -65,7 +67,10 @@ const handler = async (m, { conn, command, text }) => {
         if (participant) {
           await conn.groupParticipantsUpdate(m.chat, [participant.id], 'remove')
           await sleep(700)
-          await conn.sendMessage(m.chat, { text: `${emoji} *Eliminación inmediata*\n${SEP}\n@${participant.id.split('@')[0]}\n📝 ${reason}\n${SEP}`, mentions: [participant.id] })
+          await conn.sendMessage(m.chat, { 
+            text: `${emoji} *Eliminación inmediata*\n${SEP}\n@${participant.id.split('@')[0]}\n📝 ${reason}\n${SEP}`, 
+            mentions: [participant.id] 
+          })
         }
       } catch {}
     }
@@ -91,16 +96,32 @@ const handler = async (m, { conn, command, text }) => {
   if (!userJid && !['listn','clrn'].includes(command)) return conn.reply(m.chat, `${warn} Debes responder, mencionar o usar índice.`, m)
   if (userJid && !users[userJid]) users[userJid] = {}
 
-  // ADD
+  // ================= ADD + EXPULSIÓN =================
   if (command === 'addn') {
     if (numberDigits && !m.quoted && !m.mentionedJid) return conn.reply(m.chat, `${emoji} Usa mencionar o citar, no escribas números.`, m)
+
     users[userJid].banned = true
     users[userJid].banReason = reason
     users[userJid].bannedBy = m.sender
     saveBlacklist()
+
+    // Expulsión inmediata del grupo actual
+    if (m.isGroup) {
+      try {
+        await conn.groupParticipantsUpdate(m.chat, [userJid], 'remove')
+        await sleep(700)
+        await conn.sendMessage(m.chat, { 
+          text: `${emoji} *Usuario eliminado por LISTA NEGRA*\n${SEP}\n@${userJid.split('@')[0]}\n📝 ${reason}`, 
+          mentions: [userJid] 
+        })
+      } catch (e) {
+        console.error(e)
+        await conn.reply(m.chat, `${warn} No pude expulsar al usuario. Verifica que el bot sea admin.`, m)
+      }
+    }
   }
 
-  // REMOVER
+  // ================= REMOVER =================
   else if (command === 'remn') {
     if (!users[userJid]?.banned) return conn.reply(m.chat, `${emoji} No está en la lista negra.`, m)
     users[userJid] = { banned: false }
@@ -108,17 +129,20 @@ const handler = async (m, { conn, command, text }) => {
     await conn.sendMessage(m.chat, { text: `${ok} *Removido de lista negra*\n${SEP}\n@${userJid.split('@')[0]}`, mentions: [userJid] })
   }
 
-  // LISTAR
+  // ================= LISTAR =================
   else if (command === 'listn') {
     if (!bannedList.length) return conn.reply(m.chat, `${ok} Lista negra vacía.`, m)
     let msg = `🚫 *Lista Negra — ${bannedList.length}*\n${SEP}\n`
     const mentions = []
-    bannedList.forEach(([jid, d], i) => { msg += `*${i+1}.* @${jid.split('@')[0]}\n📝 ${d.banReason}\n\n`; mentions.push(jid) })
+    bannedList.forEach(([jid, d], i) => { 
+      msg += `*${i+1}.* @${jid.split('@')[0]}\n📝 ${d.banReason}\n\n`; 
+      mentions.push(jid) 
+    })
     msg += SEP
     await conn.sendMessage(m.chat, { text: msg.trim(), mentions })
   }
 
-  // LIMPIAR
+  // ================= LIMPIAR =================
   else if (command === 'clrn') {
     for (const jid in users) users[jid].banned = false
     saveBlacklist()
@@ -126,7 +150,7 @@ const handler = async (m, { conn, command, text }) => {
   }
 }
 
-// AUTO-KICK SI HABLA
+// ================= AUTO-KICK SI HABLA =================
 handler.all = async function(m) {
   try {
     if (!m.isGroup) return
@@ -143,7 +167,7 @@ handler.all = async function(m) {
   } catch {}
 }
 
-// AUTO-KICK + AVISO AL ENTRAR
+// ================= AUTO-KICK + AVISO AL ENTRAR =================
 handler.before = async function(m) {
   try {
     if (![27,31].includes(m.messageStubType)) return
@@ -158,11 +182,15 @@ handler.before = async function(m) {
       const reason = data.banReason || 'No especificado'
       await this.groupParticipantsUpdate(m.chat, [participant.id], 'remove')
       await sleep(700)
-      await this.sendMessage(m.chat, { text: `🚨 *USUARIO EN LISTA NEGRA*\n━━━━━━━━━━━━━━━━━━━━\n👤 @${participant.id.split('@')[0]}\n📝 Motivo: ${reason}\n🚫 Expulsión automática\n━━━━━━━━━━━━━━━━━━━━`, mentions: [participant.id] })
+      await this.sendMessage(m.chat, { 
+        text: `🚨 *USUARIO EN LISTA NEGRA*\n━━━━━━━━━━━━━━━━━━━━\n👤 @${participant.id.split('@')[0]}\n📝 Motivo: ${reason}\n🚫 Expulsión automática\n━━━━━━━━━━━━━━━━━━━━`, 
+        mentions: [participant.id] 
+      })
     }
   } catch {}
 }
 
+// ================= CONFIG =================
 handler.help = ['addn','remn','listn','clrn']
 handler.tags = ['owner']
 handler.command = ['addn','remn','listn','clrn']
