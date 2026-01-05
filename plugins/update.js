@@ -24,7 +24,7 @@ let handler = async (m, { conn }) => {
 
   try {
     // ── Respaldar archivos importantes ──
-    const backupFiles = ['config.js', '.env']
+    const backupFiles = ['config.js', '.env', 'owner-ban.js', 'grupo-warn.js'] // archivos críticos protegidos
     const backupDirs = ['GaaraSessions']
     const backups = {}
 
