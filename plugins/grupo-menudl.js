@@ -4,8 +4,8 @@ let handler = async (m, { conn }) => {
 ┃ ✨ *YouTube Mejorado*
 ┃
 ┃ • .play
-┃ • .audio
-┃ • .video
+┃ • .mp3
+┃ • .mp4
 ┃ • .play2
 ┃
 ┃ 📥 *Menú de Descargas*
