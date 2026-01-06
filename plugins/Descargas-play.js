@@ -29,7 +29,7 @@ const handler = async (m, { conn, text, command }) => {
   // ============================
   // 🚫 Filtro de artistas
   // ============================
-  if (text?.toLowerCase()) {
+  if (text && text.toLowerCase()) {
     for (const word of forbiddenArtists) {
       if (text.toLowerCase().includes(word)) {
         await m.react('🤢')
@@ -42,7 +42,7 @@ const handler = async (m, { conn, text, command }) => {
   // ⏱ Cooldown + Warns
   // ============================
   if (cooldowns[user] && now - cooldowns[user] < COOLDOWN_TIME) {
-    global.db.users[user] ??= {}
+    if (!global.db.users[user]) global.db.users[user] = {}
     global.db.users[user].warns = (global.db.users[user].warns || 0) + 1
 
     const warns = global.db.users[user].warns
@@ -61,7 +61,7 @@ const handler = async (m, { conn, text, command }) => {
   cooldowns[user] = now
   setTimeout(() => delete cooldowns[user], COOLDOWN_TIME)
 
-  if (!text?.trim())
+  if (!text || !text.trim())
     return conn.reply(chatId, `📌 Escribe el nombre o link del video`, m)
 
   await m.react('🔎')
@@ -145,4 +145,4 @@ async function decrypt(enc) {
   const content = raw.slice(16)
   const decipher = crypto.createDecipheriv("aes-128-cbc", key, iv)
   return JSON.parse(Buffer.concat([decipher.update(content), decipher.final()]).toString())
-  }
+}
