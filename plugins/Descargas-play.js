@@ -1,180 +1,189 @@
-import yts from "yt-search"
-import fetch from "node-fetch"
-import crypto from "crypto"
-import axios from "axios"
+import yts from "yt-search";
+import fetch from "node-fetch";
+import crypto from "crypto";
+import axios from "axios";
 
-const cooldowns = {}
-const COOLDOWN_TIME = 2 * 60 * 1000
-const MAX_WARNS = 3
-
-// ============================
-// 👑 Owners
-// ============================
-const OWNERS = [
-  '59896026646@s.whatsapp.net',
-  '59898719147@s.whatsapp.net'
-]
+const cooldowns = {}; // Registro de cooldown por usuario
+const COOLDOWN_TIME = 2 * 60 * 1000; // 2 minutos
+const MAX_WARNS = 3; // Máx. advertencias
 
 // ============================
-// 🧹 Artistas prohibidos
+// Palabras prohibidas
 // ============================
 const forbiddenArtists = [
-  "roa", "peke77", "callejero fino", "anuel",
-  "l gante", "hades", "bad bunny"
-]
+"roa", "peke77", "callejero fino", "anuel",
+"l gante", "hades", "bad bunny"
+];
 
 // ============================
-// 🗂 Base de datos
+// Base de datos de usuarios
 // ============================
-global.db = global.db || {}
-global.db.users = global.db.users || {}
+global.db = global.db || {};
+global.db.users = global.db.users || {};
 
 const handler = async (m, { conn, text, command }) => {
-  const who = m.sender
-  const chatId = m.chat
-  const now = Date.now()
-  const isOwner = OWNERS.includes(who)
+const user = m.sender;
+const chatId = m.chat;
+const now = Date.now();
 
-  // ============================
-  // 🚫 Filtro de artistas
-  // ============================
-  if (text?.toLowerCase()) {
-    for (const word of forbiddenArtists) {
-      if (text.toLowerCase().includes(word)) {
-        await m.react('🤢')
-        return conn.reply(chatId, `🚫 No se permite contenido de *${word}*`, m)
-      }
-    }
-  }
-
-  // ============================
-  // 📌 Validar texto
-  // ============================
-  if (!text?.trim())
-    return conn.reply(chatId, `📌 Escribe el nombre o link del video`, m)
-
-  await m.react('🔎')
-
-  // ============================
-  // 🔍 Buscar canción
-  // ============================
-  const search = await yts(text)
-  const result = search.videos[0]
-  if (!result) return conn.reply(chatId, "❌ No se encontró nada", m)
-
-  // ============================
-  // ⏱ Cooldown + Warns
-  // ============================
-  if (!isOwner && cooldowns[who] && now - cooldowns[who] < COOLDOWN_TIME) {
-    if (!global.db.users[who]) global.db.users[who] = {}
-    global.db.users[who].warns = (global.db.users[who].warns || 0) + 1
-
-    const warns = global.db.users[who].warns
-    const remaining = Math.ceil((COOLDOWN_TIME - (now - cooldowns[who])) / 1000)
-
-    if (warns >= MAX_WARNS) {
-      await conn.groupParticipantsUpdate(chatId, [who], "remove")
-      delete global.db.users[who].warns
-      delete cooldowns[who]
-
-      return conn.sendMessage(chatId, {
-        text: `☠️ @${who.split("@")[0]} expulsado por abuso del comando`,
-        mentions: [who]
-      }, { quoted: m })
-    }
-
-    return conn.sendMessage(chatId, {
-      text: `⚠️ @${who.split("@")[0]} espera ${remaining}s\n⚠️ Advertencias: ${warns}/${MAX_WARNS}`,
-      mentions: [who]
-    }, { quoted: m })
-  }
-
-  if (!isOwner) {
-    cooldowns[who] = now
-    setTimeout(() => delete cooldowns[who], COOLDOWN_TIME)
-  }
-
-  // ============================
-  // 📄 Info
-  // ============================
-  const { title, thumbnail, views, timestamp, ago, url, author } = result
-
-  const info = `🎬 *${title}*
-👤 *Canal:* ${author.name}
-👀 *Vistas:* ${formatViews(views)}
-⏱ *Duración:* ${timestamp}
-📅 *Publicado:* ${ago}
-🔗 ${url}`
-
-  await conn.sendMessage(chatId, { image: { url: thumbnail }, caption: info }, { quoted: m })
-
-  try {
-    if (['play','mp3'].includes(command)) {
-      await m.react('🎧')
-      const audio = await savetube.download(url)
-      await conn.sendMessage(chatId, { audio: { url: audio.result.download }, mimetype: 'audio/mpeg' }, { quoted: m })
-      await m.react('✔️')
-    }
-
-    if (['play2','mp4'].includes(command)) {
-      await m.react('🎬')
-      const video = await getVid(url)
-      await conn.sendMessage(chatId, { video: { url: video.url }, mimetype: 'video/mp4' }, { quoted: m })
-      await m.react('✔️')
-    }
-  } catch (e) {
-    console.error(e)
-    conn.reply(chatId, `❌ Error al descargar`, m)
-  }
+// ============================
+// Filtro de palabras prohibidas
+// ============================
+if (text?.toLowerCase()) {
+const lowerText = text.toLowerCase();
+for (let word of forbiddenArtists) {
+if (lowerText.includes(word)) {
+await m.react('🤢');
+return conn.reply(chatId, ⚠️ No se permite reproducir contenido de "${word}"., m);
+}
+}
 }
 
-handler.command = handler.help = ['play','mp3','play2','mp4']
-handler.tags = ['download']
-export default handler
+// ============================
+// Control de cooldown + warn
+// ============================
+if (cooldowns[user] && now - cooldowns[user] < COOLDOWN_TIME) {
+global.db.users[user] = global.db.users[user] || {};
+global.db.users[user].warns = (global.db.users[user].warns || 0) + 1;
 
-// ============================
-// 🧩 Funciones
-// ============================
+const warns = global.db.users[user].warns;  
+
+if (warns >= MAX_WARNS) {  
+  try {  
+    await conn.groupParticipantsUpdate(chatId, [user], "remove");  
+    delete global.db.users[user].warns;  
+    delete cooldowns[user];  
+    return conn.reply(chatId, `⚠️ Usuario ${user.split("@")[0]} expulsado automáticamente por exceder ${MAX_WARNS} advertencias.`, m);  
+  } catch (e) {  
+    console.error("Error al expulsar usuario:", e);  
+  }  
+}  
+
+const remaining = Math.ceil((COOLDOWN_TIME - (now - cooldowns[user])) / 1000);  
+return conn.reply(chatId,   
+  `⚠️ Espera ${remaining} segundo(s) antes de usar este comando de nuevo.\n` +  
+  `⚠️ Advertencia registrada (${warns}/${MAX_WARNS})`, m);
+
+}
+
+cooldowns[user] = now;
+setTimeout(() => { delete cooldowns[user]; }, COOLDOWN_TIME);
+
+if (!text?.trim())
+return conn.reply(chatId, ⚠️ Ingresa el nombre o enlace del video., m);
+
+await m.react('🔎');
+
+const videoMatch = text.match(/(?:youtube.com|youtu.be)/(?:watch?v=|embed/|shorts/|v/)?([a-zA-Z0-9_-]{11})/);
+const query = videoMatch ? https://youtu.be/${videoMatch[1]} : text;
+
+const search = await yts(query);
+const result = videoMatch
+? search.videos.find(v => v.videoId === videoMatch[1]) || search.videos[0]
+: search.videos[0];
+
+if (!result) return conn.reply(chatId, "❌ No se encontraron resultados.", m);
+
+const { title, thumbnail, timestamp, views, ago, url, author } = result;
+const vistas = formatViews(views);
+
+const thumb = Buffer.from(await (await fetch("https://files.catbox.moe/wfd0ze.jpg")).arrayBuffer());
+
+const fkontak = {
+key: { fromMe: false, participant: "0@s.whatsapp.net" },
+message: { documentMessage: { title: 「 ${title} 」, fileName: global.botname || "Bot", jpegThumbnail: thumb } }
+};
+
+const info = 🎬 *${title}*   📺 *Canal:* ${author.name || "Desconocido"}   👀 *Vistas:* ${vistas}   ⏱️ *Duración:* ${timestamp || 'N/A'}   📅 *Publicado:* ${ago || 'N/A'}   🔗 *Link:* ${url};
+
+await conn.sendMessage(chatId, { image: { url: thumbnail }, caption: info }, { quoted: fkontak });
+
+try {
+if (['play', 'mp3'].includes(command)) {
+await m.react('🎧');
+const audio = await savetube.download(url, "audio");
+if (!audio?.status) throw audio?.error || "Error al obtener el audio";
+await conn.sendMessage(chatId, { audio: { url: audio.result.download }, mimetype: 'audio/mpeg', fileName: ${title}.mp3 }, { quoted: fkontak });
+await m.react('✔️');
+} else if (['play2', 'mp4'].includes(command)) {
+await m.react('🎬');
+const video = await getVid(url);
+if (!video?.url) throw "No se pudo obtener el video.";
+await conn.sendMessage(chatId, { video: { url: video.url }, mimetype: 'video/mp4', fileName: ${title}.mp4, caption: 🎥 ${title} }, { quoted: fkontak });
+await m.react('✔️');
+}
+} catch (e) {
+await m.react('✖️');
+console.error(e);
+conn.reply(chatId, ⚠️ Error: ${e?.message || e}, m);
+}
+};
+
+handler.command = handler.help = ['play', 'play2', 'mp3', 'mp4'];
+handler.tags = ['download'];
+export default handler;
+
+// =========================
+// Funciones auxiliares
+// =========================
 
 async function getVid(url) {
-  const r = await fetch(`https://api.yupra.my.id/api/downloader/ytmp4?url=${encodeURIComponent(url)}`)
-  const j = await r.json()
-  return { url: j?.result?.formats?.[0]?.url || j?.result?.url }
+try {
+const r = await fetch(https://api.yupra.my.id/api/downloader/ytmp4?url=${encodeURIComponent(url)});
+const res = await r.json();
+return { url: res?.result?.formats?.[0]?.url || res?.result?.url };
+} catch { return null; }
 }
-
-function formatViews(v) {
-  if (v >= 1e9) return (v / 1e9).toFixed(1) + "B"
-  if (v >= 1e6) return (v / 1e6).toFixed(1) + "M"
-  if (v >= 1e3) return (v / 1e3).toFixed(1) + "K"
-  return v.toString()
-}
-
-// ============================
-// 🔐 SaveTube API
-// ============================
 
 const savetube = {
-  youtube: u => u.match(/(?:v=|\/)([0-9A-Za-z_-]{11})/)?.[1],
-
-  async download(link) {
-    const id = this.youtube(link)
-    const info = await axios.post("https://media.savetube.me/api/v2/info", { url: link })
-    const data = await decrypt(info.data.data)
-    const dl = await axios.post("https://media.savetube.me/api/download", {
-      id,
-      downloadType: "audio",
-      quality: "mp3",
-      key: data.key
-    })
-    return { result: { download: dl.data.data.downloadUrl } }
-  }
+youtube: url => {
+const m = url.match(/(?:youtube.com/watch?v=|youtube.com/embed/|youtu.be/)([a-zA-Z0-9_-]{11})/);
+return m ? m[1] : null;
+},
+headers: { "User-Agent": "Mozilla/5.0" },
+api: { base: "https://media.savetube.me/api", info: "/v2/info", download: "/download", cdn: "/random-cdn" },
+request: async (endpoint, data = {}, method = "post") => {
+try {
+const url = endpoint.startsWith("http") ? endpoint : ${savetube.api.base}${endpoint};
+const { data: res } = await axios({ method, url, data: method === "post" ? data : undefined, params: method === "get" ? data : undefined, headers: savetube.headers });
+return { status: true, data: res };
+} catch (err) { return { status: false, error: err.message }; }
+},
+getCDN: async () => {
+const res = await savetube.request(savetube.api.cdn, {}, "get");
+return res.status ? { status: true, data: res.data.cdn } : res;
+},
+crypto: {
+hexToBuffer: hex => Buffer.from(hex.match(/.{1,2}/g).join(""), "hex"),
+decrypt: async enc => {
+const secretKey = "C5D58EF67A7584E4A29F6C35BBC4EB12";
+const data = Buffer.from(enc, "base64");
+const iv = data.slice(0, 16);
+const content = data.slice(16);
+const key = savetube.crypto.hexToBuffer(secretKey);
+const decipher = crypto.createDecipheriv("aes-128-cbc", key, iv);
+return JSON.parse(Buffer.concat([decipher.update(content), decipher.final()]).toString());
 }
+},
+download: async (link) => {
+const id = savetube.youtube(link);
+if (!id) return { status: false, error: "ID no encontrado" };
+try {
+const cdnRes = await savetube.getCDN();
+if (!cdnRes.status) return cdnRes;
+const info = await savetube.request(https://${cdnRes.data}${savetube.api.info}, { url: https://www.youtube.com/watch?v=${id} });
+if (!info.status) return info;
+const dec = await savetube.crypto.decrypt(info.data.data);
+const dl = await savetube.request(https://${cdnRes.data}${savetube.api.download}, { id, downloadType: "audio", quality: "mp3", key: dec.key });
+return dl.data?.data?.downloadUrl ? { status: true, result: { download: dl.data.data.downloadUrl, title: dec.title } } : { status: false, error: "No se pudo descargar" };
+} catch (e) { return { status: false, error: e.message }; }
+}
+};
 
-async function decrypt(enc) {
-  const key = Buffer.from("C5D58EF67A7584E4A29F6C35BBC4EB12", "hex")
-  const raw = Buffer.from(enc, "base64")
-  const iv = raw.slice(0, 16)
-  const content = raw.slice(16)
-  const decipher = crypto.createDecipheriv("aes-128-cbc", key, iv)
-  return JSON.parse(Buffer.concat([decipher.update(content), decipher.final()]).toString())
+function formatViews(v) {
+if (!v) return "N/A";
+if (v >= 1e9) return (v / 1e9).toFixed(1) + "B";
+if (v >= 1e6) return (v / 1e6).toFixed(1) + "M";
+if (v >= 1e3) return (v / 1e3).toFixed(1) + "K";
+return v.toString();
 }
