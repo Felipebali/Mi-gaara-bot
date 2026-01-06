@@ -22,7 +22,7 @@ global.db = global.db || {}
 global.db.users = global.db.users || {}
 
 const handler = async (m, { conn, text, command }) => {
-  const user = m.sender
+  const who = m.sender
   const chatId = m.chat
   const now = Date.now()
 
@@ -54,27 +54,33 @@ const handler = async (m, { conn, text, command }) => {
   if (!result) return conn.reply(chatId, "❌ No se encontró nada", m)
 
   // ============================
-  // ⏱ Cooldown + Warns (CORRECTO)
+  // ⏱ Cooldown + Warns (DESPUÉS DE PEDIR LA CANCIÓN)
   // ============================
-  if (cooldowns[user] && now - cooldowns[user] < COOLDOWN_TIME) {
-    global.db.users[user] ??= {}
-    global.db.users[user].warns = (global.db.users[user].warns || 0) + 1
+  if (cooldowns[who] && now - cooldowns[who] < COOLDOWN_TIME) {
+    global.db.users[who] ??= {}
+    global.db.users[who].warns = (global.db.users[who].warns || 0) + 1
 
-    const warns = global.db.users[user].warns
-    const remaining = Math.ceil((COOLDOWN_TIME - (now - cooldowns[user])) / 1000)
+    const warns = global.db.users[who].warns
+    const remaining = Math.ceil((COOLDOWN_TIME - (now - cooldowns[who])) / 1000)
 
     if (warns >= MAX_WARNS) {
-      await conn.groupParticipantsUpdate(chatId, [user], "remove")
-      delete global.db.users[user].warns
-      delete cooldowns[user]
-      return conn.reply(chatId, `☠️ ${user.split("@")[0]} expulsado por abuso del comando`, m)
+      await conn.groupParticipantsUpdate(chatId, [who], "remove")
+      delete global.db.users[who].warns
+      delete cooldowns[who]
+      return conn.sendMessage(chatId, {
+        text: `☠️ @${who.split("@")[0]} expulsado por abuso del comando`,
+        mentions: [who]
+      }, { quoted: m })
     }
 
-    return conn.reply(chatId, `⚠️ Espera ${remaining}s\n⚠️ Advertencias: ${warns}/${MAX_WARNS}`, m)
+    return conn.sendMessage(chatId, {
+      text: `⚠️ @${who.split("@")[0]} espera ${remaining}s\n⚠️ Advertencias: ${warns}/${MAX_WARNS}`,
+      mentions: [who]
+    }, { quoted: m })
   }
 
-  cooldowns[user] = now
-  setTimeout(() => delete cooldowns[user], COOLDOWN_TIME)
+  cooldowns[who] = now
+  setTimeout(() => delete cooldowns[who], COOLDOWN_TIME)
 
   // ============================
   // 📄 Info
