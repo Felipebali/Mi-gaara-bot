@@ -3,8 +3,36 @@ import yts from "yt-search"
 import crypto from "crypto"
 import axios from "axios"
 
+// ============================
+// 🧊 Cooldown system
+// ============================
+const cooldowns = new Map()
+const COOLDOWN_TIME = 2 * 60 * 1000 // 2 minutos
+
 const handler = async (m, { conn, text, usedPrefix, command }) => {
   try {
+
+    // ── Cooldown (excepto owners y admins)
+    const isOwner = global.owner?.some(([id]) => m.sender.includes(id))
+    const isAdmin = m.isGroup && (m.isAdmin || m.isSuperAdmin)
+
+    if (!isOwner && !isAdmin) {
+      const now = Date.now()
+      const last = cooldowns.get(m.sender) || 0
+      const remaining = COOLDOWN_TIME - (now - last)
+
+      if (remaining > 0) {
+        const s = Math.ceil(remaining / 1000)
+        return conn.reply(
+          m.chat,
+          `🧊 *Cooldown activo*\n\nEspera *${s} segundos* antes de volver a usar *${usedPrefix}${command}*`,
+          m
+        )
+      }
+
+      cooldowns.set(m.sender, now)
+    }
+
     if (!text?.trim())
       return conn.reply(m.chat, `*🍃 Por favor, ingresa el nombre o enlace del video.*`, m, rcanal)
 
@@ -246,4 +274,4 @@ function formatViews(views) {
   if (views >= 1_000_000) return `${(views / 1_000_000).toFixed(1)}M`;
   if (views >= 1_000) return `${(views / 1_000).toFixed(1)}K`;
   return views.toString();
-        }
+}
