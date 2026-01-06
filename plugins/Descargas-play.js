@@ -54,10 +54,11 @@ const handler = async (m, { conn, text, command }) => {
   if (!result) return conn.reply(chatId, "❌ No se encontró nada", m)
 
   // ============================
-  // ⏱ Cooldown + Warns (DESPUÉS DE PEDIR LA CANCIÓN)
+  // ⏱ Cooldown + Warns
   // ============================
   if (cooldowns[who] && now - cooldowns[who] < COOLDOWN_TIME) {
-    global.db.users[who] ??= {}
+    if (!global.db.users[who]) global.db.users[who] = {}
+
     global.db.users[who].warns = (global.db.users[who].warns || 0) + 1
 
     const warns = global.db.users[who].warns
@@ -67,6 +68,7 @@ const handler = async (m, { conn, text, command }) => {
       await conn.groupParticipantsUpdate(chatId, [who], "remove")
       delete global.db.users[who].warns
       delete cooldowns[who]
+
       return conn.sendMessage(chatId, {
         text: `☠️ @${who.split("@")[0]} expulsado por abuso del comando`,
         mentions: [who]
@@ -148,7 +150,12 @@ const savetube = {
     const id = this.youtube(link)
     const info = await axios.post("https://media.savetube.me/api/v2/info", { url: link })
     const data = await decrypt(info.data.data)
-    const dl = await axios.post("https://media.savetube.me/api/download", { id, downloadType: "audio", quality: "mp3", key: data.key })
+    const dl = await axios.post("https://media.savetube.me/api/download", {
+      id,
+      downloadType: "audio",
+      quality: "mp3",
+      key: data.key
+    })
     return { result: { download: dl.data.data.downloadUrl } }
   }
 }
