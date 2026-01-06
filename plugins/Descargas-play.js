@@ -8,6 +8,14 @@ const COOLDOWN_TIME = 2 * 60 * 1000
 const MAX_WARNS = 3
 
 // ============================
+// 👑 Owners
+// ============================
+const OWNERS = [
+  '59896026646@s.whatsapp.net',
+  '59898719147@s.whatsapp.net'
+]
+
+// ============================
 // 🧹 Artistas prohibidos
 // ============================
 const forbiddenArtists = [
@@ -25,6 +33,7 @@ const handler = async (m, { conn, text, command }) => {
   const who = m.sender
   const chatId = m.chat
   const now = Date.now()
+  const isOwner = OWNERS.includes(who)
 
   // ============================
   // 🚫 Filtro de artistas
@@ -56,9 +65,8 @@ const handler = async (m, { conn, text, command }) => {
   // ============================
   // ⏱ Cooldown + Warns
   // ============================
-  if (cooldowns[who] && now - cooldowns[who] < COOLDOWN_TIME) {
+  if (!isOwner && cooldowns[who] && now - cooldowns[who] < COOLDOWN_TIME) {
     if (!global.db.users[who]) global.db.users[who] = {}
-
     global.db.users[who].warns = (global.db.users[who].warns || 0) + 1
 
     const warns = global.db.users[who].warns
@@ -81,8 +89,10 @@ const handler = async (m, { conn, text, command }) => {
     }, { quoted: m })
   }
 
-  cooldowns[who] = now
-  setTimeout(() => delete cooldowns[who], COOLDOWN_TIME)
+  if (!isOwner) {
+    cooldowns[who] = now
+    setTimeout(() => delete cooldowns[who], COOLDOWN_TIME)
+  }
 
   // ============================
   // 📄 Info
