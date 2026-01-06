@@ -39,7 +39,22 @@ const handler = async (m, { conn, text, command }) => {
   }
 
   // ============================
-  // ⏱ Cooldown + Warns
+  // 📌 Validar texto
+  // ============================
+  if (!text?.trim())
+    return conn.reply(chatId, `📌 Escribe el nombre o link del video`, m)
+
+  await m.react('🔎')
+
+  // ============================
+  // 🔍 Buscar canción
+  // ============================
+  const search = await yts(text)
+  const result = search.videos[0]
+  if (!result) return conn.reply(chatId, "❌ No se encontró nada", m)
+
+  // ============================
+  // ⏱ Cooldown + Warns (CORRECTO)
   // ============================
   if (cooldowns[user] && now - cooldowns[user] < COOLDOWN_TIME) {
     global.db.users[user] ??= {}
@@ -61,15 +76,9 @@ const handler = async (m, { conn, text, command }) => {
   cooldowns[user] = now
   setTimeout(() => delete cooldowns[user], COOLDOWN_TIME)
 
-  if (!text?.trim())
-    return conn.reply(chatId, `📌 Escribe el nombre o link del video`, m)
-
-  await m.react('🔎')
-
-  const search = await yts(text)
-  const result = search.videos[0]
-  if (!result) return conn.reply(chatId, "❌ No se encontró nada", m)
-
+  // ============================
+  // 📄 Info
+  // ============================
   const { title, thumbnail, views, timestamp, ago, url, author } = result
 
   const info = `🎬 *${title}*
