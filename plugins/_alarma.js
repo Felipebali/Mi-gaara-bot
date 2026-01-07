@@ -1,8 +1,5 @@
 import fs from 'fs'
 
-// ────────────────────────────
-// 📂 Base de datos
-// ────────────────────────────
 const DIR = './database'
 const DB = `${DIR}/alarms.json`
 
@@ -16,99 +13,99 @@ function save(data) {
   fs.writeFileSync(DB, JSON.stringify(data, null, 2))
 }
 
-// ────────────────────────────
-// 🧭 Verificador permanente
-// ────────────────────────────
-let checkerStarted = false
+// 🧭 Control de ejecución
+let lastCheck = 0
 
-function startAlarmChecker(conn) {
-  setInterval(async () => {
-    let data = load()
-    let now = Date.now()
-    let changed = false
+export default {
 
-    for (let user in data) {
-      if (now >= data[user].time) {
-        let { chat, reason } = data[user]
+  // ─────────────────────────
+  // 🧭 Verificador global (como tu mentionBackup)
+  // ─────────────────────────
+  before: async ({ conn }) => {
+    try {
+      const now = Date.now()
 
-        await conn.sendMessage(chat, {
-          text: `⏰ *ALARMA*\n\n👤 @${user.split('@')[0]}\n📝 ${reason}`,
-          mentions: [user]
-        })
+      // revisar cada 5 segundos
+      if (now - lastCheck < 5000) return false
+      lastCheck = now
 
-        delete data[user]
-        changed = true
+      let data = load()
+      let changed = false
+
+      for (let user in data) {
+        if (now >= data[user].time) {
+          const { chat, reason } = data[user]
+
+          await conn.sendMessage(chat, {
+            text: `⏰ *ALARMA*\n\n👤 @${user.split('@')[0]}\n📝 ${reason}`,
+            mentions: [user]
+          })
+
+          delete data[user]
+          changed = true
+        }
       }
+
+      if (changed) save(data)
+      return false
+
+    } catch (e) {
+      console.error('❌ Error alarma:', e.message)
+      return false
+    }
+  },
+
+  // ─────────────────────────
+  // 🕰️ Handler del comando
+  // ─────────────────────────
+  handler: async (m, { conn, text, command }) => {
+
+    const who = m.sender
+    const chat = m.chat
+    let data = load()
+
+    // ❌ Cancelar alarma
+    if (command === 'can') {
+      if (!data[who]) return m.reply('❌ No tienes ninguna alarma activa')
+
+      delete data[who]
+      save(data)
+      return m.reply('🛑 Alarma cancelada correctamente')
     }
 
-    if (changed) save(data)
-  }, 5000)
-}
+    // ⏰ Crear alarma
+    if (!text) return m.reply('🕰️ Uso:\n.alarma 19:30 Tomar agua')
 
-// ────────────────────────────
-// 🕰️ Handler principal
-// ────────────────────────────
-const handler = async (m, { conn, text, command }) => {
+    const [time, ...reasonArr] = text.split(' ')
+    const reason = reasonArr.join(' ').trim()
 
-  // Iniciar verificador UNA sola vez
-  if (!checkerStarted) {
-    startAlarmChecker(conn)
-    checkerStarted = true
-  }
+    if (!time || !reason) return m.reply('❌ Formato incorrecto')
+    if (!/^\d{1,2}:\d{2}$/.test(time)) return m.reply('⏰ Hora inválida')
 
-  const who = m.sender
-  const chat = m.chat
-  let data = load()
+    let [h, min] = time.split(':').map(Number)
+    if (h > 23 || min > 59) return m.reply('⏰ Hora inválida')
 
-  // ❌ Cancelar alarma
-  if (command === 'can') {
-    if (!data[who]) return m.reply('❌ No tienes ninguna alarma activa')
+    const now = new Date()
+    const target = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate(),
+      h, min, 0, 0
+    )
 
-    delete data[who]
+    if (target <= now) target.setDate(target.getDate() + 1)
+
+    data[who] = { time: target.getTime(), reason, chat }
     save(data)
-    return m.reply('🛑 Alarma cancelada correctamente')
+
+    await conn.sendMessage(chat, {
+      text: `⏳ Alarma programada para *${time}*\n📝 ${reason}\n👤 @${who.split('@')[0]}`,
+      mentions: [who]
+    })
   }
-
-  // ⏰ Crear alarma
-  if (!text) return m.reply('🕰️ Uso:\n.alarma 19:30 Tomar agua')
-
-  const [time, ...reasonArr] = text.split(' ')
-  const reason = reasonArr.join(' ').trim()
-
-  if (!time || !reason) return m.reply('❌ Formato incorrecto')
-  if (!/^\d{1,2}:\d{2}$/.test(time)) return m.reply('⏰ Hora inválida')
-
-  let [h, min] = time.split(':').map(Number)
-  if (h > 23 || min > 59) return m.reply('⏰ Hora inválida')
-
-  const now = new Date()
-  const target = new Date(
-    now.getFullYear(),
-    now.getMonth(),
-    now.getDate(),
-    h, min, 0, 0
-  )
-
-  if (target <= now) target.setDate(target.getDate() + 1)
-
-  data[who] = {
-    time: target.getTime(),
-    reason,
-    chat
-  }
-
-  save(data)
-
-  await conn.sendMessage(chat, {
-    text: `⏳ Alarma programada para *${time}*\n📝 ${reason}\n👤 @${who.split('@')[0]}`,
-    mentions: [who]
-  })
 }
 
-// ────────────────────────────
-
-handler.command = ['alarma', 'can']
-handler.tags = ['tools']
-handler.help = ['alarma <hora> <motivo>', 'can']
-
-export default handler
+// ─────────────────────────
+export const command = ['alarma', 'can']
+export const tags = ['tools']
+export const help = ['alarma <hora> <motivo>', 'can']
