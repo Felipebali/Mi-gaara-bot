@@ -6,10 +6,7 @@ import path from 'path'
 const DATABASE_DIR = './database'
 const BLACKLIST_FILE = path.join(DATABASE_DIR, 'blacklist.json')
 
-// 🔹 Crear carpeta si no existe
 if (!fs.existsSync(DATABASE_DIR)) fs.mkdirSync(DATABASE_DIR, { recursive: true })
-
-// 🔹 Crear archivo si no existe
 if (!fs.existsSync(BLACKLIST_FILE)) fs.writeFileSync(BLACKLIST_FILE, JSON.stringify({}))
 
 function sleep(ms) {
@@ -49,11 +46,8 @@ function findParticipantByDigits(metadata, digits) {
 // ================= BASE DE DATOS =================
 
 function readBlacklist() {
-  try {
-    return JSON.parse(fs.readFileSync(BLACKLIST_FILE))
-  } catch {
-    return {}
-  }
+  try { return JSON.parse(fs.readFileSync(BLACKLIST_FILE)) }
+  catch { return {} }
 }
 
 function writeBlacklist(data) {
@@ -66,30 +60,9 @@ function writeBlacklist(data) {
 
 const handler = async (m, { conn, command, text }) => {
   const SEP = '━━━━━━━━━━━━━━━━━━━━'
-  const ICON = { ban: '🚫', ok: '✅', warn: '⚠️', alert: '🚨' }
+  const ICON = { ban: '🚫', ok: '✅', warn: '⚠️' }
 
   const dbUsers = readBlacklist()
-
-  // ================= AUTO-KICK AL CITAR =================
-  if (m.isGroup && m.quoted) {
-    const quotedJid = normalizeJid(m.quoted.sender || m.quoted.participant)
-    if (quotedJid && dbUsers[quotedJid]?.banned) {
-      try {
-        const reason = dbUsers[quotedJid].reason || 'No especificado'
-        const meta = await conn.groupMetadata(m.chat)
-        const participant = findParticipantByDigits(meta, digitsOnly(quotedJid))
-        if (participant) {
-          await conn.groupParticipantsUpdate(m.chat, [participant.id], 'remove')
-          await sleep(700)
-          await conn.sendMessage(m.chat, {
-            text: `${ICON.ban} *ELIMINACIÓN INMEDIATA — LISTA NEGRA*\n${SEP}\n👤 @${participant.id.split('@')[0]}\n📝 *Motivo:* ${reason}\n${SEP}`,
-            mentions: [participant.id]
-          })
-        }
-      } catch {}
-    }
-  }
-
   const bannedList = Object.entries(dbUsers).filter(([_, d]) => d.banned)
 
   let userJid = null
@@ -125,28 +98,37 @@ const handler = async (m, { conn, command, text }) => {
       return conn.reply(m.chat, `${ICON.ban} Usa mencionar o citar, no escribas números.`, m)
 
     dbUsers[userJid] = { banned: true, reason, addedBy: m.sender }
+    writeBlacklist(dbUsers)
 
+    // 🔥 EXPULSIÓN INMEDIATA SI ESTÁ EN ESTE GRUPO
+    if (m.isGroup) {
+      try {
+        const meta = await conn.groupMetadata(m.chat)
+        const participant = findParticipantByDigits(meta, digitsOnly(userJid))
+        if (participant) {
+          await conn.groupParticipantsUpdate(m.chat, [participant.id], 'remove')
+          await sleep(600)
+          await conn.sendMessage(m.chat, {
+            text: `${ICON.ban} *USUARIO BLOQUEADO — LISTA NEGRA*\n${SEP}\n👤 @${participant.id.split('@')[0]}\n📝 *Motivo:* ${reason}\n🚷 *Expulsión inmediata*\n${SEP}`,
+            mentions: [participant.id]
+          })
+        }
+      } catch {}
+    }
+
+    // 🌐 EXPULSIÓN GLOBAL
     try {
       const groups = Object.keys(await conn.groupFetchAllParticipating())
       for (const jid of groups) {
-        await sleep(800)
+        await sleep(500)
         try {
           const meta = await conn.groupMetadata(jid)
           const participant = findParticipantByDigits(meta, digitsOnly(userJid))
           if (!participant) continue
-
           await conn.groupParticipantsUpdate(jid, [participant.id], 'remove')
-          await sleep(700)
-
-          await conn.sendMessage(jid, {
-            text: `${ICON.ban} *USUARIO BLOQUEADO — LISTA NEGRA*\n${SEP}\n👤 @${participant.id.split('@')[0]}\n📝 *Motivo:* ${reason}\n🚷 *Expulsión automática*\n${SEP}`,
-            mentions: [participant.id]
-          })
         } catch {}
       }
     } catch {}
-
-    writeBlacklist(dbUsers)
   }
 
   // ================= REMOVER =================
@@ -203,7 +185,7 @@ handler.all = async function (m) {
     if (!participant) return
 
     await this.groupParticipantsUpdate(m.chat, [participant.id], 'remove')
-    await sleep(700)
+    await sleep(600)
 
     await this.sendMessage(m.chat, {
       text: `🚫 *USUARIO BLOQUEADO — LISTA NEGRA*\n━━━━━━━━━━━━━━━━━━━━\n👤 @${participant.id.split('@')[0]}\n🚷 *Expulsión automática*\n━━━━━━━━━━━━━━━━━━━━`,
@@ -223,6 +205,7 @@ handler.before = async function (m) {
 
     const dbUsers = readBlacklist()
     const meta = await this.groupMetadata(m.chat)
+
     for (const u of m.messageStubParameters || []) {
       const ujid = normalizeJid(u)
       const data = dbUsers[ujid]
@@ -231,13 +214,11 @@ handler.before = async function (m) {
       const participant = findParticipantByDigits(meta, digitsOnly(ujid))
       if (!participant) continue
 
-      const reason = data.reason || 'No especificado'
-
       await this.groupParticipantsUpdate(m.chat, [participant.id], 'remove')
-      await sleep(700)
+      await sleep(600)
 
       await this.sendMessage(m.chat, {
-        text: `🚨 *USUARIO EN LISTA NEGRA*\n━━━━━━━━━━━━━━━━━━━━\n👤 @${participant.id.split('@')[0]}\n📝 *Motivo:* ${reason}\n🚷 *Expulsión inmediata*\n━━━━━━━━━━━━━━━━━━━━`,
+        text: `🚨 *USUARIO EN LISTA NEGRA*\n━━━━━━━━━━━━━━━━━━━━\n👤 @${participant.id.split('@')[0]}\n📝 *Motivo:* ${data.reason || 'No especificado'}\n🚷 *Expulsión inmediata*\n━━━━━━━━━━━━━━━━━━━━`,
         mentions: [participant.id]
       })
     }
