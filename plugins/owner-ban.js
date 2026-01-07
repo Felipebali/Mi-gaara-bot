@@ -126,6 +126,22 @@ const handler = async (m, { conn, command, text }) => {
 
     dbUsers[userJid] = { banned: true, reason, addedBy: m.sender }
 
+    // 🚨 EXPULSIÓN INMEDIATA SI SE USÓ CITA
+    if (m.isGroup && m.quoted) {
+      try {
+        const meta = await conn.groupMetadata(m.chat)
+        const participant = findParticipantByDigits(meta, digitsOnly(userJid))
+        if (participant) {
+          await conn.groupParticipantsUpdate(m.chat, [participant.id], 'remove')
+          await sleep(700)
+          await conn.sendMessage(m.chat, {
+            text: `${ICON.ban} *USUARIO BLOQUEADO — LISTA NEGRA*\n${SEP}\n👤 @${participant.id.split('@')[0]}\n📝 *Motivo:* ${reason}\n🚷 *Expulsión inmediata*\n${SEP}`,
+            mentions: [participant.id]
+          })
+        }
+      } catch {}
+    }
+
     try {
       const groups = Object.keys(await conn.groupFetchAllParticipating())
       for (const jid of groups) {
