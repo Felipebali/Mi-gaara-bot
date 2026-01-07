@@ -95,7 +95,7 @@ const handler = async (m, { conn, command, text }) => {
   let userJid = null
   let numberDigits = null
 
-  if (command === 'remn' && /^\d+$/.test(text?.trim())) {
+  if (command === 'unln' && /^\d+$/.test(text?.trim())) {
     const index = parseInt(text.trim()) - 1
     if (!bannedList[index]) return conn.reply(m.chat, `${ICON.ban} Número inválido.`, m)
     userJid = bannedList[index][0]
@@ -114,13 +114,13 @@ const handler = async (m, { conn, command, text }) => {
   let reason = text?.replace(/@/g, '').replace(/\d{5,}/g, '').trim()
   if (!reason) reason = 'No especificado'
 
-  if (!userJid && !['listn', 'clrn'].includes(command))
+  if (!userJid && !['vln', 'clrn'].includes(command))
     return conn.reply(m.chat, `${ICON.warn} Debes responder, mencionar o usar índice.`, m)
 
   if (userJid && !dbUsers[userJid]) dbUsers[userJid] = {}
 
   // ================= ADD =================
-  if (command === 'addn') {
+  if (command === 'ln') {
     if (numberDigits && !m.quoted && !m.mentionedJid)
       return conn.reply(m.chat, `${ICON.ban} Usa mencionar o citar, no escribas números.`, m)
 
@@ -150,7 +150,7 @@ const handler = async (m, { conn, command, text }) => {
   }
 
   // ================= REMOVER =================
-  else if (command === 'remn') {
+  else if (command === 'unln') {
     if (!dbUsers[userJid]?.banned)
       return conn.reply(m.chat, `${ICON.ban} No está en la lista negra.`, m)
 
@@ -164,7 +164,7 @@ const handler = async (m, { conn, command, text }) => {
   }
 
   // ================= LISTAR =================
-  else if (command === 'listn') {
+  else if (command === 'vln') {
     if (!bannedList.length) return conn.reply(m.chat, `${ICON.ok} Lista negra vacía.`, m)
 
     let msg = `${ICON.ban} *LISTA NEGRA — ${bannedList.length} USUARIOS*\n${SEP}\n`
@@ -246,9 +246,9 @@ handler.before = async function (m) {
 
 // ================= CONFIG =================
 
-handler.help = ['addn', 'remn', 'listn', 'clrn']
+handler.help = ['ln', 'unln', 'vln', 'clrn']
 handler.tags = ['owner']
-handler.command = ['addn', 'remn', 'listn', 'clrn']
+handler.command = ['ln', 'unln', 'vln', 'clrn']
 handler.rowner = true
 
 export default handler
