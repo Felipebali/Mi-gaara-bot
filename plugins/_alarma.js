@@ -34,29 +34,37 @@ const handler = async (m, { conn, text, command }) => {
   if (!/^\d{1,2}:\d{2}$/.test(time))
     return conn.reply(chat, `⏰ Hora inválida (usa HH:MM)`, m)
 
-  let [h, mnt] = time.split(":").map(Number)
-
-  if (h > 23 || mnt > 59)
+  let [h, min] = time.split(":").map(Number)
+  if (h > 23 || min > 59)
     return conn.reply(chat, `⏰ Hora inválida`, m)
 
-  // Si ya tiene una alarma, la reemplazamos
+  // Reemplazar alarma previa
   if (alarms[who]) {
     clearTimeout(alarms[who])
     delete alarms[who]
   }
 
+  // 🧠 Tomar fecha actual y fijar la hora
   const now = new Date()
-  const target = new Date()
-  target.setHours(h, mnt, 0, 0)
+  const target = new Date(
+    now.getFullYear(),
+    now.getMonth(),
+    now.getDate(),
+    h, min, 0, 0
+  )
 
+  // Si ya pasó hoy, programar para mañana
   if (target <= now) target.setDate(target.getDate() + 1)
 
   const delay = target - now
 
-  conn.reply(chat, `⏳ Alarma configurada para las *${time}*\n📝 Motivo: *${reason}*`, m)
+  await conn.sendMessage(chat, {
+    text: `⏳ Alarma programada para *${time}*\n📝 ${reason}\n👤 @${who.split("@")[0]}`,
+    mentions: [who]
+  }, { quoted: m })
 
-  alarms[who] = setTimeout(() => {
-    conn.sendMessage(chat, {
+  alarms[who] = setTimeout(async () => {
+    await conn.sendMessage(chat, {
       text: `⏰ *ALARMA*\n\n👤 @${who.split("@")[0]}\n📝 ${reason}`,
       mentions: [who]
     })
