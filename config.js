@@ -18,13 +18,13 @@ global.owner = [
 // <-- Número @s.whatsapp.net -->
   ['59898719147', 'Feli', true], // tu número como dueño
   ['59896026646', 'G', true], 
-  ['59892682421', 'Bot', true],
+  ['59899022028', 'A', true],
   ['59892363485', 'Benja', true], 
 
 // <-- Número @lid -->
   ['119069730668723', 'FeliLID', true], // tu LID
   ['262573496758272', 'GerLID', true], 
-  ['170777177522428', 'BotLID', true], 
+  ['219357485498419', 'ALID', true], 
   ['109848586911986', 'benjaLID', true]
 ];
 
