@@ -6,15 +6,10 @@ import path from 'path'
 const DATABASE_DIR = './database'
 const BLACKLIST_FILE = path.join(DATABASE_DIR, 'blacklist.json')
 
-// 🔹 Crear carpeta si no existe
 if (!fs.existsSync(DATABASE_DIR)) fs.mkdirSync(DATABASE_DIR, { recursive: true })
-
-// 🔹 Crear archivo si no existe
 if (!fs.existsSync(BLACKLIST_FILE)) fs.writeFileSync(BLACKLIST_FILE, JSON.stringify({}))
 
-function sleep(ms) {
-  return new Promise(r => setTimeout(r, ms))
-}
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)) }
 
 // ================= UTILIDADES =================
 
@@ -49,11 +44,8 @@ function findParticipantByDigits(metadata, digits) {
 // ================= BASE DE DATOS =================
 
 function readBlacklist() {
-  try {
-    return JSON.parse(fs.readFileSync(BLACKLIST_FILE))
-  } catch {
-    return {}
-  }
+  try { return JSON.parse(fs.readFileSync(BLACKLIST_FILE)) }
+  catch { return {} }
 }
 
 function writeBlacklist(data) {
@@ -99,16 +91,11 @@ const handler = async (m, { conn, command, text }) => {
     const index = parseInt(text.trim()) - 1
     if (!bannedList[index]) return conn.reply(m.chat, `${ICON.ban} Número inválido.`, m)
     userJid = bannedList[index][0]
-  } else if (m.quoted) {
-    userJid = normalizeJid(m.quoted.sender || m.quoted.participant)
-  } else if (m.mentionedJid?.length) {
-    userJid = normalizeJid(m.mentionedJid[0])
-  } else if (text) {
+  } else if (m.quoted) userJid = normalizeJid(m.quoted.sender || m.quoted.participant)
+  else if (m.mentionedJid?.length) userJid = normalizeJid(m.mentionedJid[0])
+  else if (text) {
     const num = extractPhoneNumber(text)
-    if (num) {
-      numberDigits = num
-      userJid = normalizeJid(num)
-    }
+    if (num) { numberDigits = num; userJid = normalizeJid(num) }
   }
 
   let reason = text?.replace(/@/g, '').replace(/\d{5,}/g, '').trim()
@@ -213,7 +200,7 @@ handler.all = async function (m) {
 }
 
 // =====================================================
-// ========== AUTO-KICK + AVISO AL ENTRAR =================
+// ===== LIMPIEZA + AUTO-KICK AL ENTRAR (CORREGIDO) =====
 // =====================================================
 
 handler.before = async function (m) {
@@ -223,6 +210,27 @@ handler.before = async function (m) {
 
     const dbUsers = readBlacklist()
     const meta = await this.groupMetadata(m.chat)
+    const botJid = this.user?.jid
+
+    // 🧹 Limpieza total cuando el bot entra
+    if ((m.messageStubParameters || []).includes(botJid)) {
+      for (const p of meta.participants) {
+        const jid = normalizeJid(p.id)
+        const data = dbUsers[jid]
+        if (!data?.banned) continue
+
+        await sleep(700)
+        await this.groupParticipantsUpdate(m.chat, [p.id], 'remove')
+
+        await this.sendMessage(m.chat, {
+          text: `🧹 *LIMPIEZA AUTOMÁTICA — LISTA NEGRA*\n━━━━━━━━━━━━━━━━━━━━\n👤 @${p.id.split('@')[0]}\n📝 *Motivo:* ${data.reason || 'No especificado'}\n🚷 *Expulsión inmediata*\n━━━━━━━━━━━━━━━━━━━━`,
+          mentions: [p.id]
+        })
+      }
+      return
+    }
+
+    // 👤 Usuario común entra
     for (const u of m.messageStubParameters || []) {
       const ujid = normalizeJid(u)
       const data = dbUsers[ujid]
@@ -239,33 +247,6 @@ handler.before = async function (m) {
       await this.sendMessage(m.chat, {
         text: `🚨 *USUARIO EN LISTA NEGRA*\n━━━━━━━━━━━━━━━━━━━━\n👤 @${participant.id.split('@')[0]}\n📝 *Motivo:* ${reason}\n🚷 *Expulsión inmediata*\n━━━━━━━━━━━━━━━━━━━━`,
         mentions: [participant.id]
-      })
-    }
-  } catch {}
-}
-
-// =====================================================
-// ======= LIMPIEZA AUTOMÁTICA CUANDO EL BOT ENTRA ======
-// =====================================================
-
-handler.after = async function (m) {
-  try {
-    if (!m.isGroup || !m.isBot) return
-
-    const dbUsers = readBlacklist()
-    const meta = await this.groupMetadata(m.chat)
-
-    for (const p of meta.participants) {
-      const jid = normalizeJid(p.id)
-      const data = dbUsers[jid]
-      if (!data?.banned) continue
-
-      await sleep(700)
-      await this.groupParticipantsUpdate(m.chat, [p.id], 'remove')
-
-      await this.sendMessage(m.chat, {
-        text: `🧹 *LIMPIEZA AUTOMÁTICA — LISTA NEGRA*\n━━━━━━━━━━━━━━━━━━━━\n👤 @${p.id.split('@')[0]}\n📝 *Motivo:* ${data.reason || 'No especificado'}\n🚷 *Expulsión inmediata*\n━━━━━━━━━━━━━━━━━━━━`,
-        mentions: [p.id]
       })
     }
   } catch {}
