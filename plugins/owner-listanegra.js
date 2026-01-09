@@ -244,6 +244,33 @@ handler.before = async function (m) {
   } catch {}
 }
 
+// =====================================================
+// ======= LIMPIEZA AUTOMÁTICA CUANDO EL BOT ENTRA ======
+// =====================================================
+
+handler.after = async function (m) {
+  try {
+    if (!m.isGroup || !m.isBot) return
+
+    const dbUsers = readBlacklist()
+    const meta = await this.groupMetadata(m.chat)
+
+    for (const p of meta.participants) {
+      const jid = normalizeJid(p.id)
+      const data = dbUsers[jid]
+      if (!data?.banned) continue
+
+      await sleep(700)
+      await this.groupParticipantsUpdate(m.chat, [p.id], 'remove')
+
+      await this.sendMessage(m.chat, {
+        text: `🧹 *LIMPIEZA AUTOMÁTICA — LISTA NEGRA*\n━━━━━━━━━━━━━━━━━━━━\n👤 @${p.id.split('@')[0]}\n📝 *Motivo:* ${data.reason || 'No especificado'}\n🚷 *Expulsión inmediata*\n━━━━━━━━━━━━━━━━━━━━`,
+        mentions: [p.id]
+      })
+    }
+  } catch {}
+}
+
 // ================= CONFIG =================
 
 handler.help = ['ln', 'unln', 'vln', 'clrn']
