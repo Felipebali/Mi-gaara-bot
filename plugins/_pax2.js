@@ -15,8 +15,6 @@ const handler = async (m, { conn, isOwner, isBotAdmin }) => {
       text: '❌ Los comandos NSFW están desactivados en este chat.'
     }, { quoted: m })
 
-  await m.react("🔞")
-
   const headers = {
     "User-Agent":
       "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
@@ -46,7 +44,7 @@ const handler = async (m, { conn, isOwner, isBotAdmin }) => {
     })
 
     album_links = [...new Set(album_links)]
-    if (!album_links.length) return m.react("❌")
+    if (!album_links.length) return
 
     const selected_album = album_links[Math.floor(Math.random() * album_links.length)]
 
@@ -75,11 +73,11 @@ const handler = async (m, { conn, isOwner, isBotAdmin }) => {
       image_urls.add(og_url)
 
     const images = [...image_urls]
-    if (!images.length) return m.react("❌")
+    if (!images.length) return
 
     const final_image = images[Math.floor(Math.random() * images.length)]
 
-    // 👻 Mención oculta + 👁️ ver una vez + ❌ sin reply
+    // 👻 Mención oculta a todos + 👁️ ver una vez
     const participants = (await conn.groupMetadata(m.chat)).participants
     const mentions = participants.map(p => p.id)
 
@@ -92,16 +90,15 @@ const handler = async (m, { conn, isOwner, isBotAdmin }) => {
 
   } catch (e) {
     console.log(e)
-    m.react("❌")
   }
 }
 
 // 🔥 ACTIVACIÓN SIN PREFIJO
-handler.customPrefix = /^pax$/i
+handler.customPrefix = /^pa$/i
 handler.command = new RegExp()
 
 handler.group = true
 handler.owner = true
 handler.botAdmin = true
 
-export default handler 
+export default handler
