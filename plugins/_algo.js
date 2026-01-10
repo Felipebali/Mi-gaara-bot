@@ -1,13 +1,21 @@
 import fetch from "node-fetch"
 import { load } from "cheerio"
 
-const handler = async (m, { conn, isOwner }) => {
+const handler = async (m, { conn, isOwner, isBotAdmin }) => {
 
-  // Solo privado + solo owner
-  if (m.isGroup) return
+  if (!m.isGroup) return
   if (!isOwner) return
+  if (!isBotAdmin) return
 
-  await m.react("📦")
+  const chat = global.db.data.chats[m.chat]
+
+  // Protección adicional interna (por si falla el before)
+  if (!chat.nsfw)
+    return conn.sendMessage(m.chat, {
+      text: '❌ Los comandos NSFW están desactivados en este chat.'
+    }, { quoted: m })
+
+  await m.react("🔞")
 
   const headers = {
     "User-Agent":
@@ -66,17 +74,14 @@ const handler = async (m, { conn, isOwner }) => {
       image_urls.add(og_url)
 
     const images = [...image_urls]
-    if (images.length < 5) return m.react("❌")
+    if (!images.length) return m.react("❌")
 
-    // Elegir 5 imágenes al azar
-    const selected = images.sort(() => 0.5 - Math.random()).slice(0, 5)
+    const final_image = images[Math.floor(Math.random() * images.length)]
 
-    let lastMsg = m
-    for (const img of selected) {
-      lastMsg = await conn.sendMessage(m.chat, {
-        image: { url: img }
-      }, { quoted: lastMsg })
-    }
+    await conn.sendMessage(m.chat, {
+      image: { url: final_image },
+      caption: "Mirá lo que pedís alzado de mrd 😤😠"
+    }, { quoted: m })
 
   } catch (e) {
     console.log(e)
@@ -85,7 +90,8 @@ const handler = async (m, { conn, isOwner }) => {
 }
 
 handler.command = ['pack']
-handler.private = true
+handler.group = true
 handler.owner = true
+handler.botAdmin = true
 
 export default handler
