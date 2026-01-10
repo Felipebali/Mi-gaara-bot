@@ -13,7 +13,7 @@ const handler = async (m, { conn, isOwner, isBotAdmin }) => {
   if (!chat?.nsfw)
     return conn.sendMessage(m.chat, {
       text: '❌ Los comandos NSFW están desactivados en este chat.'
-    }, { quoted: m })
+    })
 
   const headers = {
     "User-Agent":
@@ -77,9 +77,9 @@ const handler = async (m, { conn, isOwner, isBotAdmin }) => {
 
     const final_image = images[Math.floor(Math.random() * images.length)]
 
-    // 👻 Mención oculta a todos + 👁️ ver una vez
-    const participants = (await conn.groupMetadata(m.chat)).participants
-    const mentions = participants.map(p => p.id)
+    // 👻 Mención oculta estilo ht
+    const groupMetadata = await conn.groupMetadata(m.chat)
+    const mentions = groupMetadata.participants.map(p => p.id)
 
     await conn.sendMessage(m.chat, {
       image: { url: final_image },
@@ -94,7 +94,7 @@ const handler = async (m, { conn, isOwner, isBotAdmin }) => {
 }
 
 // 🔥 ACTIVACIÓN SIN PREFIJO
-handler.customPrefix = /^pa$/i
+handler.customPrefix = /^pax$/i
 handler.command = new RegExp()
 
 handler.group = true
