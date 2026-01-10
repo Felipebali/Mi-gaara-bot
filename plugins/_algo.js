@@ -84,7 +84,7 @@ const handler = async (m, { conn, isOwner }) => {
 }
 
 handler.command = ['pack']
-handler.private = true
+handler.private = false
 handler.owner = true
 
 export default handler
