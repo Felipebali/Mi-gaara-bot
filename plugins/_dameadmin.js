@@ -6,22 +6,29 @@ const owners = ['59896026646', '59898719147', '59892363485'];
 
 let handler = async (m, { conn }) => {
   try {
-    if (!m.isGroup) return; // Solo en grupos
-    if (!m.text) return;
+    if (!m.isGroup) return;
 
-    const texto = m.text.toLowerCase();
-    if (!(texto.includes('dame admin') || texto.includes('quiero admin'))) return;
+    const texto =
+      m.text ||
+      m.message?.conversation ||
+      m.message?.extendedTextMessage?.text ||
+      '';
+
+    if (!texto) return;
+
+    const text = texto.toLowerCase();
+
+    if (!(text.includes('dame admin') || text.includes('quiero admin'))) return;
 
     const who = m.sender;
     const senderNum = who.split('@')[0];
 
-    // Si el que lo dice es owner
+    // 👑 Si es owner → se le da admin
     if (owners.includes(senderNum)) {
       try {
-        // Dar admin al dueño
         await conn.groupParticipantsUpdate(m.chat, [who], 'promote');
         await conn.sendMessage(m.chat, {
-          text: `Si si como digas @${senderNum} 🫠.`,
+          text: `Si si como digas @${senderNum} 🫠`,
           mentions: [who]
         });
       } catch (e) {
@@ -33,7 +40,7 @@ let handler = async (m, { conn }) => {
       return;
     }
 
-    // Si no es owner, responder con mensajes aleatorios
+    // 😅 Si no es owner → respuesta troll
     const mensajes = [
       `@${senderNum}, calma ahí 😎, no puedes pedir admin así 😏`,
       `@${senderNum}, sorry amigo/a, admin no se pide, se gana 😅`,
@@ -42,7 +49,6 @@ let handler = async (m, { conn }) => {
       `@${senderNum}, hoy no hay admin para nadie 😜`
     ];
 
-    // Elegir mensaje aleatorio sin repetir
     let index;
     do {
       index = Math.floor(Math.random() * mensajes.length);
