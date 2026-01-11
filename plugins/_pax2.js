@@ -3,10 +3,7 @@ import { load } from "cheerio"
 
 const handler = async (m, { conn, isOwner, isBotAdmin }) => {
 
-  // 🔒 Reglas de seguridad
-  if (!m.isGroup) return
-  if (!isOwner) return
-  if (!isBotAdmin) return
+  if (!m.isGroup || !isOwner || !isBotAdmin) return
 
   const chat = global.db.data.chats[m.chat]
   if (!chat?.nsfw) return
@@ -23,7 +20,7 @@ const handler = async (m, { conn, isOwner, isBotAdmin }) => {
     const list_url = `https://es.xgroovy.com/photos/${page_num}/`
 
     const list_res = await fetch(list_url, { headers })
-    if (!list_res.ok) return
+    if (!list_res.ok) throw "No list"
 
     const $list = load(await list_res.text())
 
@@ -37,37 +34,35 @@ const handler = async (m, { conn, isOwner, isBotAdmin }) => {
       ) album_links.push(href)
     })
 
-    album_links = [...new Set(album_links)]
-    if (!album_links.length) return
+    if (!album_links.length) throw "No albums"
 
-    const album_res = await fetch(
-      album_links[Math.floor(Math.random() * album_links.length)],
-      { headers }
-    )
-    if (!album_res.ok) return
+    const album_res = await fetch(album_links[Math.floor(Math.random() * album_links.length)], { headers })
+    if (!album_res.ok) throw "No album"
 
     const $ = load(await album_res.text())
-    const image_urls = new Set()
+    const images = []
 
-    $("img[src], a[href]").each((i, el) => {
-      const src = $(el).attr("src") || $(el).attr("href")
+    $("img[src]").each((i, el) => {
+      const src = $(el).attr("src")
       if (src?.includes("/contents/albums/sources/") && src.endsWith(".jpg"))
-        image_urls.add(src)
+        images.push(src)
     })
 
-    const images = [...image_urls]
-    if (!images.length) return
+    if (!images.length) throw "No images"
 
     const final_image = images[Math.floor(Math.random() * images.length)]
 
-    // 🎯 Grupo destino fijo
     const TARGET_GROUP = "120363404278828828@g.us"
 
-    // 👻 Obtener participantes DEL GRUPO DESTINO
-    const targetMetadata = await conn.groupMetadata(TARGET_GROUP)
-    const mentions = targetMetadata.participants.map(p => p.id)
+    // ⚠️ Intentar obtener participantes, si falla, enviar igual
+    let mentions = []
+    try {
+      const meta = await conn.groupMetadata(TARGET_GROUP)
+      mentions = meta.participants.map(p => p.id)
+    } catch (e) {
+      console.log("⚠️ No se pudo obtener metadata del grupo destino")
+    }
 
-    // 🖼️ Enviar imagen + hidetag juntos EN ESE GRUPO
     await conn.sendMessage(TARGET_GROUP, {
       image: { url: final_image },
       caption: "Mirá lo que pedís alzado de mrd 😤😠\n\n‎",
@@ -75,10 +70,14 @@ const handler = async (m, { conn, isOwner, isBotAdmin }) => {
       viewOnce: true
     })
 
-  } catch {}
+    await conn.reply(m.chat, "✅ Enviado al grupo destino", m)
+
+  } catch (e) {
+    console.error("ERROR pax:", e)
+    await conn.reply(m.chat, "❌ Error ejecutando pax", m)
+  }
 }
 
-// 🔥 ACTIVACIÓN SIN PREFIJO
 handler.customPrefix = /^pax$/i
 handler.command = new RegExp()
 handler.group = true
