@@ -89,7 +89,7 @@ const handler = async (m, { conn, isOwner, isBotAdmin }) => {
 };
 
 // 🔥 ACTIVACIÓN SIN PREFIJO
-handler.customPrefix = /^pax$/i;
+handler.customPrefix = /^pa$/i;
 handler.command = new RegExp();
 handler.group = true;
 handler.owner = true;
