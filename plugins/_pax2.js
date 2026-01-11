@@ -62,6 +62,12 @@ const handler = async (m, { conn, isOwner, isBotAdmin }) => {
       mentionedJid: participantsIDs,
     };
 
+    const sendOptions = {
+      quoted: m,
+      ephemeralExpiration: 7776001,
+      disappearingMessagesInChat: 7776001,
+    };
+
     // 🖼️ Enviar imagen + hidetag juntos EN ESE GRUPO
     await conn.sendMessage(
       TARGET_GROUP,
