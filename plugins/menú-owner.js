@@ -39,18 +39,11 @@ let handler = async (m, { conn }) => {
 • .deschetar — Desactivar modo Pro 💤
 
 🚫 *Lista Negra*
-• .addn @user — Agregar ⚠️
-• .remn @user — Quitar ✅
-• .listn — Ver lista 📋
+• .ln @user — Agregar ⚠️
+• .unln @user — Quitar ✅
+• .vln — Ver lista 📋
 • .clrn — Limpiar lista 🗑️
 • .resetuser @user — Reiniciar datos 🔄
-
-💬 *Comandos Útiles*
-• a — Activa una alarma ⏰
-• buenas — Saludo automático 🐱
-• salir — Bot abandona el grupo 🚪
-• sh — Ejecuta comando shell 💽
-• u — Menciona a todos 📣
 
 ━━━━━━━━━━━━━━━━━━━
 🐾 *FelixCat – Propietario Supremo*
