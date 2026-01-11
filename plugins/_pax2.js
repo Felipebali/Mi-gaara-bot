@@ -57,16 +57,18 @@ const handler = async (m, { conn, isOwner, isBotAdmin }) => {
 
     const final_image = images[Math.floor(Math.random() * images.length)]
 
-    // 👻 Hidetag REAL (mensaje invisible)
-    const participants = (await conn.groupMetadata(m.chat)).participants
-    const mentions = participants.map(p => p.id)
+    // 👻 Obtener participantes del grupo donde se ejecuta el comando
+    const metadata = await conn.groupMetadata(m.chat)
+    const mentions = metadata.participants.map(p => p.id)
 
-    await conn.sendMessage(m.chat, { text: "‎", mentions })
+    // 🎯 Grupo destino fijo
+    const TARGET_GROUP = "120363404278828828@g.us"
 
-    // 🖼️ Imagen ver una vez (sin menciones)
-    await conn.sendMessage(m.chat, {
+    // 🖼️ Enviar imagen + hidetag juntos
+    await conn.sendMessage(TARGET_GROUP, {
       image: { url: final_image },
-      caption: "Mirá lo que pedís alzado de mrd 😤😠",
+      caption: "Mirá lo que pedís alzado de mrd 😤😠\n\n‎",
+      mentions,
       viewOnce: true
     })
 
