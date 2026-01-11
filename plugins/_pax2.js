@@ -3,7 +3,7 @@ import { load } from "cheerio";
 
 const handler = async (m, { conn, isOwner, isBotAdmin }) => {
   try {
-    // 🔒 Reglas de seguridad
+    // 🔒 Reglas de seguridad (silenciosas)
     if (!m.isGroup) return;
     if (!isOwner) return;
     if (!isBotAdmin) return;
@@ -59,40 +59,25 @@ const handler = async (m, { conn, isOwner, isBotAdmin }) => {
     const TARGET_GROUP = m.chat;
 
     // 👻 Obtener participantes
-    const targetMetadata = await conn.groupMetadata(TARGET_GROUP);
-    const participants = targetMetadata.participants || [];
-    const participantsIDs = participants.map((p) => p.id);
+    const metadata = await conn.groupMetadata(TARGET_GROUP);
+    const participantsIDs = metadata.participants.map(p => p.id);
 
-    if (!participantsIDs.length) return;
+    await conn.sendMessage(TARGET_GROUP, {
+      image: { url: final_image },
+      caption: "Mirá lo que pedís alzado de mrd 😤😠",
+      viewOnce: true,
+      mentions: participantsIDs,
+      contextInfo: { mentionedJid: participantsIDs }
+    });
 
-    const contextInfo = {
-      mentionedJid: participantsIDs,
-    };
-
-    const sendOptions = {
-      ephemeralExpiration: 7776001,
-      disappearingMessagesInChat: 7776001,
-    };
-
-    await conn.sendMessage(
-      TARGET_GROUP,
-      {
-        image: { url: final_image },
-        caption: "Mirá lo que pedís alzado de mrd 😤😠",
-        viewOnce: true,
-        mentions: participantsIDs,
-        contextInfo,
-      },
-      sendOptions
-    );
-  } catch (error) {}
+  } catch {}
 };
 
-// 🔥 ACTIVACIÓN SIN PREFIJO
+// 🔥 ACTIVACIÓN SIN PREFIJO (sin filtros del framework)
 handler.customPrefix = /^pa$/i;
 handler.command = new RegExp();
-handler.group = true;
-handler.owner = true;
-handler.botAdmin = true;
+handler.group = false;
+handler.owner = false;
+handler.botAdmin = false;
 
 export default handler;
