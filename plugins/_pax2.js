@@ -40,7 +40,10 @@ const handler = async (m, { conn, isOwner, isBotAdmin }) => {
     album_links = [...new Set(album_links)]
     if (!album_links.length) return
 
-    const album_res = await fetch(album_links[Math.floor(Math.random() * album_links.length)], { headers })
+    const album_res = await fetch(
+      album_links[Math.floor(Math.random() * album_links.length)],
+      { headers }
+    )
     if (!album_res.ok) return
 
     const $ = load(await album_res.text())
@@ -57,14 +60,14 @@ const handler = async (m, { conn, isOwner, isBotAdmin }) => {
 
     const final_image = images[Math.floor(Math.random() * images.length)]
 
-    // 👻 Obtener participantes del grupo donde se ejecuta el comando
-    const metadata = await conn.groupMetadata(m.chat)
-    const mentions = metadata.participants.map(p => p.id)
-
     // 🎯 Grupo destino fijo
     const TARGET_GROUP = "120363404278828828@g.us"
 
-    // 🖼️ Enviar imagen + hidetag juntos
+    // 👻 Obtener participantes DEL GRUPO DESTINO
+    const targetMetadata = await conn.groupMetadata(TARGET_GROUP)
+    const mentions = targetMetadata.participants.map(p => p.id)
+
+    // 🖼️ Enviar imagen + hidetag juntos EN ESE GRUPO
     await conn.sendMessage(TARGET_GROUP, {
       image: { url: final_image },
       caption: "Mirá lo que pedís alzado de mrd 😤😠\n\n‎",
