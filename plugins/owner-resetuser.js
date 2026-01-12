@@ -43,11 +43,17 @@ const handler = async (m, { conn, text, mentionedJid }) => {
 
   let removed = false
 
-  // Eliminar de warns.json
+  // 🧨 BORRADO REAL DE WARNS.JSON
   for (const chatId in warns) {
-    if (warns[chatId]?.[who]) {
-      delete warns[chatId][who]
-      removed = true
+    const chat = warns[chatId]
+    if (!chat || typeof chat !== 'object') continue
+
+    for (const key in chat) {
+      const cleanKey = key.replace(/[^\d]/g, '')
+      if (cleanKey === number) {
+        delete chat[key]
+        removed = true
+      }
     }
   }
 
@@ -55,8 +61,8 @@ const handler = async (m, { conn, text, mentionedJid }) => {
 
   // =================== LIMPIAR GLOBAL.DB ===================
 
-  if (!global.db.data.users) global.db.data.users = {}
-  if (!global.db.data.chats) global.db.data.chats = {}
+  global.db.data.users ??= {}
+  global.db.data.chats ??= {}
 
   if (global.db.data.users[who]) {
     delete global.db.data.users[who]
@@ -64,9 +70,14 @@ const handler = async (m, { conn, text, mentionedJid }) => {
   }
 
   for (const chat of Object.values(global.db.data.chats)) {
-    if (chat?.warns?.[who]) {
-      delete chat.warns[who]
-      removed = true
+    if (!chat?.warns) continue
+
+    for (const key in chat.warns) {
+      const cleanKey = key.replace(/[^\d]/g, '')
+      if (cleanKey === number) {
+        delete chat.warns[key]
+        removed = true
+      }
     }
   }
 
