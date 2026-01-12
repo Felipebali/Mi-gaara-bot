@@ -61,8 +61,8 @@ const handler = async (m, { conn, text, mentionedJid }) => {
 
   // =================== LIMPIAR GLOBAL.DB ===================
 
-  global.db.data.users ??= {}
-  global.db.data.chats ??= {}
+  if (!global.db.data.users) global.db.data.users = {}
+  if (!global.db.data.chats) global.db.data.chats = {}
 
   if (global.db.data.users[who]) {
     delete global.db.data.users[who]
