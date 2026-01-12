@@ -1,6 +1,6 @@
 import fs from "fs"
 import path from "path"
-import { getUser } from "../databaseFunctions.js"
+import { getUser, saveUser } from "../databaseFunctions.js"
 
 // ==========================
 // 🧰 Infraestructura segura
@@ -22,22 +22,15 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
 
   if (numberMatchesPlus?.length) {
     who = numberMatchesPlus[0].replace(/[+\s]/g, "") + "@s.whatsapp.net"
-
-  } else if (numberMatches?.length) {
+  } 
+  else if (numberMatches?.length) {
     who = numberMatches[0].replace("@", "").replace(/\s+/g, "") + "@lid"
-
-  } else if (m.quoted) {
+  } 
+  else if (m.quoted) {
     who = m.quoted.sender
   }
 
-  if (who) {
-    whoData = getUser(who) || {}
-    whoLid = whoData.lid || "No registrado"
-    whoJid = whoData.jid || "No registrado"
-    whoPushName = whoData.pushName || "Sin nombre"
-  }
-
-  if (!who || (!whoLid && !whoJid)) {
+  if (!who) {
     return conn.sendMessage(
       m.chat,
       { text: `Uso correcto:\n${usedPrefix + command} @usuario\n${usedPrefix + command} +598xxxxxxxx` },
@@ -45,10 +38,26 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
     )
   }
 
+  whoPushName = await conn.getName(who)
+  whoData = getUser(who) || {}
+
+  // 🧾 Auto-registrar usuario si no existe
+  if (!whoData || Object.keys(whoData).length === 0) {
+    saveUser(who, {
+      jid: who.endsWith("@s.whatsapp.net") ? who : "",
+      lid: who.endsWith("@lid") ? who : "",
+      pushName: whoPushName
+    })
+    whoData = getUser(who)
+  }
+
+  whoLid = whoData.lid || "No registrado"
+  whoJid = whoData.jid || "No registrado"
+
   const txt = `
 🧾 *Información del usuario*
 
-👤 Usuario: +${whoJid.split("@")[0]}
+👤 Usuario: +${whoJid.replace(/@.*/, "")}
 📛 Nombre actual: ${whoPushName}
 
 🆔 LID: ${whoLid}
@@ -59,7 +68,6 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
   await conn.sendMessage(m.chat, { text: txt }, { quoted: m })
 }
 
-// 🔁 Cambio del comando aquí
 handler.command = ["lid"]
 handler.owner = true
 
