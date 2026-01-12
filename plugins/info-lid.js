@@ -1,27 +1,37 @@
 // 📂 plugins/id-lid-owner.js
 
+// 🧠 Normalizador de números (acepta +598..., 598..., JID, etc)
+function normalizeNumber(input = '') {
+  return String(input)
+    .replace(/[^0-9]/g, '')
+    .replace(/^0+/, '')
+}
+
 // --- Handler para .id ---
 let handler = async function (m, { conn, groupMetadata }) {
+
   // --- Verificación de owner ---
-  const senderNumber = m.sender.replace(/[^0-9]/g, '')
+  const senderNumber = normalizeNumber(m.sender)
   const owners = Array.isArray(global.owner)
-    ? global.owner.filter(Boolean).map(o => String(o).replace(/[^0-9]/g, ''))
+    ? global.owner.map(o => normalizeNumber(o))
     : []
-  if (!owners.includes(senderNumber)) return m.reply('❌ Solo el owner puede usar este comando.')
+
+  if (!owners.includes(senderNumber))
+    return m.reply('❌ Solo el owner puede usar este comando.')
 
   // Si hay menciones, mostrar ID del usuario mencionado
   if (m.mentionedJid && m.mentionedJid.length > 0) {
     const userJid = m.mentionedJid[0]
     const userName = await conn.getName(userJid) || 'Usuario'
-    const number = userJid.split('@')[0]
-    
+    const number = normalizeNumber(userJid)
+
     const mensaje = `
 ╭─✿ *ID de Usuario* ✿─╮
 │  *Nombre:* ${userName}
 │  *Número:* ${number}
 │  *JID/ID:* ${userJid}
 ╰─────────────────────╯`.trim()
-    
+
     return conn.reply(m.chat, mensaje, m, { mentions: [userJid] })
   }
 
@@ -33,7 +43,7 @@ let handler = async function (m, { conn, groupMetadata }) {
 │  *JID/ID:* ${m.chat}
 │  *Participantes:* ${groupMetadata.participants.length}
 ╰─────────────────────╯`.trim()
-    
+
     return conn.reply(m.chat, mensaje, m)
   }
 
@@ -49,29 +59,35 @@ let handler = async function (m, { conn, groupMetadata }) {
 • .id @juan
 • .id (en un grupo)
 • .lid (lista completa)`.trim()
-  
+
   return conn.reply(m.chat, ayuda, m)
 }
 
 // --- Handler para .lid ---
 let handlerLid = async function (m, { conn, groupMetadata }) {
-  if (!m.isGroup) return m.reply('❌ Este comando solo funciona en grupos.')
+
+  if (!m.isGroup)
+    return m.reply('❌ Este comando solo funciona en grupos.')
 
   // --- Verificación de owner ---
-  const senderNumber = m.sender.replace(/[^0-9]/g, '')
+  const senderNumber = normalizeNumber(m.sender)
   const owners = Array.isArray(global.owner)
-    ? global.owner.filter(Boolean).map(o => String(o).replace(/[^0-9]/g, ''))
+    ? global.owner.map(o => normalizeNumber(o))
     : []
-  if (!owners.includes(senderNumber)) return m.reply('❌ Solo el owner puede usar este comando.')
+
+  if (!owners.includes(senderNumber))
+    return m.reply('❌ Solo el owner puede usar este comando.')
 
   const participantes = groupMetadata?.participants || []
 
   const tarjetas = participantes.map((p, index) => {
     const jid = p.id || 'N/A'
-    const username = '@' + jid.split('@')[0]
-    const estado = p.admin === 'superadmin' ? '👑 *Propietario*' :
-                   p.admin === 'admin' ? '🛡️ *Administrador*' :
-                   '👤 *Miembro*'
+    const username = '@' + normalizeNumber(jid)
+
+    const estado =
+      p.admin === 'superadmin' ? '👑 *Propietario*' :
+      p.admin === 'admin' ? '🛡️ *Administrador*' :
+      '👤 *Miembro*'
 
     return [
       '╭─✿ *Usuario ' + (index + 1) + '* ✿',
