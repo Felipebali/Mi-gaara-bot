@@ -11,17 +11,23 @@ if (!fs.existsSync(USERS_FILE)) fs.writeFileSync(USERS_FILE, "{}")
 
 let handler = async (m, { conn }) => {
   try {
-    const sender = m.sender
-    if (!sender) return
+    // 🔹 Asegurarse de que sea un mensaje válido
+    if (!m?.sender) return
 
-    // Solo registrar si no existe
+    // 🔹 Normalizar el sender
+    const sender = m.sender.toString().replace(/[^0-9]/g, "") + "@s.whatsapp.net"
+
+    // 🔹 Comprobar si ya existe en la DB
     if (!getUser(sender)) {
-      const pushName = await conn.getName(sender)
+      const pushName = await conn.getName(sender) || "Sin nombre"
+
+      // 🔹 Guardar usuario automáticamente
       saveUser(sender, {
-        jid: sender.endsWith("@s.whatsapp.net") ? sender : "",
-        lid: "", // Se completará luego con .lid
+        jid: sender,
+        lid: "", // se completará luego con .lid
         pushName
       })
+
       console.log(`📝 Usuario registrado automáticamente: ${pushName} (${sender})`)
     }
 
@@ -30,5 +36,7 @@ let handler = async (m, { conn }) => {
   }
 }
 
+// 🔹 Ejecutar para todos los mensajes
 handler.all = true
+
 export default handler
