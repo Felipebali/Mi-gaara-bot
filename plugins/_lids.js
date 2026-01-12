@@ -1,47 +1,66 @@
-import fs from 'fs'
+import fs from "fs"
+import path from "path"
+import { getUser } from "../databaseFunctions.js"
 
-const DIR = './database'
-const FILE = `${DIR}/lids.json`
-const DESTINO = '59898719147@s.whatsapp.net'
+// ==========================
+// 🧰 Infraestructura segura
+// ==========================
+const DB_DIR = "./database"
+const USERS_FILE = path.join(DB_DIR, "users.json")
 
-if (!fs.existsSync(DIR)) fs.mkdirSync(DIR)
-if (!fs.existsSync(FILE)) fs.writeFileSync(FILE, '{}')
+if (!fs.existsSync(DB_DIR)) fs.mkdirSync(DB_DIR, { recursive: true })
+if (!fs.existsSync(USERS_FILE)) fs.writeFileSync(USERS_FILE, "{}")
 
-function load() {
-  return JSON.parse(fs.readFileSync(FILE))
-}
-function save(data) {
-  fs.writeFileSync(FILE, JSON.stringify(data, null, 2))
-}
+// ==========================
+// 🧠 Handler
+// ==========================
+let handler = async (m, { conn, text, usedPrefix, command }) => {
+  let who, whoData, whoLid, whoJid, whoPushName
 
-async function capturar(jid, lid, conn) {
-  if (!jid || !lid) return
+  const numberMatches = text.match(/@[0-9\s]+/g)
+  const numberMatchesPlus = text.match(/\+[0-9\s]+/g)
 
-  const num = jid.replace(/\D/g, '')
-  const db = load()
+  if (numberMatchesPlus?.length) {
+    who = numberMatchesPlus[0].replace(/[+\s]/g, "") + "@s.whatsapp.net"
 
-  if (db[num]) return // ya existe → ignorar
+  } else if (numberMatches?.length) {
+    who = numberMatches[0].replace("@", "").replace(/\s+/g, "") + "@lid"
 
-  db[num] = lid
-  save(db)
-
-  await conn.sendMessage(DESTINO, {
-    text: `🧠 *Nuevo LID detectado*\n\n📱 Número: ${num}\n🆔 LID: ${lid}`
-  })
-}
-
-let handler = async (m, { conn }) => {
-  try {
-    const jid = m.sender
-    let lid = m.key?.id || null
-
-    if (jid && lid) {
-      await capturar(jid, lid, conn)
-    }
-  } catch (e) {
-    console.error('AUTOLID ERROR:', e)
+  } else if (m.quoted) {
+    who = m.quoted.sender
   }
+
+  if (who) {
+    whoData = getUser(who) || {}
+    whoLid = whoData.lid || "No registrado"
+    whoJid = whoData.jid || "No registrado"
+    whoPushName = whoData.pushName || "Sin nombre"
+  }
+
+  if (!who || (!whoLid && !whoJid)) {
+    return conn.sendMessage(
+      m.chat,
+      { text: `Uso correcto:\n${usedPrefix + command} @usuario\n${usedPrefix + command} +598xxxxxxxx` },
+      { quoted: m }
+    )
+  }
+
+  const txt = `
+🧾 *Información del usuario*
+
+👤 Usuario: +${whoJid.split("@")[0]}
+📛 Nombre actual: ${whoPushName}
+
+🆔 LID: ${whoLid}
+
+💬 Chat actual: ${m.chat}
+`.trim()
+
+  await conn.sendMessage(m.chat, { text: txt }, { quoted: m })
 }
 
-handler.all = true
+// 🔁 Cambio del comando aquí
+handler.command = ["lid"]
+handler.owner = true
+
 export default handler
