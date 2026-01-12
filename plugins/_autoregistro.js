@@ -14,16 +14,17 @@ let handler = async (m, { conn }) => {
     const sender = m.sender
     if (!sender) return
 
-    const pushName = await conn.getName(sender)
-    const existing = getUser(sender)
-
-    if (!existing) {
+    // Solo registrar si no existe
+    if (!getUser(sender)) {
+      const pushName = await conn.getName(sender)
       saveUser(sender, {
         jid: sender.endsWith("@s.whatsapp.net") ? sender : "",
-        lid: sender.endsWith("@lid") ? sender : "",
+        lid: "", // Se completará luego con .lid
         pushName
       })
+      console.log(`📝 Usuario registrado automáticamente: ${pushName} (${sender})`)
     }
+
   } catch (e) {
     console.error("AutoRegister error:", e)
   }
