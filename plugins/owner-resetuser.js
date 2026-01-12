@@ -1,6 +1,6 @@
 import fs from 'fs'
 
-const WARN_FILE = './database/warns.json'
+const WARN_FILE = './data/warns.json'
 
 // =================== UTILIDADES ===================
 
