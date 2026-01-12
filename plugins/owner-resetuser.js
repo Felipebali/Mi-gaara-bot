@@ -1,141 +1,94 @@
 import fs from 'fs'
-import path from 'path'
+
+const WARN_FILE = './database/warns.json'
 
 // =================== UTILIDADES ===================
 
-function normalizeJid(jid) {
-  if (!jid) return null
-  return jid.replace(/@c\.us$/, '@s.whatsapp.net').replace(/:\d+/, '')
+function normalizeJid(jid = '') {
+  return jid
+    .toString()
+    .replace(/[\u200E\u200F\u202A-\u202E\u2066-\u2069]/g, '')
+    .replace(/@c\.us$/, '@s.whatsapp.net')
 }
 
-function loadAllDatabases() {
-  const dbPath = './database'
-  const databases = {}
-
-  if (!fs.existsSync(dbPath)) return databases
-
-  const files = fs.readdirSync(dbPath).filter(f => f.endsWith('.json'))
-
-  for (const file of files) {
-    try {
-      const filePath = path.join(dbPath, file)
-      const data = JSON.parse(fs.readFileSync(filePath, 'utf-8'))
-      databases[file] = { path: filePath, data }
-    } catch {}
-  }
-  return databases
-}
-
-function saveDatabase(filePath, data) {
-  try {
-    fs.writeFileSync(filePath, JSON.stringify(data, null, 2))
-    return true
-  } catch {
-    return false
-  }
-}
-
-function cleanUserFromObject(obj, userJid) {
-  let cleaned = false
-  if (!obj || typeof obj !== 'object') return cleaned
-
-  if (obj === userJid || obj.id === userJid || obj.jid === userJid) return true
-
-  for (const key in obj) {
-    if (!obj.hasOwnProperty(key)) continue
-
-    if (key === userJid) {
-      delete obj[key]
-      cleaned = true
-      continue
-    }
-
-    if (Array.isArray(obj[key])) {
-      const len = obj[key].length
-      obj[key] = obj[key].filter(v => {
-        if (typeof v === 'string') return v !== userJid
-        if (typeof v === 'object' && v) return v.id !== userJid && v.jid !== userJid
-        return true
-      })
-      if (obj[key].length < len) cleaned = true
-    }
-    else if (typeof obj[key] === 'object' && obj[key]) {
-      if (cleanUserFromObject(obj[key], userJid)) cleaned = true
-    }
-  }
-  return cleaned
+function extractNumber(jid = '') {
+  return jid.replace(/[^\d]/g, '')
 }
 
 // =================== HANDLER ===================
 
 const handler = async (m, { conn, text, mentionedJid }) => {
-  try {
-    let user = null
+  const emoji = '♻️'
+  const done = '✅'
+  let user = ''
 
-    if (mentionedJid?.length) {
-      user = mentionedJid[0]
-    } 
-    else if (m.quoted?.sender) {
-      user = m.quoted.sender
-    } 
-    else if (text) {
-      const clean = text.replace(/[^\d]/g, '')
-      if (clean.length >= 8) user = clean + '@s.whatsapp.net'
-    }
+  // 1️⃣ Detectar usuario
+  if (mentionedJid?.length) user = mentionedJid[0]
+  else if (text?.match(/\d+/)) user = text.match(/\d+/)[0] + '@s.whatsapp.net'
+  else if (m.quoted?.sender) user = m.quoted.sender
+  else return conn.reply(m.chat, `${emoji} Menciona, responde o escribe el número.`, m)
 
-    if (!user) return conn.reply(m.chat, '♻️ Menciona, responde o escribe el número.', m)
+  const userJid = normalizeJid(user)
+  if (!userJid) return conn.reply(m.chat, '⚠️ JID inválido.', m)
 
-    const userJid = normalizeJid(user)
-    if (!userJid) return conn.reply(m.chat, '⚠️ JID inválido.', m)
+  const number = extractNumber(userJid)
+  const who = number + '@s.whatsapp.net'
 
-    const databases = loadAllDatabases()
-    let totalCleaned = 0
-    const cleanedFiles = []
+  // =================== CARGAR WARNS ===================
 
-    for (const [name, db] of Object.entries(databases)) {
-      if (cleanUserFromObject(db.data, userJid)) {
-        if (saveDatabase(db.path, db.data)) {
-          totalCleaned++
-          cleanedFiles.push(name)
-        }
-      }
-    }
-
-    if (global.db?.data) {
-      if (cleanUserFromObject(global.db.data, userJid)) {
-        if (global.db.write) await global.db.write()
-        totalCleaned++
-        cleanedFiles.push('global.db')
-      }
-    }
-
-    const fecha = new Date().toLocaleString('es-UY', { timeZone: 'America/Montevideo' })
-
-    const who = userJid
-    const displayUser = who.split('@')[0]
-
-    let msg = `♻️ *Limpieza completada*\n\n`
-    msg += `👤 Usuario: @${displayUser}\n`
-    msg += `✅ Bases modificadas: ${totalCleaned}\n`
-
-    if (cleanedFiles.length) {
-      msg += `\n📁 Archivos actualizados:\n`
-      cleanedFiles.forEach(f => msg += `• ${f}\n`)
-    }
-
-    msg += `\n📅 ${fecha}`
-
-    await conn.sendMessage(m.chat, { text: msg, mentions: [who] }, { quoted: m })
-
-  } catch (e) {
-    console.error(e)
-    return conn.reply(m.chat, '❌ Error al resetear usuario. Revisa la consola.', m)
+  let warns = {}
+  if (fs.existsSync(WARN_FILE)) {
+    warns = JSON.parse(fs.readFileSync(WARN_FILE))
   }
+
+  let removed = false
+
+  // Eliminar de warns.json
+  for (const chatId in warns) {
+    if (warns[chatId]?.[who]) {
+      delete warns[chatId][who]
+      removed = true
+    }
+  }
+
+  fs.writeFileSync(WARN_FILE, JSON.stringify(warns, null, 2))
+
+  // =================== LIMPIAR GLOBAL.DB ===================
+
+  global.db.data.users ??= {}
+  global.db.data.chats ??= {}
+
+  if (global.db.data.users[who]) {
+    delete global.db.data.users[who]
+    removed = true
+  }
+
+  for (const chat of Object.values(global.db.data.chats)) {
+    if (chat?.warns?.[who]) {
+      delete chat.warns[who]
+      removed = true
+    }
+  }
+
+  if (global.db.write) await global.db.write()
+
+  if (!removed) {
+    return conn.reply(m.chat, `⚠️ El usuario no tenía advertencias registradas.`, m)
+  }
+
+  // =================== MENSAJE FINAL ===================
+
+  const fecha = new Date().toLocaleString('es-UY', { timeZone: 'America/Montevideo' })
+
+  await conn.sendMessage(m.chat, {
+    text: `${emoji} *Reset completado*\n\n👤 Usuario: @${number}\n🧾 Advertencias: eliminadas\n📅 ${fecha}\n\n${done} Base actualizada correctamente.`,
+    mentions: [who]
+  })
 }
 
 // =================== FLAGS ===================
 
-handler.command = ['resetuser', 'deletedatauser', 'borrardatos', 'r']
+handler.command = ['resetuser', 'deletedatauser', 'borrardatos']
 handler.owner = true
 handler.tags = ['owner']
 
