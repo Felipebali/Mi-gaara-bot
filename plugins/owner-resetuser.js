@@ -102,18 +102,21 @@ const handler = async (m, { conn, text, mentionedJid }) => {
     }
 
     const fecha = new Date().toLocaleString('es-UY', { timeZone: 'America/Montevideo' })
-    const name = userJid.split('@')[0]
+    const who = userJid
+    const name = who.split('@')[0]
 
     let msg = `♻️ *Limpieza completada*\n\n`
     msg += `👤 Usuario: @${name}\n`
     msg += `✅ Bases modificadas: ${totalCleaned}\n`
+
     if (cleanedFiles.length) {
       msg += `\n📁 Archivos actualizados:\n`
       cleanedFiles.forEach(f => msg += `• ${f}\n`)
     }
+
     msg += `\n📅 ${fecha}`
 
-    await conn.sendMessage(m.chat, { text: msg, mentions: [userJid] }, { quoted: m })
+    await conn.sendMessage(m.chat, { text: msg, mentions: [who] }, { quoted: m })
 
   } catch (e) {
     console.error(e)
