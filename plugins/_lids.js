@@ -1,16 +1,9 @@
-import fs from "fs"
-import path from "path"
 import { getUser, saveUser } from "../databaseFunctions.js"
-
-// 🧰 Infraestructura segura
-const DB_DIR = "./database"
-const USERS_FILE = path.join(DB_DIR, "users.json")
-if (!fs.existsSync(DB_DIR)) fs.mkdirSync(DB_DIR, { recursive: true })
-if (!fs.existsSync(USERS_FILE)) fs.writeFileSync(USERS_FILE, "{}")
 
 let handler = async (m, { conn, text, usedPrefix, command }) => {
   let who, whoData, whoJid, whoLid, whoPushName
 
+  // 🔍 Buscar números en el texto
   const numberMatchesPlus = text.match(/\+[0-9\s]+/g)
   const numberMatches = text.match(/@[0-9\s]+/g)
 
@@ -32,7 +25,7 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
   // 🔹 Nombre actual
   whoPushName = await conn.getName(who) || whoData.pushName || "Sin nombre"
 
-  // 🔹 Guardar / actualizar usuario
+  // 🔹 Guardar / actualizar usuario automáticamente
   saveUser(who, {
     jid: who.endsWith("@s.whatsapp.net") ? who : (whoData.jid || ""),
     lid: who.endsWith("@lid") ? who : (whoData.lid || ""),
@@ -44,6 +37,7 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
   whoJid = whoData.jid || "No registrado"
   whoLid = whoData.lid || "No registrado"
 
+  // 🔹 Texto de salida
   const txt = `
 🧾 *Información del usuario*
 
@@ -58,6 +52,7 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
   await conn.sendMessage(m.chat, { text: txt }, { quoted: m })
 }
 
+// 🔹 Comando y permisos
 handler.command = ["lid"]
 handler.owner = true
 
