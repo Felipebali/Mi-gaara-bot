@@ -7,6 +7,12 @@ function normalizeNumber(input = '') {
     .replace(/^0+/, '')
 }
 
+// 🔎 Extrae un número del texto aunque no sea mención
+function extractNumberFromText(text = '') {
+  const match = text.match(/\+?\d{7,15}/)
+  return match ? normalizeNumber(match[0]) : null
+}
+
 // --- Handler para .id ---
 let handler = async function (m, { conn, groupMetadata }) {
 
@@ -19,7 +25,7 @@ let handler = async function (m, { conn, groupMetadata }) {
   if (!owners.includes(senderNumber))
     return m.reply('❌ Solo el owner puede usar este comando.')
 
-  // Si hay menciones, mostrar ID del usuario mencionado
+  // 🧷 Caso 1: mención real
   if (m.mentionedJid && m.mentionedJid.length > 0) {
     const userJid = m.mentionedJid[0]
     const userName = await conn.getName(userJid) || 'Usuario'
@@ -35,7 +41,30 @@ let handler = async function (m, { conn, groupMetadata }) {
     return conn.reply(m.chat, mensaje, m, { mentions: [userJid] })
   }
 
-  // Si no hay menciones y es un grupo, mostrar ID del grupo
+  // 🧷 Caso 2: número escrito sin mención
+  const rawText =
+    m.text ||
+    m.message?.conversation ||
+    m.message?.extendedTextMessage?.text ||
+    ''
+
+  const extracted = extractNumberFromText(rawText)
+
+  if (extracted) {
+    const userJid = extracted + '@s.whatsapp.net'
+    const userName = await conn.getName(userJid) || 'Usuario'
+
+    const mensaje = `
+╭─✿ *ID de Usuario* ✿─╮
+│  *Nombre:* ${userName}
+│  *Número:* ${extracted}
+│  *JID/ID:* ${userJid}
+╰─────────────────────╯`.trim()
+
+    return conn.reply(m.chat, mensaje, m)
+  }
+
+  // 🧷 Caso 3: sin datos → mostrar grupo
   if (m.isGroup) {
     const mensaje = `
 ╭─✿ *ID del Grupo* ✿─╮
@@ -47,18 +76,20 @@ let handler = async function (m, { conn, groupMetadata }) {
     return conn.reply(m.chat, mensaje, m)
   }
 
-  // Si no es grupo y no hay menciones, mostrar ayuda
+  // 🧷 Ayuda
   const ayuda = `
 📋 *Uso del comando ID/LID:*
 
-🏷️ *.id @usuario* - Ver ID de usuario
-🏢 *.id* (en grupo) - Ver ID del grupo
-📱 *.lid* - Ver lista completa de participantes
+🏷️ *.id @usuario*
+📞 *.id +598XXXXXXXX*
+🏢 *.id* (en grupo)
+📱 *.lid* - lista completa
 
 💡 *Ejemplos:*
 • .id @juan
+• .id +59898116138
 • .id (en un grupo)
-• .lid (lista completa)`.trim()
+• .lid`.trim()
 
   return conn.reply(m.chat, ayuda, m)
 }
