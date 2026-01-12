@@ -70,12 +70,20 @@ function cleanUserFromObject(obj, userJid) {
 
 const handler = async (m, { conn, text, mentionedJid }) => {
   try {
-    let user = ''
+    let user = null
 
-    if (mentionedJid?.length) user = mentionedJid[0]
-    else if (text?.match(/\d+/)) user = text.match(/\d+/)[0] + '@s.whatsapp.net'
-    else if (m.quoted?.sender) user = m.quoted.sender
-    else return conn.reply(m.chat, '♻️ Menciona, responde o escribe el número.', m)
+    if (mentionedJid?.length) {
+      user = mentionedJid[0]
+    } 
+    else if (m.quoted?.sender) {
+      user = m.quoted.sender
+    } 
+    else if (text) {
+      const clean = text.replace(/[^\d]/g, '')
+      if (clean.length >= 8) user = clean + '@s.whatsapp.net'
+    }
+
+    if (!user) return conn.reply(m.chat, '♻️ Menciona, responde o escribe el número.', m)
 
     const userJid = normalizeJid(user)
     if (!userJid) return conn.reply(m.chat, '⚠️ JID inválido.', m)
