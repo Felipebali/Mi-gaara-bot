@@ -1,101 +1,102 @@
 // plugins/tagallC.js
 // Activador: letra "C" o "c" (sin prefijo)
-// SOLO OWNERS pueden activarlo
+// SOLO DUEÑOS ESPECÍFICOS pueden activarlo
 // Mención visible a un usuario al azar + mención oculta al resto
 // NO repite la última frase en el grupo
+
+const OWNERS = ['59896026646@s.whatsapp.net', '59898719147@s.whatsapp.net']
 
 // Guarda la última frase usada por grupo
 const lastMessage = {}
 
 let handler = async (m, { conn, groupMetadata }) => {
-  try {
-    if (!m.isGroup) return
+try {
+if (!m.isGroup) return
 
-    // 🧠 Obtener owners desde la config principal
-    let owners = global.owner?.map(v => v.toString()) || []
+const sender = m.sender || m.key?.participant  
+if (!OWNERS.includes(sender)) return  
 
-    // 🧾 Normalizar número del que ejecuta
-    let sender = m.sender.replace(/[^0-9]/g, '')
+const texto = (m.text || '').trim()  
+if (!texto || texto.toLowerCase() !== 'c') return  
 
-    // 🔒 Solo owners
-    if (!owners.includes(sender)) return
+const participantes = (groupMetadata?.participants || [])  
+  .map(p => (conn.decodeJid ? conn.decodeJid(p.id) : p.id))  
+  .filter(Boolean)  
 
-    const texto = (m.text || '').trim()
-    if (!texto || texto.toLowerCase() !== 'c') return
+if (participantes.length < 2) return  
 
-    const participantes = (groupMetadata?.participants || [])
-      .map(p => (conn.decodeJid ? conn.decodeJid(p.id) : p.id))
-      .filter(Boolean)
+const usuarioAzar = participantes[Math.floor(Math.random() * participantes.length)]  
+const mencionesOcultas = participantes.filter(u => u !== usuarioAzar)  
+const user = `@${usuarioAzar.split('@')[0]}`  
 
-    if (participantes.length < 2) return
+const frases = [  
+  // 🤡 Clásicos  
+  `🤡 Este es re gil ${user}`,  
+  `🥖 Confirmado: ${user} es pancho`,  
+  `😂 ${user} tiene cara de que se ríe solo`,  
+  `🐒 ${user} vino sin cerebro hoy`,  
+  `💀 ${user} quedó regaladísimo`,  
+  `🚨 Atención grupo: ${user} acaba de mandarse cualquiera`,  
+  `📉 El coeficiente intelectual de ${user} bajó solo`,  
+  `🤦 ${user} pensó… pero muy poquito`,  
 
-    const usuarioAzar = participantes[Math.floor(Math.random() * participantes.length)]
-    const mencionesOcultas = participantes.filter(u => u !== usuarioAzar)
-    const user = `@${usuarioAzar.split('@')[0]}`
+  // 🐂 Cuernos  
+  `🐂 Se rumorea fuerte que ${user} es cornudo`,  
+  `🐮 Dicen por ahí que ${user} es cornuda`,  
+  `🦌 ${user} podría trabajar de reno en Navidad`,  
+  `😂 ${user} no es tóxico… es cornudo consciente`,  
+  `👀 ${user} mirando el techo mientras le meten los cuernos`,  
+  `🚩 ${user} viene con cuernos incluidos`,  
+  `📢 Último momento: ${user} confirmado como cornudo/a`,  
+  `💔 ${user} confió… y pasó lo que pasó`,  
 
-    const frases = [
-      `🤡 Este es re gil ${user}`,
-      `🥖 Confirmado: ${user} es pancho`,
-      `😂 ${user} tiene cara de que se ríe solo`,
-      `🐒 ${user} vino sin cerebro hoy`,
-      `💀 ${user} quedó regaladísimo`,
-      `🚨 Atención grupo: ${user} acaba de mandarse cualquiera`,
-      `📉 El coeficiente intelectual de ${user} bajó solo`,
-      `🤦 ${user} pensó… pero muy poquito`,
+  // 🧠 Cerebro opcional  
+  `🧠 ${user} tiene el cerebro en modo ahorro de energía`,  
+  `📴 ${user} está pensando… cargando… 0%`,  
+  `🪫 ${user} se quedó sin neuronas`,  
+  `🫠 ${user} procesa ideas en 2G`,  
+  `🤖 ${user} es NPC confirmado`,  
 
-      `🐂 Se rumorea fuerte que ${user} es cornudo`,
-      `🐮 Dicen por ahí que ${user} es cornuda`,
-      `🦌 ${user} podría trabajar de reno en Navidad`,
-      `😂 ${user} no es tóxico… es cornudo consciente`,
-      `👀 ${user} mirando el techo mientras le meten los cuernos`,
-      `🚩 ${user} viene con cuernos incluidos`,
-      `📢 Último momento: ${user} confirmado como cornudo/a`,
-      `💔 ${user} confió… y pasó lo que pasó`,
+  // 🐀 Boludeo general  
+  `🐀 ${user} corre y se tropieza solo`,  
+  `🥴 ${user} es la prueba de que Dios tiene sentido del humor`,  
+  `🎪 ${user} vino directo del circo`,  
+  `📦 ${user} vino vacío por dentro`,  
+  `🧃 ${user} toma jugo y se atraganta`,  
+  `🤏 ${user} le pone poca sal hasta al agua`,  
+  `📺 ${user} aplaude cuando termina una película`,  
 
-      `🧠 ${user} tiene el cerebro en modo ahorro de energía`,
-      `📴 ${user} está pensando… cargando… 0%`,
-      `🪫 ${user} se quedó sin neuronas`,
-      `🫠 ${user} procesa ideas en 2G`,
-      `🤖 ${user} es NPC confirmado`,
+  // 🔥 Remates  
+  `😬 ${user} quedó más expuesto que infidelidad en grupo`,  
+  `🫣 ${user} pensó que hoy no le tocaba`,  
+  `⚰️ RIP dignidad de ${user}`,  
+  `🎯 El sistema eligió a ${user} para descansar`,  
+  `🔥 ${user} activó el modo descanso eterno`,  
+  `😈 Hoy el sacrificio fue ${user}`,  
+]  
 
-      `🐀 ${user} corre y se tropieza solo`,
-      `🥴 ${user} es la prueba de que Dios tiene sentido del humor`,
-      `🎪 ${user} vino directo del circo`,
-      `📦 ${user} vino vacío por dentro`,
-      `🧃 ${user} toma jugo y se atraganta`,
-      `🤏 ${user} le pone poca sal hasta al agua`,
-      `📺 ${user} aplaude cuando termina una película`,
+let mensaje  
+let intentos = 0  
 
-      `😬 ${user} quedó más expuesto que infidelidad en grupo`,
-      `🫣 ${user} pensó que hoy no le tocaba`,
-      `⚰️ RIP dignidad de ${user}`,
-      `🎯 El sistema eligió a ${user} para descansar`,
-      `🔥 ${user} activó el modo descanso eterno`,
-      `😈 Hoy el sacrificio fue ${user}`,
-    ]
+do {  
+  mensaje = frases[Math.floor(Math.random() * frases.length)]  
+  intentos++  
+} while (mensaje === lastMessage[m.chat] && intentos < 10)  
 
-    let mensaje
-    let intentos = 0
+lastMessage[m.chat] = mensaje  
 
-    do {
-      mensaje = frases[Math.floor(Math.random() * frases.length)]
-      intentos++
-    } while (mensaje === lastMessage[m.chat] && intentos < 10)
+await conn.sendMessage(m.chat, {  
+  text: mensaje,  
+  mentions: [usuarioAzar, ...mencionesOcultas]  
+})
 
-    lastMessage[m.chat] = mensaje
-
-    await conn.sendMessage(m.chat, {
-      text: mensaje,
-      mentions: [usuarioAzar, ...mencionesOcultas]
-    })
-
-  } catch (err) {
-    console.error('tagallC error:', err)
-  }
+} catch (err) {
+console.error('tagallC error:', err)
+}
 }
 
 // Detecta "C" o "c" sin prefijo
-handler.customPrefix = /^\s*c\s*$/i
+handler.customPrefix = /^\sc\s$/i
 handler.command = ['']
 handler.group = true
 
