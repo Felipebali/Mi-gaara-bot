@@ -102,11 +102,12 @@ const handler = async (m, { conn, text, mentionedJid }) => {
     }
 
     const fecha = new Date().toLocaleString('es-UY', { timeZone: 'America/Montevideo' })
+
     const who = userJid
-    const name = who.split('@')[0]
+    const displayUser = who.split('@')[0]
 
     let msg = `♻️ *Limpieza completada*\n\n`
-    msg += `👤 Usuario: @${name}\n`
+    msg += `👤 Usuario: @${displayUser}\n`
     msg += `✅ Bases modificadas: ${totalCleaned}\n`
 
     if (cleanedFiles.length) {
