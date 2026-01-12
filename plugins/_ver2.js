@@ -118,6 +118,38 @@ let handler = async (m, { conn, command, text }) => {
   }
 
   // =================================================
+  // 🧹 MCLEAR — LIMPIAR HISTORIAL
+  // =================================================
+  if (command === 'miclear') {
+    if (!owners.includes(senderNumber)) {
+      await m.react('✖️')
+      return conn.reply(m.chat, '❌ Solo los owners pueden limpiar el historial.', m)
+    }
+
+    // Vaciar historial en memoria
+    global.db.data.recoveredMedia = []
+
+    // Eliminar archivos de ./media
+    const mediaFolder = './media'
+    if (fs.existsSync(mediaFolder)) {
+      const files = fs.readdirSync(mediaFolder)
+      for (const file of files) {
+        try {
+          fs.unlinkSync(path.join(mediaFolder, file))
+        } catch (err) {
+          console.error('Error al borrar archivo:', file, err)
+        }
+      }
+    }
+
+    // Guardar DB
+    if (global.db.write) await global.db.write()
+
+    await m.react('✅')
+    return conn.reply(m.chat, '🗑️ Historial de multimedia limpiado correctamente.', m)
+  }
+
+  // =================================================
   // 📥 RECUPERACIÓN NORMAL
   // =================================================
   try {
@@ -203,6 +235,6 @@ let handler = async (m, { conn, command, text }) => {
 
 handler.help = ['ver', 'r']
 handler.tags = ['tools']
-handler.command = ['ver', 'r', 'rr', 'mlist', 're', 'mclear']
+handler.command = ['ver', 'r', 'rr', 'mlist', 're', 'miclear']
 
 export default handler
