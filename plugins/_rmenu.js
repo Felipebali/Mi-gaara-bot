@@ -24,7 +24,7 @@ Muestra detalles de un archivo recuperado
 Reenvía un archivo por ID  
 📩 *Siempre al privado del owner*
 
-🔹 *.mclear*
+🔹 *.miclear*
 Elimina todo el historial de multimedia recuperada  
 ⚠️ *Comando solo para owner*
 
