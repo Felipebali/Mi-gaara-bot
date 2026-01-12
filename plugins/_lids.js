@@ -3,8 +3,8 @@ import { getUser, saveUser } from "../databaseFunctions.js"
 let handler = async (m, { conn, text, usedPrefix, command }) => {
   let who, whoData, whoLid, whoJid, whoPushName
 
-  const numberMatchesPlus = text.match(/\+[0-9\s]+/g)
-  const numberMatches = text.match(/@[0-9\s]+/g)
+  const numberMatchesPlus = text?.match(/\+[0-9\s]+/g)
+  const numberMatches = text?.match(/@[0-9\s]+/g)
 
   if (numberMatchesPlus?.length) {
     who = numberMatchesPlus[0].replace(/[+\s]/g, "") + "@s.whatsapp.net"
@@ -13,13 +13,13 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
   } else if (m.quoted) {
     who = m.quoted.sender
   } else {
-    who = m.sender // Por defecto, quien envía
+    who = m.sender
   }
 
-  // 🔹 Nombre actual del usuario
+  // 🔹 Nombre actual
   whoPushName = await conn.getName(who) || "Sin nombre"
 
-  // 🔹 Guardar o actualizar usuario en users.json
+  // 🔹 Guardar / actualizar usuario
   const existing = getUser(who) || {}
   saveUser(who, {
     jid: who.endsWith("@s.whatsapp.net") ? who : (existing.jid || ""),
@@ -27,12 +27,11 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
     pushName: whoPushName
   })
 
-  // 🔹 Volver a cargar datos
+  // 🔹 Cargar datos guardados
   whoData = getUser(who)
   whoJid = whoData.jid || "No registrado"
   whoLid = whoData.lid || "No registrado"
 
-  // 🔹 Texto de salida
   const txt = `
 🧾 *Información del usuario*
 
