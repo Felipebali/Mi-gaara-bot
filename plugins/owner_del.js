@@ -1,45 +1,44 @@
 /* plugins/_deletebotmsg.js
-   SILENT DELETE — SOLO OWNERS
-   - H : elimina el mensaje citado (exactamente el citado)
+SILENT DELETE — SOLO OWNERS
+
+H : elimina el mensaje citado (exactamente el citado)
 */
 
+
 let handler = async (m, { conn }) => {
+const owners = ['59898719147','59896026646','59892363485']; // NUMEROS DE OWNERS
+const sender = m.sender.split('@')[0];
 
-    // 🧠 Obtener owners desde la config principal
-    let owners = global.owner?.map(v => v.toString()) || []
+// Solo owners  
+if (!owners.includes(sender)) return;  
 
-    // 🧾 Normalizar número del que ejecuta
-    let sender = m.sender.replace(/[^0-9]/g, '')
+// Debe citar un mensaje  
+if (!m.quoted) return;  
 
-    // 🔒 Solo owners
-    if (!owners.includes(sender)) return
+try {  
+    const quoted = m.quoted;  
 
-    // Debe citar un mensaje
-    if (!m.quoted) return
+    // Construir key exacto del mensaje citado  
+    const key = {  
+        remoteJid: m.chat,  
+        id: quoted.id,  
+        participant: quoted.participant || quoted.sender  
+    };  
 
-    try {
-        const quoted = m.quoted
+    // 🗑️ Borrar mensaje citado  
+    await conn.sendMessage(m.chat, { delete: key });  
 
-        // 🧱 Construir key exacta del mensaje citado
-        const key = {
-            remoteJid: m.chat,
-            id: quoted.id,
-            participant: quoted.participant || quoted.sender
-        }
+    // 🗑️ Borrar tu mensaje ("H")  
+    await conn.sendMessage(m.chat, { delete: m.key });  
 
-        // 🗑️ Borrar mensaje citado
-        await conn.sendMessage(m.chat, { delete: key })
-
-        // 🗑️ Borrar tu mensaje ("H")
-        await conn.sendMessage(m.chat, { delete: m.key })
-
-    } catch {
-        // 🤫 absolutamente silencioso
-    }
+} catch (e) {  
+    // silencioso, sin errores visibles  
 }
 
-// Detecta SOLO la letra H sin prefijo
-handler.customPrefix = /^h$/i
-handler.command = new RegExp()
+};
 
-export default handler
+// Detecta SOLO la letra H sin prefijo
+handler.customPrefix = /^h$/i;
+handler.command = new RegExp(); // comando invisible
+
+export default handler;
