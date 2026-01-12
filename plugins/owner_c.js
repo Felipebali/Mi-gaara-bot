@@ -1,10 +1,8 @@
 // plugins/tagallC.js
 // Activador: letra "C" o "c" (sin prefijo)
-// SOLO DUEÑOS ESPECÍFICOS pueden activarlo
+// SOLO OWNERS pueden activarlo
 // Mención visible a un usuario al azar + mención oculta al resto
 // NO repite la última frase en el grupo
-
-const OWNERS = ['59896026646@s.whatsapp.net', '59898719147@s.whatsapp.net']
 
 // Guarda la última frase usada por grupo
 const lastMessage = {}
@@ -13,8 +11,14 @@ let handler = async (m, { conn, groupMetadata }) => {
   try {
     if (!m.isGroup) return
 
-    const sender = m.sender || m.key?.participant
-    if (!OWNERS.includes(sender)) return
+    // 🧠 Obtener owners desde la config principal
+    let owners = global.owner?.map(v => v.toString()) || []
+
+    // 🧾 Normalizar número del que ejecuta
+    let sender = m.sender.replace(/[^0-9]/g, '')
+
+    // 🔒 Solo owners
+    if (!owners.includes(sender)) return
 
     const texto = (m.text || '').trim()
     if (!texto || texto.toLowerCase() !== 'c') return
@@ -30,7 +34,6 @@ let handler = async (m, { conn, groupMetadata }) => {
     const user = `@${usuarioAzar.split('@')[0]}`
 
     const frases = [
-      // 🤡 Clásicos
       `🤡 Este es re gil ${user}`,
       `🥖 Confirmado: ${user} es pancho`,
       `😂 ${user} tiene cara de que se ríe solo`,
@@ -40,7 +43,6 @@ let handler = async (m, { conn, groupMetadata }) => {
       `📉 El coeficiente intelectual de ${user} bajó solo`,
       `🤦 ${user} pensó… pero muy poquito`,
 
-      // 🐂 Cuernos
       `🐂 Se rumorea fuerte que ${user} es cornudo`,
       `🐮 Dicen por ahí que ${user} es cornuda`,
       `🦌 ${user} podría trabajar de reno en Navidad`,
@@ -50,14 +52,12 @@ let handler = async (m, { conn, groupMetadata }) => {
       `📢 Último momento: ${user} confirmado como cornudo/a`,
       `💔 ${user} confió… y pasó lo que pasó`,
 
-      // 🧠 Cerebro opcional
       `🧠 ${user} tiene el cerebro en modo ahorro de energía`,
       `📴 ${user} está pensando… cargando… 0%`,
       `🪫 ${user} se quedó sin neuronas`,
       `🫠 ${user} procesa ideas en 2G`,
       `🤖 ${user} es NPC confirmado`,
 
-      // 🐀 Boludeo general
       `🐀 ${user} corre y se tropieza solo`,
       `🥴 ${user} es la prueba de que Dios tiene sentido del humor`,
       `🎪 ${user} vino directo del circo`,
@@ -66,7 +66,6 @@ let handler = async (m, { conn, groupMetadata }) => {
       `🤏 ${user} le pone poca sal hasta al agua`,
       `📺 ${user} aplaude cuando termina una película`,
 
-      // 🔥 Remates
       `😬 ${user} quedó más expuesto que infidelidad en grupo`,
       `🫣 ${user} pensó que hoy no le tocaba`,
       `⚰️ RIP dignidad de ${user}`,
