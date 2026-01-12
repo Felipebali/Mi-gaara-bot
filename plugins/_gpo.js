@@ -3,7 +3,8 @@
 const ownerNumbers = [
   '59898719147',
   '59896026646',
-  '59892363485'
+  '59892363485', 
+  '59899022028' 
 ]; // SOLO números
 
 let handler = async (m, { conn }) => {
