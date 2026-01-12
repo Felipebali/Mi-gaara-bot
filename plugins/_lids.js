@@ -1,50 +1,38 @@
-import fs from "fs"
-import path from "path"
-import { getUser } from "../databaseFunctions.js"
+import { getUser, saveUser } from "../databaseFunctions.js"
 
-// ==========================
-// 🧰 Infraestructura segura
-// ==========================
-const DB_DIR = "./database"
-const USERS_FILE = path.join(DB_DIR, "users.json")
-
-if (!fs.existsSync(DB_DIR)) fs.mkdirSync(DB_DIR, { recursive: true })
-if (!fs.existsSync(USERS_FILE)) fs.writeFileSync(USERS_FILE, "{}")
-
-// ==========================
-// 🧠 Handler
-// ==========================
 let handler = async (m, { conn, text, usedPrefix, command }) => {
   let who, whoData, whoLid, whoJid, whoPushName
 
-  const numberMatches = text.match(/@[0-9\s]+/g)
   const numberMatchesPlus = text.match(/\+[0-9\s]+/g)
+  const numberMatches = text.match(/@[0-9\s]+/g)
 
   if (numberMatchesPlus?.length) {
     who = numberMatchesPlus[0].replace(/[+\s]/g, "") + "@s.whatsapp.net"
-
   } else if (numberMatches?.length) {
-    who = numberMatches[0].replace("@", "").replace(/\s+/g, "") + "@lid"
-
+    who = numberMatches[0].replace(/[@\s]/g, "") + "@lid"
   } else if (m.quoted) {
     who = m.quoted.sender
+  } else {
+    who = m.sender // Por defecto, quien envía
   }
 
-  if (who) {
-    whoData = getUser(who) || {}
-    whoLid = whoData.lid || "No registrado"
-    whoJid = whoData.jid || "No registrado"
-    whoPushName = whoData.pushName || "Sin nombre"
-  }
+  // 🔹 Nombre actual del usuario
+  whoPushName = await conn.getName(who) || "Sin nombre"
 
-  if (!who || (!whoLid && !whoJid)) {
-    return conn.sendMessage(
-      m.chat,
-      { text: `Uso correcto:\n${usedPrefix + command} @usuario\n${usedPrefix + command} +598xxxxxxxx` },
-      { quoted: m }
-    )
-  }
+  // 🔹 Guardar o actualizar usuario en users.json
+  const existing = getUser(who) || {}
+  saveUser(who, {
+    jid: who.endsWith("@s.whatsapp.net") ? who : (existing.jid || ""),
+    lid: who.endsWith("@lid") ? who : (existing.lid || ""),
+    pushName: whoPushName
+  })
 
+  // 🔹 Volver a cargar datos
+  whoData = getUser(who)
+  whoJid = whoData.jid || "No registrado"
+  whoLid = whoData.lid || "No registrado"
+
+  // 🔹 Texto de salida
   const txt = `
 🧾 *Información del usuario*
 
@@ -59,7 +47,6 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
   await conn.sendMessage(m.chat, { text: txt }, { quoted: m })
 }
 
-// 🔁 Cambio del comando aquí
 handler.command = ["lid"]
 handler.owner = true
 
