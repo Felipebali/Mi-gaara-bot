@@ -4,31 +4,32 @@ import path from "path"
 const DB_DIR = "./database"
 const USERS_FILE = path.join(DB_DIR, "users.json")
 
-// 🧱 Crear estructura si no existe
 if (!fs.existsSync(DB_DIR)) fs.mkdirSync(DB_DIR, { recursive: true })
 if (!fs.existsSync(USERS_FILE)) fs.writeFileSync(USERS_FILE, "{}")
 
-function loadUsers() {
-  return JSON.parse(fs.readFileSync(USERS_FILE, "utf-8"))
+// Cargar todos los usuarios
+export function loadUsers() {
+  const data = fs.readFileSync(USERS_FILE, "utf-8")
+  return JSON.parse(data)
 }
 
-function saveUsers(data) {
-  fs.writeFileSync(USERS_FILE, JSON.stringify(data, null, 2))
+// Guardar todos los usuarios
+export function saveUsers(users) {
+  fs.writeFileSync(USERS_FILE, JSON.stringify(users, null, 2))
 }
 
-// 🧠 Obtener usuario
-export function getUser(id) {
+// Obtener un usuario
+export function getUser(jid) {
   const users = loadUsers()
-  return users[id] || null
+  return users[jid] || null
 }
 
-// 💾 Crear / actualizar usuario
-export function saveUser(id, data) {
+// Guardar / actualizar un usuario
+export function saveUser(jid, data) {
   const users = loadUsers()
-  users[id] = {
-    ...(users[id] || {}),
-    ...data,
-    updatedAt: Date.now()
+  users[jid] = {
+    ...users[jid], // mantener datos existentes
+    ...data
   }
   saveUsers(users)
 }
