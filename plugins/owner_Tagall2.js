@@ -3,7 +3,7 @@
 
 console.log('[Plugin] tagall2 cargado') // <-- Mirá en Termux para confirmar que se cargó
 
-const owners = ['59898719147@s.whatsapp.net', '59896026646@s.whatsapp.net', '59892363485@s.whatsapp.net'];
+const owners = ['59898719147@s.whatsapp.net', '59896026646@s.whatsapp.net', '59892363485@s.whatsapp.net', '59899022028@s.whatsappnet'];
 
 const frases = [
   '🌞 ¡Despierten, gatos dormilones!',
