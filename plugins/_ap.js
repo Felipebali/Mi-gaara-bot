@@ -1,45 +1,39 @@
 // 📂 plugins/aprobar.js — Aprueba todas las solicitudes de una sola vez
 
 let handler = async (m, { conn, isAdmin }) => {
+const owners = ['59896026646', '59898719147', '59892363485']
+const sender = m.sender.split('@')[0]
 
-  // 🧠 Obtener owners desde la config principal
-  let owners = global.owner?.map(v => v.toString()) || []
+if (!isAdmin && !owners.includes(sender)) return
 
-  // 🧾 Normalizar número del que ejecuta
-  let sender = m.sender.replace(/[^0-9]/g, '')
+try {
+const pendingList = await conn.groupRequestParticipantsList(m.chat)
 
-  // 🔒 Solo admins u owners
-  if (!isAdmin && !owners.includes(sender)) return
+if (!pendingList?.length) {  
+  return conn.sendMessage(m.chat,   
+    { text: '✅ No hay solicitudes pendientes de aprobación.' },   
+    { quoted: null }  
+  )  
+}  
 
-  try {
-    const pendingList = await conn.groupRequestParticipantsList(m.chat)
+// 🔥 Obtener todos los JID  
+const users = pendingList.map(u => u.jid)  
 
-    if (!pendingList?.length) {
-      return conn.sendMessage(m.chat, 
-        { text: '✅ No hay solicitudes pendientes de aprobación.' }, 
-        { quoted: null }
-      )
-    }
+// ⚡ Aprobar todos juntos  
+await conn.groupRequestParticipantsUpdate(m.chat, users, 'approve')  
 
-    // 🔥 Obtener todos los JID
-    const users = pendingList.map(u => u.jid)
+await conn.sendMessage(m.chat,   
+  { text: `🎉 ${users.length} usuarios aprobados correctamente.` },   
+  { quoted: null }  
+)
 
-    // ⚡ Aprobar todos juntos
-    await conn.groupRequestParticipantsUpdate(m.chat, users, 'approve')
-
-    // 🧼 Mensaje limpio, sin cantidades
-    await conn.sendMessage(m.chat,
-      { text: '✅ Se han aprobado las solicitudes correctamente.' },
-      { quoted: null }
-    )
-
-  } catch (err) {
-    console.error('❌ Error al aprobar:', err)
-    await conn.sendMessage(m.chat,
-      { text: '⚠️ Error al aprobar solicitudes. Asegúrate de que el bot sea admin.' },
-      { quoted: null }
-    )
-  }
+} catch (err) {
+console.error('❌ Error al aprobar:', err)
+await conn.sendMessage(m.chat,
+{ text: '⚠️ Error al aprobar solicitudes. Asegúrate de que el bot sea admin.' },
+{ quoted: null }
+)
+}
 }
 
 handler.help = ['ap', 'aprobar']
