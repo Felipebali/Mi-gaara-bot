@@ -3,13 +3,13 @@ const groupLinkRegex = /chat.whatsapp.com\/(invite\/)?([0-9A-Za-z]{20,24})/i;
 const channelRegex = /whatsapp\.com\/channel\/[0-9A-Za-z]{15,50}/i;
 const genericGroupRegex = /(chat\.whatsapp\.com|whatsapp\.com\/invite)/i;
 
-// Enlace especial
+// 🔗 Enlace especial permitido
 const tagallLink = "https://miunicolink.local/tagall-FelixCat";
 
-// 🔹 Dueños
+// 👑 Dueños
 const owners = ["59896026646", "59898719147", "59892363485"];
 
-// 🔹 Cache de invitaciones
+// 🧠 Cache de invitaciones
 if (!global.groupInviteCodes) global.groupInviteCodes = {};
 
 export async function before(m, { conn, isAdmin, isBotAdmin }) {
@@ -51,26 +51,36 @@ export async function before(m, { conn, isAdmin, isBotAdmin }) {
     } catch {}
   }
 
+  async function kickUser() {
+    try {
+      await conn.groupParticipantsUpdate(m.chat, [who], "remove");
+    } catch {}
+  }
+
   // 🛡️ Admines → todo permitido
   if (isAdmin) return true;
 
   // 🚫 TAGALL
   if (isTagall) {
     await deleteMsg();
+    await kickUser();
+
     await conn.sendMessage(m.chat, {
-      text: `😮‍💨 No compartas tagall @${who.split("@")[0]}`,
+      text: `🚫 @${who.split("@")[0]} no se permiten enlaces tagall`,
       mentions: [who],
     });
+
     return false;
   }
 
   // 🚫 CANALES
   if (isChannel) {
     await deleteMsg();
+    await kickUser();
     return false;
   }
 
-  // 🔐 Código del grupo
+  // 🔐 Código del grupo actual
   let currentInvite = global.groupInviteCodes[m.chat];
   if (!currentInvite) {
     try {
@@ -81,12 +91,13 @@ export async function before(m, { conn, isAdmin, isBotAdmin }) {
     }
   }
 
-  // ✅ Link del mismo grupo
+  // ✅ Link del mismo grupo permitido
   if (isGroupLink && text.includes(currentInvite)) return true;
 
   // ❌ Cualquier otro link de grupo
   if (isGenericGroup) {
     await deleteMsg();
+    await kickUser();
     return false;
   }
 
