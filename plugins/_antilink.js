@@ -73,10 +73,15 @@ export async function before(m, { conn, isAdmin, isBotAdmin }) {
     return false;
   }
 
-  // 🚫 CANALES
+  // 🚫 CANALES → solo borrar, NO expulsar
   if (isChannel) {
     await deleteMsg();
-    await kickUser();
+
+    await conn.sendMessage(m.chat, {
+      text: `⚠️ @${who.split("@")[0]} no se permiten enlaces de canales`,
+      mentions: [who],
+    });
+
     return false;
   }
 
