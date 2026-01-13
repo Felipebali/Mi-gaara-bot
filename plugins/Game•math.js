@@ -87,7 +87,7 @@ const handler = async (m, { conn, args, usedPrefix, command }) => {
     ]
 }
 
-// Handler de respuestas (solo por reply)
+// Handler de respuestas — 🔒 SOLO si citan el mensaje del juego
 handler.before = async function (m, { conn }) {
     const chatSettings = global.db.data.chats[m.chat] || {}
     if (chatSettings.games === false) return
@@ -97,7 +97,12 @@ handler.before = async function (m, { conn }) {
 
     const [msg, math] = global.math[id]
 
-    if (!m.quoted || m.quoted.id !== msg.key.id) return
+    // 🧷 Filtro absoluto: debe ser reply al mensaje del juego
+    const quotedId =
+        m.message?.extendedTextMessage?.contextInfo?.stanzaId ||
+        m.quoted?.id
+
+    if (!quotedId || quotedId !== msg.key.id) return
 
     if (!global.db.data.users[m.sender]) global.db.data.users[m.sender] = { monedas: 0 }
     const user = global.db.data.users[m.sender]
