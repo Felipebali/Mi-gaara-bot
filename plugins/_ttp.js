@@ -1,4 +1,5 @@
 import axios from "axios"
+import { sticker } from '../lib/sticker.js'
 
 let handler = async (m, { conn, text }) => {
   try {
@@ -12,23 +13,36 @@ let handler = async (m, { conn, text }) => {
         text: "❌ Máximo 80 caracteres."
       }, { quoted: m })
 
-    // ✅ GENERADOR DE IMÁGENES DE TEXTO 100% ESTABLE
+    // 🧠 Generador de imagen estable
     const url = `https://dummyimage.com/600x400/000/fff.png&text=${encodeURIComponent(text)}`
 
+    // Descargar imagen
     const res = await axios.get(url, { responseType: "arraybuffer" })
+    const imgBuffer = Buffer.from(res.data)
 
-    await conn.sendMessage(m.chat, {
-      image: Buffer.from(res.data),
-      caption: "🖼️ TTP en imagen."
-    }, { quoted: m })
+    // 🎨 Convertir a sticker
+    const stiker = await sticker(imgBuffer, false, global.packname, global.author)
+
+    // 📨 Enviar sticker
+    await conn.sendFile(
+      m.chat,
+      stiker,
+      'ttp.webp',
+      '',
+      m,
+      true
+    )
 
   } catch (e) {
-    console.error("❌ TTP IMG ERROR:", e)
+    console.error("❌ TTP STICKER ERROR:", e)
     return conn.sendMessage(m.chat, {
-      text: "⚠️ Error al generar la imagen."
+      text: "⚠️ Error al generar el sticker."
     }, { quoted: m })
   }
 }
 
-handler.command = ["ttp"]
+handler.command = ['ttp']
+handler.help = ['ttp <texto>']
+handler.tags = ['sticker']
+
 export default handler
