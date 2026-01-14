@@ -1,6 +1,6 @@
 // plugins/menu.js
 const botname = global.botname || '😸 FelixCat-Bot 😸';
-const creador = 'Balkoszky🇵🇱';
+const creador = 'Anónimo🐼';
 const versionBot = '10.6.1';
 
 let handler = async (m, { conn }) => {
