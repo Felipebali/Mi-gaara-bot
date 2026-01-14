@@ -70,6 +70,12 @@ const handler = async (m, { conn, command, text }) => {
 
   const dbUsers = readBlacklist()
 
+  // ================= REACCIONES =================
+  if (command === 'ln') await m.react('🚫')
+  if (command === 'unln') await m.react('🕊️')
+  if (command === 'vln') await m.react('📋')
+  if (command === 'clrn') await m.react('🧹')
+
   // ================= AUTO-KICK AL CITAR =================
   if (m.isGroup && m.quoted) {
     const quotedJid = normalizeJid(m.quoted.sender || m.quoted.participant)
@@ -97,7 +103,10 @@ const handler = async (m, { conn, command, text }) => {
 
   if (command === 'unln' && /^\d+$/.test(text?.trim())) {
     const index = parseInt(text.trim()) - 1
-    if (!bannedList[index]) return conn.reply(m.chat, `${ICON.ban} Número inválido.`, m)
+    if (!bannedList[index]) {
+      await m.react('❌')
+      return conn.reply(m.chat, `${ICON.ban} Número inválido.`, m)
+    }
     userJid = bannedList[index][0]
   } else if (m.quoted) {
     userJid = normalizeJid(m.quoted.sender || m.quoted.participant)
@@ -114,15 +123,19 @@ const handler = async (m, { conn, command, text }) => {
   let reason = text?.replace(/@/g, '').replace(/\d{5,}/g, '').trim()
   if (!reason) reason = 'No especificado'
 
-  if (!userJid && !['vln', 'clrn'].includes(command))
+  if (!userJid && !['vln', 'clrn'].includes(command)) {
+    await m.react('❌')
     return conn.reply(m.chat, `${ICON.warn} Debes responder, mencionar o usar índice.`, m)
+  }
 
   if (userJid && !dbUsers[userJid]) dbUsers[userJid] = {}
 
   // ================= ADD =================
   if (command === 'ln') {
-    if (numberDigits && !m.quoted && !m.mentionedJid)
+    if (numberDigits && !m.quoted && !m.mentionedJid) {
+      await m.react('❌')
       return conn.reply(m.chat, `${ICON.ban} Usa mencionar o citar, no escribas números.`, m)
+    }
 
     dbUsers[userJid] = { banned: true, reason, addedBy: m.sender }
 
@@ -151,8 +164,10 @@ const handler = async (m, { conn, command, text }) => {
 
   // ================= REMOVER =================
   else if (command === 'unln') {
-    if (!dbUsers[userJid]?.banned)
+    if (!dbUsers[userJid]?.banned) {
+      await m.react('❌')
       return conn.reply(m.chat, `${ICON.ban} No está en la lista negra.`, m)
+    }
 
     dbUsers[userJid] = { banned: false }
     writeBlacklist(dbUsers)
