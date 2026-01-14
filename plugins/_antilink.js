@@ -7,7 +7,7 @@ const genericGroupRegex = /(chat\.whatsapp\.com|whatsapp\.com\/invite)/i;
 const tagallLink = "https://miunicolink.local/tagall-FelixCat";
 
 // 👑 Dueños
-const owners = ["59896026646", "59898719147", "59892363485"];
+const owners = ["59896026646", "59898719147", "59892363485", "59899022028"];
 
 // 🧠 Cache de invitaciones
 if (!global.groupInviteCodes) global.groupInviteCodes = {};
@@ -103,6 +103,12 @@ export async function before(m, { conn, isAdmin, isBotAdmin }) {
   if (isGenericGroup) {
     await deleteMsg();
     await kickUser();
+
+    await conn.sendMessage(m.chat, {
+      text: `🚫 Link de grupo no permitido.\n\n👤 @${who.split("@")[0]} es expulsado del grupo actual.`,
+      mentions: [who],
+    });
+
     return false;
   }
 
