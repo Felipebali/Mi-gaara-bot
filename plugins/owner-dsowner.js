@@ -1,22 +1,27 @@
 // 📂 plugins/owner-manager.js
-// Dar o quitar owner dinámicamente
+// Dar o quitar owner dinámicamente — Reconoce ROOT
+
 let handler = async (m, { conn, args, command }) => {
   try {
-    // SOLO ROOT OWNERS pueden usar esto
-    const rownersJid = (global.getROwnersJid?.() || [])
+    // 🔐 SOLO ROOT OWNERS
+    const rownersJid = [
+      '59898719147@s.whatsapp.net', // Feli ROOT
+      '59896026646@s.whatsapp.net', // otro ROOT si lo quieres
+    ]
     const sender = conn.decodeJid ? conn.decodeJid(m.sender) : m.sender
-    if (!rownersJid.includes(sender)) return m.reply('🚫 Solo ROOT owners pueden usar este comando.')
+
+    if (!rownersJid.includes(sender)) 
+      return m.reply('🚫 Solo ROOT owners pueden usar este comando.')
 
     // Validar target
     if (!args[0] && !m.mentionedJid?.length) 
       return m.reply('❌ Mencioná o escribe el número de alguien para dar/quitar owner.')
 
     let target = m.mentionedJid?.[0] || args[0].replace(/[^0-9]/g,'') + '@s.whatsapp.net'
-
-    // Normaliza array
-    global.owner = global.owner || []
-
     const simple = target.split('@')[0]
+
+    // Inicializar array global de owners si no existe
+    global.owner = global.owner || []
 
     if (command === 'aowner') {
       if (!global.owner.includes(simple)) {
@@ -59,4 +64,5 @@ handler.command = ['aowner','downer']
 handler.rowner = true
 handler.group = false
 handler.tags = ['owner']
+
 export default handler
