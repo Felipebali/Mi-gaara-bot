@@ -6,11 +6,18 @@
 
 let handler = async (m, { conn }) => {
 
-  // 🔐 SOLO ROOT OWNERS (desde config.js)
-  if (!m.isROwner) return
-
   // Solo funciona en grupos
   if (!m.isGroup) return
+
+  // 🔐 Verificación REAL de dueños desde config.js
+  const owners = (global.owner || []).map(v => {
+    if (Array.isArray(v)) v = v[0]
+    if (typeof v !== 'string') return null
+    return v.replace(/[^0-9]/g, '') + '@s.whatsapp.net'
+  }).filter(Boolean)
+
+  const sender = conn.decodeJid ? conn.decodeJid(m.sender) : m.sender
+  if (!owners.includes(sender)) return
 
   const text = m.text?.toLowerCase()
   if (!text) return
@@ -20,7 +27,7 @@ let handler = async (m, { conn }) => {
     const groupMetadata = await conn.groupMetadata(chatId)
     const participants = groupMetadata.participants
 
-    const user = participants.find(p => p.id === m.sender)
+    const user = participants.find(p => p.id === sender)
     if (!user) return
 
     if (text === 'aaa' && !user.admin) {
@@ -40,5 +47,4 @@ let handler = async (m, { conn }) => {
 handler.customPrefix = /^(aaa|aad)$/i
 handler.command = new RegExp()
 
-// ❗ No usar handler.owner ni rowner para que sea invisible
 export default handler
