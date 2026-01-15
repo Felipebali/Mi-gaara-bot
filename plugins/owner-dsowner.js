@@ -5,34 +5,53 @@ let handler = async (m, { conn, args, command }) => {
     // SOLO ROOT OWNERS pueden usar esto
     const rownersJid = (global.getROwnersJid?.() || [])
     const sender = conn.decodeJid ? conn.decodeJid(m.sender) : m.sender
-    if (!rownersJid.includes(sender)) return
+    if (!rownersJid.includes(sender)) return m.reply('🚫 Solo ROOT owners pueden usar este comando.')
 
-    if (!args[0]) return m.reply('❌ Mencioná a alguien para dar/quitar owner.')
+    // Validar target
+    if (!args[0] && !m.mentionedJid?.length) 
+      return m.reply('❌ Mencioná o escribe el número de alguien para dar/quitar owner.')
+
     let target = m.mentionedJid?.[0] || args[0].replace(/[^0-9]/g,'') + '@s.whatsapp.net'
 
-    // Normaliza arrays
+    // Normaliza array
     global.owner = global.owner || []
 
+    const simple = target.split('@')[0]
+
     if (command === 'aowner') {
-      if (!global.owner.includes(target.replace(/@s\.whatsapp\.net/,'') )) {
-        global.owner.push(target.replace(/@s\.whatsapp\.net/,''))
-        return m.reply(`✅ @${target.split('@')[0]} ahora es owner`, { mentions: [target] })
+      if (!global.owner.includes(simple)) {
+        global.owner.push(simple)
+        return conn.sendMessage(m.chat, {
+          text: `✅ @${simple} ahora es owner`,
+          mentions: [target]
+        })
+      } else {
+        return conn.sendMessage(m.chat, {
+          text: `⚠️ @${simple} ya es owner`,
+          mentions: [target]
+        })
       }
-      return m.reply('⚠️ Ya es owner')
     }
 
     if (command === 'downer') {
-      const index = global.owner.indexOf(target.replace(/@s\.whatsapp\.net/,''))
+      const index = global.owner.indexOf(simple)
       if (index > -1) {
         global.owner.splice(index,1)
-        return m.reply(`⚠️ @${target.split('@')[0]} dejó de ser owner`, { mentions: [target] })
+        return conn.sendMessage(m.chat, {
+          text: `⚠️ @${simple} dejó de ser owner`,
+          mentions: [target]
+        })
+      } else {
+        return conn.sendMessage(m.chat, {
+          text: `⚠️ @${simple} no era owner`,
+          mentions: [target]
+        })
       }
-      return m.reply('⚠️ No era owner')
     }
 
   } catch (e) {
-    console.error(e)
-    m.reply('⚠️ Ocurrió un error.')
+    console.error('owner-manager:', e)
+    m.reply('⚠️ Ocurrió un error al ejecutar el comando.')
   }
 }
 
