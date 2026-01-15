@@ -100,7 +100,7 @@ const handler = async (m, { conn, text, mentionedJid }) => {
 // =================== FLAGS ===================
 
 handler.command = ['resetuser', 'deletedatauser', 'borrardatos']
-handler.owner = true
+handler.rowner = true
 handler.tags = ['owner']
 
 export default handler
