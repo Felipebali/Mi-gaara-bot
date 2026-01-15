@@ -1,9 +1,7 @@
-// 📂 plugins/tagall2.js — Mención oculta x4 con frases aleatorias 🌍 (solo owners)
-// Versión compat: log de carga + array/regEx en comando para evitar "no activado"
+// 📂 plugins/tagall2.js — Mención oculta x4 con frases aleatorias 🌍
+// SOLO ROOT OWNERS
 
-console.log('[Plugin] tagall2 cargado') // <-- Mirá en Termux para confirmar que se cargó
-
-const owners = ['59898719147@s.whatsapp.net', '59896026646@s.whatsapp.net', '59892363485@s.whatsapp.net', '59899022028@s.whatsappnet'];
+console.log('[Plugin] tagall2 cargado')
 
 const frases = [
   '🌞 ¡Despierten, gatos dormilones!',
@@ -41,58 +39,46 @@ const frases = [
   '💫 El universo conspira... ¡para que mandes un mensaje!',
   '🦊 FoxMode activado: ¡Despierten todos!',
   '👽 Alien Alert: el grupo necesita actividad inmediata!'
-];
+]
 
 function sleep(ms) {
-  return new Promise(resolve => setTimeout(resolve, ms));
+  return new Promise(r => setTimeout(r, ms))
 }
 
 let handler = async (m, { conn, isBotAdmin }) => {
   try {
-    if (!m.isGroup) return;
+    if (!m.isGroup) return
 
-    const sender = m.sender;
-    if (!owners.includes(sender)) return;
+    // 🔐 Solo ROOT owners reales
+    if (!m.isROwner) return
 
-    if (!isBotAdmin) return conn.sendMessage(m.chat, { text: '🤖 Necesito ser administrador para mencionar a todos.' });
+    if (!isBotAdmin) return
 
-    const groupMetadata = await conn.groupMetadata(m.chat);
-    const members = groupMetadata.participants.map(u => u.id).filter(v => v !== conn.user.jid);
+    const groupMetadata = await conn.groupMetadata(m.chat)
+    const members = groupMetadata.participants
+      .map(u => u.id)
+      .filter(v => v !== conn.user.jid)
 
-    if (!members.length) return;
+    if (!members.length) return
 
-    // Texto invisible (mención oculta)
-    const hidden = '\u200B'.repeat(500);
+    const hidden = '\u200B'.repeat(500)
 
     for (let i = 0; i < 4; i++) {
-      const frase = frases[Math.floor(Math.random() * frases.length)];
-      const text = `${frase}\n${hidden}`;
+      const frase = frases[Math.floor(Math.random() * frases.length)]
+      const text = `${frase}\n${hidden}`
 
-      await conn.sendMessage(
-        m.chat,
-        { text, mentions: members }
-      );
-
-      await sleep(1500);
+      await conn.sendMessage(m.chat, { text, mentions: members })
+      await sleep(1500)
     }
 
-  } catch (e) {
-    console.error('Error en tagall2:', e);
-  }
-};
+  } catch {}
+}
 
-// Compatibilidad: array de comandos (muchas builds la usan)
 handler.command = ['tagall2']
-// Y además regex (otras builds lo prefieren)
-handler.command = handler.command || /^tagall2$/i
-
-// Meta para el loader del bot
-handler.help = ['tagall2']
-handler.tags = ['owner', 'group']
 handler.group = true
+handler.tags = ['owner']
 
-// Marcar owner/rowner por compatibilidad con distintos loaders
-handler.owner = true
+// 🔒 Sistema central de permisos
 handler.rowner = true
 
 export default handler
