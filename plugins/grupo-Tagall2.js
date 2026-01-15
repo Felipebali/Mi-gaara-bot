@@ -1,28 +1,26 @@
 // plugins/tagallT.js
 // Activador: letra "T" o "t" (sin prefijo)
-// SOLO DUEÑOS ESPECÍFICOS pueden activarlo
+// SOLO ROOT OWNERS pueden activarlo
 // Mención visible a un usuario al azar + mención oculta al resto
-
-const OWNERS = ['59896026646@s.whatsapp.net', '59898719147@s.whatsapp.net']; // Tus owners
 
 let handler = async (m, { conn, groupMetadata }) => {
   try {
-    if (!m.isGroup) return; // Solo grupos
+    if (!m.isGroup) return
 
-    const sender = m.sender || m.key?.participant;
-    if (!OWNERS.includes(sender)) return; // Ignorar todos los demás
+    // 🔐 Solo dueños reales (desde config.js)
+    if (!m.isROwner) return
 
-    const texto = (m.text || '').trim();
-    if (!texto || texto.toLowerCase() !== 't') return; // Activador: T o t
+    const texto = (m.text || '').trim()
+    if (texto.toLowerCase() !== 't') return
 
     const participantes = (groupMetadata?.participants || [])
       .map(p => (conn.decodeJid ? conn.decodeJid(p.id) : p.id))
-      .filter(Boolean);
+      .filter(Boolean)
 
-    if (participantes.length < 2) return;
+    if (participantes.length < 2) return
 
-    const usuarioAzar = participantes[Math.floor(Math.random() * participantes.length)];
-    const mencionesOcultas = participantes.filter(u => u !== usuarioAzar);
+    const usuarioAzar = participantes[Math.floor(Math.random() * participantes.length)]
+    const mencionesOcultas = participantes.filter(u => u !== usuarioAzar)
 
     const frases = [
       `📢 Parece que @${usuarioAzar.split('@')[0]} quiso asegurarse de que nadie se quede dormido 😴`,
@@ -31,23 +29,21 @@ let handler = async (m, { conn, groupMetadata }) => {
       `⚡ @${usuarioAzar.split('@')[0]} activó el modo “presente o expulsado” 😆`,
       `🔥 @${usuarioAzar.split('@')[0]} encendió el grupo con una sola letra 😎`,
       `😂 Todo indica que @${usuarioAzar.split('@')[0]} tenía ganas de charlar con todos 📲`,
-    ];
+    ]
 
-    const mensaje = frases[Math.floor(Math.random() * frases.length)];
+    const mensaje = frases[Math.floor(Math.random() * frases.length)]
 
     await conn.sendMessage(m.chat, {
       text: mensaje,
       mentions: [usuarioAzar, ...mencionesOcultas]
-    });
+    })
 
-  } catch (err) {
-    console.error('tagallT error:', err);
-  }
-};
+  } catch {}
+}
 
 // Detecta "T" o "t" sin prefijo
-handler.customPrefix = /^\s*t\s*$/i;
-handler.command = [''];
-handler.group = true;
+handler.customPrefix = /^\s*t\s*$/i
+handler.command = new RegExp()
+handler.group = true
 
-export default handler;
+export default handler
