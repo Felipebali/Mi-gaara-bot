@@ -1,14 +1,19 @@
 // plugins/tagallT.js
 // Activador: letra "T" o "t" (sin prefijo)
-// SOLO ROOT OWNERS pueden activarlo
+// SOLO ROOT OWNERS reales pueden activarlo
 // Mención visible a un usuario al azar + mención oculta al resto
 
 let handler = async (m, { conn, groupMetadata }) => {
   try {
     if (!m.isGroup) return
 
-    // 🔐 Solo dueños reales (desde config.js)
-    if (!m.isROwner) return
+    // 🔐 Verificación REAL de dueños desde config.js
+    const owners = global.owner?.map(v => 
+      v.replace(/[^0-9]/g, '') + '@s.whatsapp.net'
+    ) || []
+
+    const sender = conn.decodeJid ? conn.decodeJid(m.sender) : m.sender
+    if (!owners.includes(sender)) return
 
     const texto = (m.text || '').trim()
     if (texto.toLowerCase() !== 't') return
@@ -38,7 +43,9 @@ let handler = async (m, { conn, groupMetadata }) => {
       mentions: [usuarioAzar, ...mencionesOcultas]
     })
 
-  } catch {}
+  } catch (e) {
+    console.error(e)
+  }
 }
 
 // Detecta "T" o "t" sin prefijo
