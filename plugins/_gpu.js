@@ -1,72 +1,64 @@
 // 📂 plugins/gpu.js
-const ownerNumbers = ['59898719147@s.whatsapp.net', '59896026646@s.whatsapp.net', '59892363485@s.whatsapp.net', '59899022028@s.whatsapp.net']; // Dueños autorizados
+// 🖼️ Obtener foto de perfil — SOLO OWNERS reales del bot
 
 let handler = async (m, { conn, args }) => {
   try {
-    const sender = m.sender;
+    if (!m.isOwner) 
+      return m.reply('🚫 Solo los dueños del bot pueden usar este comando.')
 
-    if (!ownerNumbers.includes(sender))
-      return m.reply('🚫 Solo los dueños del bot pueden usar este comando.');
+    // 🧩 Determinar objetivo
+    let target = null
 
-    // 🧩 Determinar target:
-    let target = null;
-
-    // 1️⃣ Si mencionó a alguien
-    if (m.mentionedJid && m.mentionedJid.length > 0) {
-      target = m.mentionedJid[0];
+    // 1️⃣ Mención
+    if (m.mentionedJid?.length) {
+      target = m.mentionedJid[0]
     }
 
-    // 2️⃣ Si citó un mensaje
-    else if (m.quoted && m.quoted.sender) {
-      target = m.quoted.sender;
+    // 2️⃣ Mensaje citado
+    else if (m.quoted?.sender) {
+      target = m.quoted.sender
     }
 
-    // 3️⃣ Si puso un número como argumento
+    // 3️⃣ Número como argumento
     else if (args[0]) {
-      let num = args[0].replace(/[^0-9]/g, ''); // Quitar símbolos y letras
+      const num = args[0].replace(/[^0-9]/g, '')
       if (num.length < 8)
-        return m.reply('❌ Número no válido. Usa el formato: .gpu 5989xxxxxxx');
-      target = `${num}@s.whatsapp.net`;
+        return m.reply('❌ Número no válido. Usa: .gpu 5989xxxxxxx')
+      target = `${num}@s.whatsapp.net`
     }
 
-    // Si no hay target, error
     if (!target)
-      return m.reply('❌ Debes mencionar, citar o escribir el número de alguien.');
+      return m.reply('❌ Debes mencionar, citar o escribir el número de alguien.')
 
-    const simpleTarget = target.split('@')[0];
+    const simple = target.split('@')[0]
 
-    // 🖼️ Intentar obtener la foto de perfil
-    let ppUrl;
+    // 🖼️ Obtener foto de perfil
+    let ppUrl
     try {
-      ppUrl = await conn.profilePictureUrl(target, 'image');
+      ppUrl = await conn.profilePictureUrl(target, 'image')
     } catch {
-      ppUrl = null;
+      ppUrl = null
     }
 
     if (!ppUrl)
-      return m.reply(`❌ No se pudo obtener la foto de perfil de @${simpleTarget}.`, {
-        mentions: [target],
-      });
+      return m.reply(`❌ No se pudo obtener la foto de perfil de @${simple}.`, {
+        mentions: [target]
+      })
 
-    // 📤 Enviar imagen
-    await conn.sendMessage(
-      m.chat,
-      {
-        image: { url: ppUrl },
-        caption: `📥 Foto de perfil de @${simpleTarget}`,
-        mentions: [target],
-      },
-      { quoted: m }
-    );
+    await conn.sendMessage(m.chat, {
+      image: { url: ppUrl },
+      caption: `📥 Foto de perfil de @${simple}`,
+      mentions: [target]
+    }, { quoted: m })
+
   } catch (err) {
-    console.error(err);
-    m.reply('⚠️ Ocurrió un error al intentar obtener la foto.');
+    console.error(err)
+    m.reply('⚠️ Ocurrió un error al intentar obtener la foto.')
   }
-};
+}
 
-handler.command = /^(gpu)$/i;
-handler.tags = ['owner', 'tools'];
-handler.help = ['gpu [@usuario | número | cita]'];
-handler.group = false;
-
-export default handler;
+handler.command = ['gpu']
+handler.tags = ['owner', 'tools']
+handler.help = ['gpu @usuario | número | (responder mensaje)']
+handler.owner = true   // 🔐 usa config.js
+export default handler
