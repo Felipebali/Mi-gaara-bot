@@ -1,7 +1,5 @@
 // 📂 plugins/tagall2.js — Mención oculta x4 con frases aleatorias 🌍
-// SOLO ROOT OWNERS
-
-console.log('[Plugin] tagall2 cargado')
+// SOLO ROOT OWNERS reales del bot
 
 const frases = [
   '🌞 ¡Despierten, gatos dormilones!',
@@ -41,23 +39,27 @@ const frases = [
   '👽 Alien Alert: el grupo necesita actividad inmediata!'
 ]
 
-function sleep(ms) {
-  return new Promise(r => setTimeout(r, ms))
-}
+const sleep = ms => new Promise(r => setTimeout(r, ms))
 
 let handler = async (m, { conn, isBotAdmin }) => {
   try {
     if (!m.isGroup) return
-
-    // 🔐 Solo ROOT owners reales
-    if (!m.isROwner) return
-
     if (!isBotAdmin) return
+
+    // 🔐 ROOT OWNERS reales desde config.js (blindado)
+    const owners = (global.owner || []).map(v => {
+      if (Array.isArray(v)) v = v[0]
+      if (typeof v !== 'string' && typeof v !== 'number') return null
+      return String(v).replace(/[^0-9]/g, '') + '@s.whatsapp.net'
+    }).filter(Boolean)
+
+    const sender = conn.decodeJid ? conn.decodeJid(m.sender) : m.sender
+    if (!owners.includes(sender)) return
 
     const groupMetadata = await conn.groupMetadata(m.chat)
     const members = groupMetadata.participants
-      .map(u => u.id)
-      .filter(v => v !== conn.user.jid)
+      .map(u => (conn.decodeJid ? conn.decodeJid(u.id) : u.id))
+      .filter(v => v && v !== conn.user.jid)
 
     if (!members.length) return
 
@@ -65,20 +67,20 @@ let handler = async (m, { conn, isBotAdmin }) => {
 
     for (let i = 0; i < 4; i++) {
       const frase = frases[Math.floor(Math.random() * frases.length)]
-      const text = `${frase}\n${hidden}`
-
-      await conn.sendMessage(m.chat, { text, mentions: members })
+      await conn.sendMessage(m.chat, {
+        text: `${frase}\n${hidden}`,
+        mentions: members
+      })
       await sleep(1500)
     }
 
-  } catch {}
+  } catch (e) {
+    console.error('Error en tagall2:', e)
+  }
 }
 
 handler.command = ['tagall2']
 handler.group = true
 handler.tags = ['owner']
-
-// 🔒 Sistema central de permisos
-handler.rowner = true
 
 export default handler
