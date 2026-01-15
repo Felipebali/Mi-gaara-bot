@@ -1,50 +1,43 @@
-import { readdirSync, unlinkSync, existsSync, promises as fs } from 'fs';
-import path from 'path';
+// 📂 plugins/owner-manager.js
+// Dar o quitar owner dinámicamente
+let handler = async (m, { conn, args, command }) => {
+  try {
+    // SOLO ROOT OWNERS pueden usar esto
+    const rownersJid = (global.getROwnersJid?.() || [])
+    const sender = conn.decodeJid ? conn.decodeJid(m.sender) : m.sender
+    if (!rownersJid.includes(sender)) return
 
-var handler = async (m, { conn, usedPrefix }) => {
-    if (global.conn.user.jid !== conn.user.jid) {
-        return conn.reply(m.chat, '🍉 *Utiliza este comando directamente en el número principal del Bot*', m);
+    if (!args[0]) return m.reply('❌ Mencioná a alguien para dar/quitar owner.')
+    let target = m.mentionedJid?.[0] || args[0].replace(/[^0-9]/g,'') + '@s.whatsapp.net'
+
+    // Normaliza arrays
+    global.owner = global.owner || []
+
+    if (command === 'aowner') {
+      if (!global.owner.includes(target.replace(/@s\.whatsapp\.net/,'') )) {
+        global.owner.push(target.replace(/@s\.whatsapp\.net/,''))
+        return m.reply(`✅ @${target.split('@')[0]} ahora es owner`, { mentions: [target] })
+      }
+      return m.reply('⚠️ Ya es owner')
     }
 
-    await conn.reply(m.chat, '⚡️ *Iniciando proceso de eliminación de todos los archivos de sesión, excepto el archivo creds.json...*', m);
-
-    const rwait = '⚡️'; 
-    m.react(rwait);
-
-    let sessionPath = './seccion-activas';
-    try {
-        if (!existsSync(sessionPath)) {
-            return await conn.reply(m.chat, '☁️ *La carpeta ya fue limpiada*', m);
-        }
-
-        let files = await fs.readdir(sessionPath);
-        let filesDeleted = 0;
-
-        for (const file of files) {
-            if (file !== 'creds.json') {
-                await fs.unlink(path.join(sessionPath, file));
-                filesDeleted++;
-            }
-        }
-
-        if (filesDeleted === 0) {
-            await conn.reply(m.chat, '📂 *La carpeta ya fue limpiada*', m);
-        } else {
-            const done = '✅';
-            m.react(done);
-            await conn.reply(m.chat, `⚡️ *Se eliminaron ${filesDeleted} archivos de sesión, excepto el archivo creds.json*`, m);
-            await conn.reply(m.chat, '{emoji} *¿Me ves o no futuro cliente?*', m);
-        }
-    } catch (err) {
-        console.error('Error al leer la carpeta o los archivos de sesión:', err);
-        await conn.reply(m.chat, '😴 *Ocurrió un fallo*', m);
+    if (command === 'downer') {
+      const index = global.owner.indexOf(target.replace(/@s\.whatsapp\.net/,''))
+      if (index > -1) {
+        global.owner.splice(index,1)
+        return m.reply(`⚠️ @${target.split('@')[0]} dejó de ser owner`, { mentions: [target] })
+      }
+      return m.reply('⚠️ No era owner')
     }
+
+  } catch (e) {
+    console.error(e)
+    m.reply('⚠️ Ocurrió un error.')
+  }
 }
 
-handler.help = ['dsowner'];
-handler.tags = ['fix', 'owner'];
-handler.command = ['delai', 'delyaemori', 'dsowner', 'clearallsession'];
-
-handler.rowner = true;
-
-export default handler;
+handler.command = ['aowner','downer']
+handler.rowner = true
+handler.group = false
+handler.tags = ['owner']
+export default handler
