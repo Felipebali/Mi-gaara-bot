@@ -1,17 +1,19 @@
-// 📂 plugins/_autoread.js — FELI 2026 — AUTO READ 👁️
+// 📂 plugins/_autoread.js — FELI 2026 — AUTO READ REAL 👁️
 
-let handler = async (m, { conn }) => {
-  // Este handler no responde nada
-  // Solo sirve para marcar como leído
-}
+let handler = async (m, { conn }) => {}
 
 // ================= AUTO-READ =================
 
 handler.before = async function (m) {
   try {
-    // Marca el mensaje como leído apenas llega
-    await this.readMessages([m.key])
-  } catch {}
+    if (!m.key) return
+    if (m.key.fromMe) return
+
+    // Esto fuerza el "visto" real en WhatsApp
+    await this.sendReadReceipt(m.chat, m.key.participant || m.sender, [m.key.id])
+  } catch (e) {
+    console.log('AutoRead error:', e?.message)
+  }
 }
 
 // ================= CONFIG =================
