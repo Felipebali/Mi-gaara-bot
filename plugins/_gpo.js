@@ -3,12 +3,19 @@
 
 let handler = async (m, { conn }) => {
   try {
-    // 🔐 Validación centralizada de owner
-    if (!m.isOwner)
-      return m.reply('🚫 Solo los dueños del bot pueden usar este comando.')
-
     if (!m.isGroup)
       return m.reply('❌ Este comando solo funciona en grupos.')
+
+    // 🔐 Verificación REAL de dueños desde config.js (compatible con todos los formatos)
+    const owners = (global.owner || []).map(v => {
+      if (Array.isArray(v)) v = v[0]
+      if (typeof v !== 'string') return null
+      return v.replace(/[^0-9]/g, '') + '@s.whatsapp.net'
+    }).filter(Boolean)
+
+    const sender = conn.decodeJid ? conn.decodeJid(m.sender) : m.sender
+    if (!owners.includes(sender))
+      return m.reply('🚫 Solo los dueños del bot pueden usar este comando.')
 
     const groupId = m.chat
 
@@ -38,6 +45,5 @@ handler.command = ['gpo']
 handler.tags = ['owner', 'tools']
 handler.help = ['gpo']
 handler.group = true
-handler.owner = true   // 🔐 usa config.js
 
 export default handler
