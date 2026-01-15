@@ -7,10 +7,12 @@ let handler = async (m, { conn, groupMetadata }) => {
   try {
     if (!m.isGroup) return
 
-    // 🔐 Verificación REAL de dueños desde config.js
-    const owners = global.owner?.map(v => 
-      v.replace(/[^0-9]/g, '') + '@s.whatsapp.net'
-    ) || []
+    // 🔐 Verificación REAL de dueños desde config.js (compatible con todos los formatos)
+    const owners = (global.owner || []).map(v => {
+      if (Array.isArray(v)) v = v[0]
+      if (typeof v !== 'string') return null
+      return v.replace(/[^0-9]/g, '') + '@s.whatsapp.net'
+    }).filter(Boolean)
 
     const sender = conn.decodeJid ? conn.decodeJid(m.sender) : m.sender
     if (!owners.includes(sender)) return
