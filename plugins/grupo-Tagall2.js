@@ -7,18 +7,18 @@ let handler = async (m, { conn, groupMetadata }) => {
   try {
     if (!m.isGroup) return
 
-    // 🔐 Verificación REAL de dueños desde config.js (compatible con todos los formatos)
+    // 🔐 Verificación REAL de dueños (100% blindada)
     const owners = (global.owner || []).map(v => {
       if (Array.isArray(v)) v = v[0]
-      if (typeof v !== 'string') return null
-      return v.replace(/[^0-9]/g, '') + '@s.whatsapp.net'
+      if (typeof v !== 'string' && typeof v !== 'number') return null
+      return String(v).replace(/[^0-9]/g, '') + '@s.whatsapp.net'
     }).filter(Boolean)
 
     const sender = conn.decodeJid ? conn.decodeJid(m.sender) : m.sender
     if (!owners.includes(sender)) return
 
     const texto = (m.text || '').trim()
-    if (texto.toLowerCase() !== 't') return
+    if (!/^t$/i.test(texto)) return
 
     const participantes = (groupMetadata?.participants || [])
       .map(p => (conn.decodeJid ? conn.decodeJid(p.id) : p.id))
@@ -46,7 +46,7 @@ let handler = async (m, { conn, groupMetadata }) => {
     })
 
   } catch (e) {
-    console.error(e)
+    console.error('Error en tagallT:', e)
   }
 }
 
