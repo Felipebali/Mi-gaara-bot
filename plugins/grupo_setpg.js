@@ -3,60 +3,61 @@
 
 import { downloadContentFromMessage } from "@whiskeysockets/baileys";
 
-const owners = ["59896026646", "59898719147"]; // SOLO NÚMEROS LIMPIOS
+// 🧠 Sistema universal de owners (evita errores v.replace)
+function getOwnersJid() {
+  return (global.owner || [])
+    .map(v => {
+      if (Array.isArray(v)) v = v[0]
+      if (typeof v !== 'string') return null
+      return v.replace(/[^0-9]/g, '') + '@s.whatsapp.net'
+    })
+    .filter(Boolean)
+}
 
 let handler = async (m, { conn }) => {
   try {
-    if (!m.isGroup) {
-      return m.reply("❌ Este comando solo funciona en grupos.");
-    }
+    if (!m.isGroup)
+      return m.reply("❌ Este comando solo funciona en grupos.")
 
-    // Normaliza número
-    const sender = m.sender.replace(/[^0-9]/g, "");
+    const ownersJid = getOwnersJid()
+    const sender = conn.decodeJid(m.sender)
 
     // 🔐 SOLO OWNERS
-    if (!owners.includes(sender)) {
-      return m.reply("❌ Solo los *owners* pueden cambiar la foto del grupo.");
-    }
+    if (!ownersJid.includes(sender))
+      return m.reply("❌ Solo los *owners* pueden cambiar la foto del grupo.")
 
-    // 📸 DEBE ser una imagen CITADA
-    if (!m.quoted) {
-      return m.reply("📸 *Debes responder a una imagen* con:\n\n.setpg");
-    }
+    // 📸 DEBE ser una imagen citada
+    if (!m.quoted)
+      return m.reply("📸 *Debes responder a una imagen* con:\n\n.setpg")
 
-    const q = m.quoted;
-    const mime = (q.msg || q).mimetype || "";
+    const q = m.quoted
+    const mime = (q.msg || q).mimetype || ""
 
-    if (!mime.startsWith("image/")) {
-      return m.reply("📸 *Debes citar una imagen válida*.");
-    }
+    if (!mime.startsWith("image/"))
+      return m.reply("📸 *Debes citar una imagen válida*.")
 
     // 📥 Descargar imagen citada
-    const stream = await downloadContentFromMessage(q.msg || q, "image");
-    let buffer = Buffer.from([]);
+    const stream = await downloadContentFromMessage(q.msg || q, "image")
+    let buffer = Buffer.from([])
 
     for await (const chunk of stream) {
-      buffer = Buffer.concat([buffer, chunk]);
+      buffer = Buffer.concat([buffer, chunk])
     }
 
-    // 🖼️ Establecer foto del GRUPO (método actual funcional)
-    await conn.updateProfilePicture(m.chat, buffer);
+    // 🖼️ Establecer foto del grupo
+    await conn.updateProfilePicture(m.chat, buffer)
 
-    await m.reply("✅ *Foto del grupo actualizada correctamente!*");
+    await m.reply("✅ *Foto del grupo actualizada correctamente!*")
 
   } catch (e) {
-    console.error("Error en grupos-setpg:", e);
-    m.reply("⚠️ Error al intentar cambiar la foto del grupo.");
+    console.error("Error en grupos-setpg:", e)
+    m.reply("⚠️ Error al intentar cambiar la foto del grupo.")
   }
-};
+}
 
-// Datos del comando
-handler.help = ["setpg"];
-handler.tags = ["owner"];
+handler.help = ["setpg"]
+handler.tags = ["owner"]
+handler.command = ["setpg", "cambiarpg", "grouppic"]
+handler.owner = true
 
-// array de comandos
-handler.command = ["setpg", "cambiarpg", "grouppic"];
-
-handler.owner = true;
-
-export default handler;
+export default handler
