@@ -1,16 +1,16 @@
-// 📂 plugins/_autoread.js — FELI 2026 — AUTO READ REAL 👁️
+// 📂 plugins/_autoread.js — FELI 2026 — AUTO READ COMPATIBLE 👁️
 
 let handler = async (m, { conn }) => {}
 
 // ================= AUTO-READ =================
 
-handler.before = async function (m) {
+handler.before = async function (m, { conn }) {
   try {
     if (!m.key) return
     if (m.key.fromMe) return
 
-    // Esto fuerza el "visto" real en WhatsApp
-    await this.sendReadReceipt(m.chat, m.key.participant || m.sender, [m.key.id])
+    // Forma compatible con Baileys MD
+    await conn.readMessages([m.key])
   } catch (e) {
     console.log('AutoRead error:', e?.message)
   }
