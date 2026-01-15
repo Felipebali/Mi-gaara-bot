@@ -1,9 +1,5 @@
-// 📂 plugins/doxear.js — DOX falso hiperrealista (solo owners)
+// 📂 plugins/doxear.js — DOX falso hiperrealista (solo ROOT OWNERS)
 
-const owners = [
-  '59898719147@s.whatsapp.net',
-  '59896026646@s.whatsapp.net'
-]
 
 // Bloques IP Uruguay + ASN correctos (solo imitación)
 const uruguayProviders = [
@@ -37,38 +33,29 @@ function randomCoordinates() {
   const chance = Math.random()
 
   if (chance < 0.7) {
-    // Montevideo / Maldonado (más creíble para bots uruguayos)
     const zones = [
-      { lat: -34.905, lon: -56.191 }, // Centro Montevideo
-      { lat: -34.897, lon: -56.164 }, // Pocitos
-      { lat: -34.916, lon: -56.159 }, // Buceo
-      { lat: -34.962, lon: -54.948 }  // Maldonado / Punta del Este
+      { lat: -34.905, lon: -56.191 },
+      { lat: -34.897, lon: -56.164 },
+      { lat: -34.916, lon: -56.159 },
+      { lat: -34.962, lon: -54.948 }
     ]
     let z = zones[Math.floor(Math.random()*zones.length)]
-    return {
-      lat: z.lat + (Math.random() * 0.01),
-      lon: z.lon + (Math.random() * 0.01)
-    }
+    return { lat: z.lat + (Math.random() * 0.01), lon: z.lon + (Math.random() * 0.01) }
   }
 
-  // Resto del país
   const zones2 = [
-    { lat: -32.320, lon: -58.075 }, // Paysandú
-    { lat: -31.383, lon: -57.960 }, // Salto
-    { lat: -30.910, lon: -55.550 }  // Rivera
+    { lat: -32.320, lon: -58.075 },
+    { lat: -31.383, lon: -57.960 },
+    { lat: -30.910, lon: -55.550 }
   ]
   let z = zones2[Math.floor(Math.random()*zones2.length)]
-  return {
-    lat: z.lat + (Math.random() * 0.01),
-    lon: z.lon + (Math.random() * 0.01)
-  }
+  return { lat: z.lat + (Math.random() * 0.01), lon: z.lon + (Math.random() * 0.01) }
 }
 
 let handler = async (m, { conn, text }) => {
   try {
-    // Check owner
-    if (!owners.includes(m.sender))
-      return m.reply("🚫 No tienes permiso para usar este comando.")
+    // 🔐 SOLO ROOT OWNERS (desde config.js)
+    if (!m.isROwner) return
 
     let who
     if (m.isGroup) {
@@ -83,10 +70,9 @@ let handler = async (m, { conn, text }) => {
 
     if (!who) who = m.sender
 
-    // Detectar ubicación real
+    // Ubicación real si existe
     let realLoc = null
-
-    if (m.quoted && m.quoted.message?.locationMessage) {
+    if (m.quoted?.message?.locationMessage) {
       realLoc = {
         lat: m.quoted.message.locationMessage.degreesLatitude,
         lon: m.quoted.message.locationMessage.degreesLongitude,
@@ -94,22 +80,16 @@ let handler = async (m, { conn, text }) => {
       }
     }
 
-    // Datos falsos hiperrealistas
     const prov = randomProvider()
     const fakeIP = randomIP(prov.ipStart)
-    const fakeASN = prov.asn
-    const fakeOrg = prov.org
     const fakeAddress = randomAddress()
     const fakeCoords = randomCoordinates()
-
     const now = new Date().toLocaleString("es-UY", { timeZone: "America/Montevideo" })
 
     let msg
 
     if (realLoc) {
-      // --- MODO GEOLOCALIZACIÓN REAL ---
-      msg =
-`📡 *OSINT GEOLOCATION REPORT*
+      msg = `📡 *OSINT GEOLOCATION REPORT*
 ──────────────────────────
 👤 *Objetivo:* @${who.split('@')[0]}
 🕒 *Timestamp:* ${now}
@@ -121,31 +101,24 @@ let handler = async (m, { conn, text }) => {
 
 🌐 *Red*:
 • IP aproximada: ${fakeIP}
-• ASN: ${fakeASN}
-• Organización: ${fakeOrg}
-• Reverse DNS: mob-${Math.floor(Math.random()*900+100)}.client.uy.net
+• ASN: ${prov.asn}
+• Organización: ${prov.org}
 
-🏠 *Dirección estimada (triangulación):*
+🏠 *Dirección estimada:*
 ${fakeAddress}
 
-📶 *Antena LTE asignada:* Sector-${Math.floor(Math.random()*999)} (${prov.name})
-──────────────────────────
-⚠️ Este dox es en un 80% real.`
-
+📶 *Antena LTE:* ${prov.name}
+──────────────────────────`
     } else {
-      // --- MODO DOX TOTALMENTE FALSO ---
-      msg =
-`📡 *OSINT GEOLOCATION REPORT*
+      msg = `📡 *OSINT GEOLOCATION REPORT*
 ──────────────────────────
 👤 *Objetivo:* @${who.split('@')[0]}
 🕒 *Timestamp:* ${now}
 
-🌐 *Red & Infraestructura*
+🌐 *Red*
 • IP: ${fakeIP}
-• ASN: ${fakeASN}
+• ASN: ${prov.asn}
 • ISP: ${prov.name}
-• Organización: ${fakeOrg}
-• Reverse DNS: srv-${Math.floor(Math.random()*900+100)}.backbone.uy.net
 
 📍 *Coordenadas aproximadas:*
 • Lat: ${fakeCoords.lat.toFixed(6)}
@@ -153,27 +126,21 @@ ${fakeAddress}
 
 🏠 *Dirección asociada:*
 ${fakeAddress}
-
-📶 *Antena LTE conectada:* Nodo-${Math.floor(Math.random()*500)} (${prov.name})
-──────────────────────────
-⚠️ Datos en un 80% real. 🔒`
+──────────────────────────`
     }
 
     await conn.sendMessage(m.chat, {
       text: msg,
       mentions: [who],
-      quoted: m // <--- CITA EL MENSAJE ORIGINAL
+      quoted: m
     })
 
-  } catch (err) {
-    console.error(err)
-    m.reply("⚠️ Error inesperado ejecutando el comando.")
-  }
+  } catch {}
 }
 
-handler.command = ["doxear"]
+handler.command = ['doxear']
+handler.tags = ['owner']
 handler.owner = true
 handler.rowner = true
-handler.tags = ["owner"]
 
 export default handler
