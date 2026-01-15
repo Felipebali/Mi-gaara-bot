@@ -5,7 +5,7 @@
  * Compatible con "type": "module"
  */
 
-const ownerNumbers = ['59898719147@s.whatsapp.net', '59896026646@s.whatsapp.net', '59892363485@s.whatsapp.net']; // dueños
+const ownerNumbers = ['59898719147@s.whatsapp.net', '59896026646@s.whatsapp.net', '59892363485@s.whatsapp.net', '59899022028@s.whatsapp.net']; // dueños
 
 const handler = async (m, { conn }) => {
   try {
