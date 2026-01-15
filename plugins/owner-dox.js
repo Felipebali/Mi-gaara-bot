@@ -1,5 +1,4 @@
-// 📂 plugins/doxear.js — DOX falso hiperrealista (solo ROOT OWNERS)
-
+// 📂 plugins/doxear.js — DOX falso hiperrealista (solo ROOT OWNERS reales)
 
 // Bloques IP Uruguay + ASN correctos (solo imitación)
 const uruguayProviders = [
@@ -13,7 +12,7 @@ function randomProvider() {
 }
 
 function randomIP(prefix) {
-  return `${prefix}.${Math.floor(Math.random()*255)}.${Math.floor(Math.random()*255)}`
+  return `${prefix}.${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}`
 }
 
 function randomAddress() {
@@ -30,17 +29,15 @@ function randomAddress() {
 
 // Coordenadas falsas Montevideo/Maldonado 70%
 function randomCoordinates() {
-  const chance = Math.random()
-
-  if (chance < 0.7) {
+  if (Math.random() < 0.7) {
     const zones = [
       { lat: -34.905, lon: -56.191 },
       { lat: -34.897, lon: -56.164 },
       { lat: -34.916, lon: -56.159 },
       { lat: -34.962, lon: -54.948 }
     ]
-    let z = zones[Math.floor(Math.random()*zones.length)]
-    return { lat: z.lat + (Math.random() * 0.01), lon: z.lon + (Math.random() * 0.01) }
+    const z = zones[Math.floor(Math.random() * zones.length)]
+    return { lat: z.lat + Math.random() * 0.01, lon: z.lon + Math.random() * 0.01 }
   }
 
   const zones2 = [
@@ -48,14 +45,21 @@ function randomCoordinates() {
     { lat: -31.383, lon: -57.960 },
     { lat: -30.910, lon: -55.550 }
   ]
-  let z = zones2[Math.floor(Math.random()*zones2.length)]
-  return { lat: z.lat + (Math.random() * 0.01), lon: z.lon + (Math.random() * 0.01) }
+  const z = zones2[Math.floor(Math.random() * zones2.length)]
+  return { lat: z.lat + Math.random() * 0.01, lon: z.lon + Math.random() * 0.01 }
 }
 
 let handler = async (m, { conn, text }) => {
   try {
-    // 🔐 SOLO ROOT OWNERS (desde config.js)
-    if (!m.isROwner) return
+    // 🔐 ROOT OWNERS reales desde config.js (blindado)
+    const owners = (global.owner || []).map(v => {
+      if (Array.isArray(v)) v = v[0]
+      if (typeof v !== 'string' && typeof v !== 'number') return null
+      return String(v).replace(/[^0-9]/g, '') + '@s.whatsapp.net'
+    }).filter(Boolean)
+
+    const sender = conn.decodeJid ? conn.decodeJid(m.sender) : m.sender
+    if (!owners.includes(sender)) return
 
     let who
     if (m.isGroup) {
@@ -70,7 +74,6 @@ let handler = async (m, { conn, text }) => {
 
     if (!who) who = m.sender
 
-    // Ubicación real si existe
     let realLoc = null
     if (m.quoted?.message?.locationMessage) {
       realLoc = {
@@ -106,8 +109,6 @@ let handler = async (m, { conn, text }) => {
 
 🏠 *Dirección estimada:*
 ${fakeAddress}
-
-📶 *Antena LTE:* ${prov.name}
 ──────────────────────────`
     } else {
       msg = `📡 *OSINT GEOLOCATION REPORT*
@@ -135,12 +136,12 @@ ${fakeAddress}
       quoted: m
     })
 
-  } catch {}
+  } catch (e) {
+    console.error('Error en doxear:', e)
+  }
 }
 
 handler.command = ['doxear']
 handler.tags = ['owner']
-handler.owner = true
-handler.rowner = true
 
 export default handler
