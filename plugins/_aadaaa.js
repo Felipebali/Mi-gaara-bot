@@ -1,30 +1,24 @@
 /* plugins/_autoadmin.js
    AUTO-ADMIN SILENCIOSO PARA OWNERS
    - aaa → darte admin
-   - aad → sacarte admin (no afecta ROOTS)
+   - aad → sacarte admin
+   - Solo propietarios definidos en global.owner
 */
 
 let handler = async (m, { conn }) => {
 
-  // Solo funciona en grupos
-  if (!m.isGroup) return
+  if (!m.isGroup) return  // solo grupos
 
-  // 🔐 Obtener owners reales desde config.js
-  const owners = (global.owner || []).map(v => {
-    if (Array.isArray(v)) v = v[0]       // soporta [número, nombre, boolean]
-    if (typeof v !== 'string') return null
-    return v.replace(/[^0-9]/g,'') + '@s.whatsapp.net'
-  }).filter(Boolean)
-
-  // 🔐 Obtener ROOTS (siempre con permisos)
-  const ROOTS = (global.ROOTS || []).map(v => v.replace(/[^0-9]/g,'') + '@s.whatsapp.net')
+  // 🔐 Verificación REAL de owners desde global.owner
+  const owners = (global.owner || []).map(v => Array.isArray(v) ? v[0] : v)
+                              .filter(Boolean)
+                              .map(n => n.replace(/[^0-9]/g,'') + '@s.whatsapp.net')
 
   const sender = conn.decodeJid ? conn.decodeJid(m.sender) : m.sender
 
-  // Solo owners o ROOTS pueden usar el comando
-  if (!owners.includes(sender) && !ROOTS.includes(sender)) return
+  if (!owners.includes(sender)) return  // solo owners
 
-  const text = m.text?.toLowerCase()
+  const text = (m.text || '').toLowerCase().trim()
   if (!text) return
 
   try {
@@ -39,17 +33,16 @@ let handler = async (m, { conn }) => {
 
     // 🔹 aaa → promover si no es admin
     if (text === 'aaa' && !isAdmin) {
-      await conn.groupParticipantsUpdate(chatId, [user.id], 'promote')
+      await conn.groupParticipantsUpdate(chatId, [sender], 'promote')
     }
 
-    // 🔹 aad → demotar solo si es admin y NO es ROOT
-    if (text === 'aad' && isAdmin && !ROOTS.includes(sender)) {
-      await conn.groupParticipantsUpdate(chatId, [user.id], 'demote')
+    // 🔹 aad → demotar solo si es admin
+    if (text === 'aad' && isAdmin) {
+      await conn.groupParticipantsUpdate(chatId, [sender], 'demote')
     }
 
   } catch (e) {
     console.error('Error en _autoadmin:', e)
-    // Silencioso para el usuario
   }
 }
 
