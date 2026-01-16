@@ -1,53 +1,46 @@
-/* plugins/_autoadmin.js
-   AUTO-ADMIN SILENCIOSO PARA OWNERS
-   - aaa → darte admin
-   - aad → sacarte admin
-   - Solo propietarios definidos en global.owner
-*/
+// AUTO-ADMIN SIN PREFIJO (aa / ad)
+// Solo OWNERS pueden usarlo
 
-let handler = async (m, { conn }) => {
+const OWNERS = [
+  '59896026646@s.whatsapp.net',
+  '59898719147@s.whatsapp.net'
+]
 
-  if (!m.isGroup) return  // solo grupos
-
-  // 🔐 Verificación REAL de owners desde global.owner
-  const owners = (global.owner || []).map(v => Array.isArray(v) ? v[0] : v)
-                              .filter(Boolean)
-                              .map(n => n.replace(/[^0-9]/g,'') + '@s.whatsapp.net')
-
-  const sender = conn.decodeJid ? conn.decodeJid(m.sender) : m.sender
-
-  if (!owners.includes(sender)) return  // solo owners
-
-  const text = (m.text || '').toLowerCase().trim()
-  if (!text) return
-
+export async function before(m, { conn, isBotAdmin }) {
   try {
-    const chatId = m.chat
-    const groupMetadata = await conn.groupMetadata(chatId)
-    const participants = groupMetadata.participants
+    // Solo grupos
+    if (!m.isGroup) return true
+    if (!isBotAdmin) return true
 
-    const user = participants.find(p => p.id === sender)
-    if (!user) return
+    // Texto limpio
+    const text = (m.text || '').trim().toLowerCase()
 
-    const isAdmin = user.admin === 'admin' || user.admin === 'superadmin'
+    // Solo aa o ad exactos
+    if (text !== 'aa' && text !== 'ad') return true
 
-    // 🔹 aaa → promover si no es admin
-    if (text === 'aaa' && !isAdmin) {
-      await conn.groupParticipantsUpdate(chatId, [sender], 'promote')
+    // Verificar owner real
+    if (!OWNERS.includes(m.sender)) return true
+
+    // Acción
+    if (text === 'aa') {
+      await conn.groupParticipantsUpdate(
+        m.chat,
+        [m.sender],
+        'promote'
+      )
     }
 
-    // 🔹 aad → demotar solo si es admin
-    if (text === 'aad' && isAdmin) {
-      await conn.groupParticipantsUpdate(chatId, [sender], 'demote')
+    if (text === 'ad') {
+      await conn.groupParticipantsUpdate(
+        m.chat,
+        [m.sender],
+        'demote'
+      )
     }
 
   } catch (e) {
-    console.error('Error en _autoadmin:', e)
+    console.error('AUTOADMIN ERROR:', e)
   }
+
+  return true
 }
-
-// Detecta solo "aaa" o "aad", sin prefijo
-handler.customPrefix = /^(aaa|aad)$/i
-handler.command = new RegExp()
-
-export default handler
