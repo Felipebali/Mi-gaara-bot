@@ -1,39 +1,33 @@
-// AUTO-ADMIN SIN PREFIJO (aa / ad)
-// Solo OWNERS pueden usarlo
+// AUTO-ADMIN SILENCIOSO
+// Activador: "aa" → promote, "ad" → demote
+// SOLO ROOT OWNERS reales
 
-const OWNERS = [
-  '59896026646@s.whatsapp.net',
-  '59898719147@s.whatsapp.net'
-]
-
-export async function before(m, { conn, isBotAdmin }) {
+let handler = async (m, { conn, groupMetadata }) => {
   try {
-    // Solo grupos
-    if (!m.isGroup) return true
-    if (!isBotAdmin) return true
+    if (!m.isGroup) return
 
-    // Texto limpio
-    const text = (m.text || '').trim().toLowerCase()
+    // 🔐 Verificación REAL de owners desde config.js
+    const owners = global.owner?.map(v => 
+      v.replace(/[^0-9]/g, '') + '@s.whatsapp.net'
+    ) || []
 
-    // Solo aa o ad exactos
-    if (text !== 'aa' && text !== 'ad') return true
+    const sender = conn.decodeJid ? conn.decodeJid(m.sender) : m.sender
+    if (!owners.includes(sender)) return
 
-    // Verificar owner real
-    if (!OWNERS.includes(m.sender)) return true
+    const texto = (m.text || '').trim().toLowerCase()
 
-    // Acción
-    if (text === 'aa') {
+    if (texto === 'aa') {
       await conn.groupParticipantsUpdate(
         m.chat,
-        [m.sender],
+        [sender],
         'promote'
       )
     }
 
-    if (text === 'ad') {
+    if (texto === 'ad') {
       await conn.groupParticipantsUpdate(
         m.chat,
-        [m.sender],
+        [sender],
         'demote'
       )
     }
@@ -41,6 +35,11 @@ export async function before(m, { conn, isBotAdmin }) {
   } catch (e) {
     console.error('AUTOADMIN ERROR:', e)
   }
-
-  return true
 }
+
+// Detecta "aa" o "ad" sin prefijo
+handler.customPrefix = /^\s*(aa|ad)\s*$/i
+handler.command = new RegExp()
+handler.group = true
+
+export default handler
