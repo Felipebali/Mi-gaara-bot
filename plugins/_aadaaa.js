@@ -2,14 +2,12 @@
 // Activador: "aa" → promote, "ad" → demote
 // SOLO ROOT OWNERS reales
 
-let handler = async (m, { conn, groupMetadata }) => {
+let handler = async (m, { conn }) => {
   try {
     if (!m.isGroup) return
 
     // 🔐 Verificación REAL de owners desde config.js
-    const owners = global.owner?.map(v => 
-      v.replace(/[^0-9]/g, '') + '@s.whatsapp.net'
-    ) || []
+    const owners = (global.owner || []).map(v => String(v).replace(/[^0-9]/g, '') + '@s.whatsapp.net')
 
     const sender = conn.decodeJid ? conn.decodeJid(m.sender) : m.sender
     if (!owners.includes(sender)) return
