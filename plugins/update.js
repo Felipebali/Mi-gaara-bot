@@ -23,15 +23,12 @@ let handler = async (m, { conn }) => {
   let hasUpdates = false
 
   try {
-    // 🛡️ Respaldos (SE MANTIENE IGUAL)
+    // 🛡️ Respaldos
     const backupFiles = ['config.js', '.env', 'owner-ban.js', 'grupo-warn.js']
     const backupDirs = ['GaaraSessions']
     const backups = {}
 
-    backupFiles.forEach(f => {
-      if (fs.existsSync(f)) backups[f] = fs.readFileSync(f)
-    })
-
+    backupFiles.forEach(f => { if (fs.existsSync(f)) backups[f] = fs.readFileSync(f) })
     backupDirs.forEach(d => {
       if (fs.existsSync(d)) {
         backups[d] = fs.readdirSync(d).reduce((acc, file) => {
@@ -46,40 +43,23 @@ let handler = async (m, { conn }) => {
 
     execSync('git fetch origin main', { stdio: 'ignore' })
 
-    const lastCommit = execSync(
-      'git log -1 origin/main --pretty=format:"%h - %s"',
-      { encoding: 'utf8' }
-    )
+    const lastCommit = execSync('git log -1 origin/main --pretty=format:"%h - %s"', { encoding: 'utf8' })
     msg += `📦 *Último commit remoto:*\n${lastCommit}\n\n`
 
-    const diff = execSync(
-      'git diff --name-status origin/main',
-      { encoding: 'utf8' }
-    ).trim()
-
+    const diff = execSync('git diff --name-status origin/main', { encoding: 'utf8' }).trim()
     if (diff) hasUpdates = true
 
     if (hasUpdates) {
       execSync('git reset --hard origin/main', { stdio: 'ignore' })
-
-      // 🔁 Restaurar respaldos
       Object.keys(backups).forEach(f => {
-        // ⛔ NO restaurar config.js → se actualiza desde GitHub
-        if (f === 'config.js') return
-
         if (backupDirs.includes(f)) {
           if (!fs.existsSync(f)) fs.mkdirSync(f)
           Object.keys(backups[f]).forEach(file => {
             fs.writeFileSync(path.join(f, file), backups[f][file])
           })
-        } else {
-          fs.writeFileSync(f, backups[f])
-        }
+        } else fs.writeFileSync(f, backups[f])
       })
-
-      msg += '✅ *Bot actualizado correctamente.*\n'
-      msg += '📦 config.js actualizado desde el repositorio\n'
-      msg += '🛡️ Archivos protegidos restaurados.\n\n'
+      msg += '✅ *Bot actualizado correctamente.*\n🛡️ Archivos protegidos restaurados.\n\n'
     } else {
       msg += '🟡 *El bot ya estaba actualizado. No se aplicaron cambios.*\n\n'
     }
