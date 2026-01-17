@@ -23,8 +23,8 @@ let handler = async (m, { conn }) => {
   let hasUpdates = false
 
   try {
-    // 🛡️ Respaldos (config.js YA NO SE PROTEGE)
-    const backupFiles = ['.env', 'owner-ban.js', 'grupo-warn.js']
+    // 🛡️ Respaldos (SE MANTIENE IGUAL)
+    const backupFiles = ['config.js', '.env', 'owner-ban.js', 'grupo-warn.js']
     const backupDirs = ['GaaraSessions']
     const backups = {}
 
@@ -44,10 +44,6 @@ let handler = async (m, { conn }) => {
     try { execSync('git init', { stdio: 'ignore' }) } catch {}
     try { execSync(`git remote add origin ${REPO}`, { stdio: 'ignore' }) } catch {}
 
-    // 🧹 Limpieza total antes de actualizar
-    try { execSync('git reset --hard', { stdio: 'ignore' }) } catch {}
-    try { execSync('git clean -fd', { stdio: 'ignore' }) } catch {}
-
     execSync('git fetch origin main', { stdio: 'ignore' })
 
     const lastCommit = execSync(
@@ -66,8 +62,11 @@ let handler = async (m, { conn }) => {
     if (hasUpdates) {
       execSync('git reset --hard origin/main', { stdio: 'ignore' })
 
-      // 🔁 Restaurar SOLO archivos protegidos
+      // 🔁 Restaurar respaldos
       Object.keys(backups).forEach(f => {
+        // ⛔ NO restaurar config.js → se actualiza desde GitHub
+        if (f === 'config.js') return
+
         if (backupDirs.includes(f)) {
           if (!fs.existsSync(f)) fs.mkdirSync(f)
           Object.keys(backups[f]).forEach(file => {
@@ -79,7 +78,7 @@ let handler = async (m, { conn }) => {
       })
 
       msg += '✅ *Bot actualizado correctamente.*\n'
-      msg += '📦 config.js actualizado desde GitHub\n'
+      msg += '📦 config.js actualizado desde el repositorio\n'
       msg += '🛡️ Archivos protegidos restaurados.\n\n'
     } else {
       msg += '🟡 *El bot ya estaba actualizado. No se aplicaron cambios.*\n\n'
@@ -89,7 +88,6 @@ let handler = async (m, { conn }) => {
     msg += `❌ *Error durante actualización:*\n${err.message}\n\n`
   }
 
-  // 📊 Cambios en plugins
   let before = []
   if (fs.existsSync(SNAPSHOT)) {
     try { before = JSON.parse(fs.readFileSync(SNAPSHOT)) } catch {}
