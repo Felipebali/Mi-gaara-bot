@@ -1,5 +1,5 @@
 // 📂 plugins/owner-manager.js
-// 🔥 Hot reload + persistencia en config.js
+// 🔥 Hot reload + persistencia segura en config.js (Baileys MD)
 
 import fs from 'fs'
 import path from 'path'
@@ -10,7 +10,7 @@ let handler = async (m, { conn, text = "", command }) => {
   try {
     let jid
 
-    // ===== OBTENER JID =====
+    // ===== OBTENER JID REAL =====
     if (m.mentionedJid?.length) {
       jid = m.mentionedJid[0]
     } else if (m.quoted?.sender) {
@@ -18,36 +18,36 @@ let handler = async (m, { conn, text = "", command }) => {
     } else {
       const matchPlus = text.match(/\+[0-9\s]+/)
       if (matchPlus) {
-        jid = matchPlus[0].replace(/\D/g, "") + "@s.whatsapp.net"
+        jid = matchPlus[0].replace(/\D/g, '') + '@s.whatsapp.net'
       }
     }
 
     if (!jid) {
-      return conn.reply(m.chat, "❌ Usa @usuario, responde o +598...", m)
+      return conn.reply(m.chat, '❌ Usa @usuario, responde un mensaje o +598...', m)
     }
 
-    const who = jid.split("@")[0]
+    const who = jid.split('@')[0]
 
-    // ===== ASEGURAR STRUCT =====
+    // ===== ASEGURAR STRUCT EN MEMORIA =====
     if (!Array.isArray(global.owner)) global.owner = []
     if (!global.opts) global.opts = {}
-    if (!Array.isArray(global.opts.owner)) global.opts.owner = global.owner
+    global.opts.owner = global.owner
 
     const exists = global.owner.find(o => o[0] === who)
 
     // ===== ADD OWNER =====
     if (/^(addowner|aowner)$/i.test(command)) {
-      if (exists) return conn.reply(m.chat, "⚠️ Ya es owner.", m)
+      if (exists)
+        return conn.reply(m.chat, '⚠️ Ese usuario ya es owner.', m, { mentions: [jid] })
 
-      const newOwner = [who, "Owner", true]
+      const newOwner = [who, 'Owner', true]
       global.owner.push(newOwner)
-      global.opts.owner.push(newOwner)
 
-      saveOwners()
+      saveOwnersToConfig()
 
       return conn.reply(
         m.chat,
-        `✅ @${who} agregado como owner\n💾 Guardado en config.js`,
+        `✅ @${who} agregado como owner\n⚡ Permisos activos y guardados`,
         m,
         { mentions: [jid] }
       )
@@ -55,25 +55,28 @@ let handler = async (m, { conn, text = "", command }) => {
 
     // ===== REMOVE OWNER =====
     if (/^(removeowner|rowner)$/i.test(command)) {
-      if (!exists) return conn.reply(m.chat, "❌ No es owner.", m)
+      if (!exists)
+        return conn.reply(m.chat, '❌ Ese usuario no es owner.', m, { mentions: [jid] })
+
       if (global.owner.length === 1)
-        return conn.reply(m.chat, "❌ No se puede eliminar el último owner.", m)
+        return conn.reply(m.chat, '❌ No se puede eliminar el último owner.', m)
 
       global.owner = global.owner.filter(o => o[0] !== who)
-      global.opts.owner = global.opts.owner.filter(o => o[0] !== who)
+      global.opts.owner = global.owner
 
-      saveOwners()
+      saveOwnersToConfig()
 
       return conn.reply(
         m.chat,
-        `✅ @${who} removido de owners\n💾 Config actualizado`,
+        `✅ @${who} removido de owners\n⚡ Cambios guardados`,
         m,
         { mentions: [jid] }
       )
     }
 
   } catch (e) {
-    console.error("OWNER MANAGER ERROR:", e)
+    console.error('OWNER MANAGER ERROR:', e)
+    conn.reply(m.chat, '❌ Error interno del owner-manager.', m)
   }
 }
 
@@ -82,23 +85,28 @@ handler.owner = true
 
 export default handler
 
-// ===== GUARDAR EN config.js =====
-function saveOwners() {
+// ===== GUARDAR EN config.js (SEGURO) =====
+function saveOwnersToConfig() {
   if (!fs.existsSync(CONFIG_PATH)) return
 
   let config = fs.readFileSync(CONFIG_PATH, 'utf8')
 
-  const ownersText =
-    `global.owner = [\n` +
-    global.owner
-      .map(o => `  ['${o[0]}', '${o[1]}', ${o[2]}]`)
-      .join(',\n') +
-    `\n]\n`
+  const ownersBlock =
+`global.owner = [
+${global.owner.map(o => `  ['${o[0]}', '${o[1]}', ${o[2]}]`).join(',\n')}
+]
+`
 
-  config = config.replace(
-    /global\.owner\s*=\s*\[[\s\S]*?\]/,
-    ownersText
-  )
+  if (/global\.owner\s*=/.test(config)) {
+    // Reemplazo seguro SOLO del bloque owner
+    config = config.replace(
+      /global\.owner\s*=\s*\[[\s\S]*?\]\s*/m,
+      ownersBlock + '\n'
+    )
+  } else {
+    // Si no existe, lo agrega arriba del archivo
+    config = ownersBlock + '\n' + config
+  }
 
-  fs.writeFileSync(CONFIG_PATH, config)
+  fs.writeFileSync(CONFIG_PATH, config.trim() + '\n')
 }
