@@ -1,69 +1,38 @@
-import fs from "fs"
-import path from "path"
-import { fileURLToPath } from "url"
+// Owner Manager – compatible con global.owner (MD)
 
-const __filename = fileURLToPath(import.meta.url)
-const __dirname = path.dirname(__filename)
-const CONFIG_PATH = path.join(__dirname, "../config.js")
-
-let handler = async (m, { conn, text, usedPrefix, command }) => {
+let handler = async (m, { conn, text = "", command }) => {
   try {
-    text = text || "" // ⬅️ evita undefined
-
     let who = ""
 
-    // ===== obtener número =====
+    // ===== OBTENER NÚMERO =====
     const matchPlus = text.match(/\+[0-9\s]+/)
-    const matchAt = text.match(/@[0-9\s]+/)
+    const matchAt = text.match(/@[0-9]+/)
 
     if (matchPlus) {
       who = matchPlus[0].replace(/[+\s]/g, "")
     } else if (matchAt) {
       who = matchAt[0].replace(/[@\s]/g, "")
     } else if (m.quoted?.sender) {
-      who = m.quoted.sender.replace(/@s\.whatsapp\.net$/, "")
+      who = m.quoted.sender.split("@")[0]
     }
 
     if (!who) {
       return conn.sendMessage(
         m.chat,
-        { text: `❌ Número inválido.\n\nEjemplo:\n${usedPrefix}${command} +598 99 999 999` },
+        { text: "❌ Usa @usuario o +598..." },
         { quoted: m }
       )
     }
+
+    // ===== ASEGURAR ESTRUCTURA =====
+    if (!Array.isArray(global.owner)) global.owner = []
 
     const jid = who + "@s.whatsapp.net"
-
-    // ===== leer config.js =====
-    let configText
-    try {
-      configText = fs.readFileSync(CONFIG_PATH, "utf8")
-    } catch {
-      return conn.sendMessage(
-        m.chat,
-        { text: "❌ Error al leer config.js" },
-        { quoted: m }
-      )
-    }
-
-    // ===== extraer owners =====
-    const ownersMatch = configText.match(/owners\s*=\s*\[([\s\S]*?)\]/)
-    if (!ownersMatch) {
-      return conn.sendMessage(
-        m.chat,
-        { text: "❌ No se encontró `owners` en config.js" },
-        { quoted: m }
-      )
-    }
-
-    let currentOwners = ownersMatch[1]
-      .split(",")
-      .map(v => v.replace(/["'\s]/g, ""))
-      .filter(Boolean)
+    const exists = global.owner.find(o => o[0] === who)
 
     // ===== ADD OWNER =====
-    if (command === "addowner" || command === "aowner") {
-      if (currentOwners.includes(who)) {
+    if (/^(addowner|aowner)$/i.test(command)) {
+      if (exists) {
         return conn.sendMessage(
           m.chat,
           {
@@ -74,12 +43,12 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
         )
       }
 
-      currentOwners.push(who)
+      global.owner.push([who, "Owner", true])
 
-      conn.sendMessage(
+      return conn.sendMessage(
         m.chat,
         {
-          text: `✅ @${who} fue añadido como owner.`,
+          text: `✅ @${who} agregado como owner.`,
           mentions: [jid]
         },
         { quoted: m }
@@ -87,8 +56,8 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
     }
 
     // ===== REMOVE OWNER =====
-    if (command === "removeowner" || command === "rowner") {
-      if (!currentOwners.includes(who)) {
+    if (/^(removeowner|rowner)$/i.test(command)) {
+      if (!exists) {
         return conn.sendMessage(
           m.chat,
           {
@@ -99,7 +68,7 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
         )
       }
 
-      if (currentOwners.length === 1) {
+      if (global.owner.length === 1) {
         return conn.sendMessage(
           m.chat,
           { text: "❌ No se puede eliminar el último owner." },
@@ -107,31 +76,20 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
         )
       }
 
-      currentOwners = currentOwners.filter(o => o !== who)
+      global.owner = global.owner.filter(o => o[0] !== who)
 
-      conn.sendMessage(
+      return conn.sendMessage(
         m.chat,
         {
-          text: `✅ @${who} fue removido de owners.`,
+          text: `✅ @${who} removido de owners.`,
           mentions: [jid]
         },
         { quoted: m }
       )
     }
 
-    // ===== escribir config.js =====
-    const newConfig = configText.replace(
-      /owners\s*=\s*\[[\s\S]*?\]/,
-      `owners = [\n  "${currentOwners.join('",\n  "')}"\n]`
-    )
-
-    fs.writeFileSync(CONFIG_PATH, newConfig)
-
-    // actualizar memoria
-    globalThis.owners = currentOwners
-
   } catch (e) {
-    console.error("OWNER-MANAGER ERROR:", e)
+    console.error("OWNER MANAGER ERROR:", e)
   }
 }
 
