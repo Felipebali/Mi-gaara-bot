@@ -1,5 +1,10 @@
 // 📂 plugins/owner-manager.js
-// Compatible con Baileys MD – SIN reiniciar
+// 🔥 Hot reload + persistencia en config.js
+
+import fs from 'fs'
+import path from 'path'
+
+const CONFIG_PATH = path.join(process.cwd(), 'config.js')
 
 let handler = async (m, { conn, text = "", command }) => {
   try {
@@ -18,79 +23,52 @@ let handler = async (m, { conn, text = "", command }) => {
     }
 
     if (!jid) {
-      return conn.sendMessage(
-        m.chat,
-        { text: "❌ Usa @usuario, responde o +598..." },
-        { quoted: m }
-      )
+      return conn.reply(m.chat, "❌ Usa @usuario, responde o +598...", m)
     }
 
     const who = jid.split("@")[0]
 
     // ===== ASEGURAR STRUCT =====
     if (!Array.isArray(global.owner)) global.owner = []
-
-    // 🔥 CLAVE: sincronizar con opts / settings si existen
     if (!global.opts) global.opts = {}
-    if (!Array.isArray(global.opts.owner)) {
-      global.opts.owner = global.owner
-    }
+    if (!Array.isArray(global.opts.owner)) global.opts.owner = global.owner
 
     const exists = global.owner.find(o => o[0] === who)
 
     // ===== ADD OWNER =====
     if (/^(addowner|aowner)$/i.test(command)) {
-      if (exists) {
-        return conn.sendMessage(
-          m.chat,
-          { text: `⚠️ @${who} ya es owner.`, mentions: [jid] },
-          { quoted: m }
-        )
-      }
+      if (exists) return conn.reply(m.chat, "⚠️ Ya es owner.", m)
 
       const newOwner = [who, "Owner", true]
-
       global.owner.push(newOwner)
-      global.opts.owner.push(newOwner) // 🔥 hot update
+      global.opts.owner.push(newOwner)
 
-      return conn.sendMessage(
+      saveOwners()
+
+      return conn.reply(
         m.chat,
-        {
-          text: `✅ @${who} ahora es owner.\n⚡ *Permisos aplicados al instante*`,
-          mentions: [jid]
-        },
-        { quoted: m }
+        `✅ @${who} agregado como owner\n💾 Guardado en config.js`,
+        m,
+        { mentions: [jid] }
       )
     }
 
     // ===== REMOVE OWNER =====
     if (/^(removeowner|rowner)$/i.test(command)) {
-      if (!exists) {
-        return conn.sendMessage(
-          m.chat,
-          { text: `❌ @${who} no es owner.`, mentions: [jid] },
-          { quoted: m }
-        )
-      }
-
-      if (global.owner.length === 1) {
-        return conn.sendMessage(
-          m.chat,
-          { text: "❌ No se puede eliminar el último owner." },
-          { quoted: m }
-        )
-      }
+      if (!exists) return conn.reply(m.chat, "❌ No es owner.", m)
+      if (global.owner.length === 1)
+        return conn.reply(m.chat, "❌ No se puede eliminar el último owner.", m)
 
       global.owner = global.owner.filter(o => o[0] !== who)
       global.opts.owner = global.opts.owner.filter(o => o[0] !== who)
 
-      return conn.sendMessage(
+      saveOwners()
+
+      return conn.reply(
         m.chat,
-        {
-          text: `✅ @${who} removido de owners.\n⚡ *Permisos removidos al instante*`,
-          mentions: [jid]
-        },
-        { quoted: m }
+        `✅ @${who} removido de owners\n💾 Config actualizado`,
+        m,
+        { mentions: [jid] }
       )
     }
 
@@ -103,3 +81,24 @@ handler.command = /^(addowner|removeowner|aowner|rowner)$/i
 handler.owner = true
 
 export default handler
+
+// ===== GUARDAR EN config.js =====
+function saveOwners() {
+  if (!fs.existsSync(CONFIG_PATH)) return
+
+  let config = fs.readFileSync(CONFIG_PATH, 'utf8')
+
+  const ownersText =
+    `global.owner = [\n` +
+    global.owner
+      .map(o => `  ['${o[0]}', '${o[1]}', ${o[2]}]`)
+      .join(',\n') +
+    `\n]\n`
+
+  config = config.replace(
+    /global\.owner\s*=\s*\[[\s\S]*?\]/,
+    ownersText
+  )
+
+  fs.writeFileSync(CONFIG_PATH, config)
+}
