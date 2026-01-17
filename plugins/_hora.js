@@ -1,18 +1,25 @@
 // 📂 plugins/hora.js
 
-// 🕒 Cooldown por usuario
 const cooldowns = new Map()
 
 const ZONAS = {
   uruguay: 'America/Montevideo',
-  argentina: 'America/Argentina/Buenos_Aires',
-  chile: 'America/Santiago',
-  brasil: 'America/Sao_Paulo',
-  mexico: 'America/Mexico_City',
-  españa: 'Europe/Madrid',
-  madrid: 'Europe/Madrid',
   montevideo: 'America/Montevideo',
-  buenosaires: 'America/Argentina/Buenos_Aires'
+
+  argentina: 'America/Argentina/Buenos_Aires',
+  buenosaires: 'America/Argentina/Buenos_Aires',
+
+  chile: 'America/Santiago',
+  santiago: 'America/Santiago',
+
+  brasil: 'America/Sao_Paulo',
+  saopaulo: 'America/Sao_Paulo',
+
+  mexico: 'America/Mexico_City',
+  mexicocity: 'America/Mexico_City',
+
+  españa: 'Europe/Madrid',
+  madrid: 'Europe/Madrid'
 }
 
 let handler = async (m, { conn, text }) => {
@@ -25,13 +32,10 @@ let handler = async (m, { conn, text }) => {
       const diff = now - cooldowns.get(userId)
       if (diff < cooldownTime) {
         const r = cooldownTime - diff
-        const h = Math.floor(r / 3600000)
-        const min = Math.floor((r % 3600000) / 60000)
         return conn.reply(
           m.chat,
-          `🕒 *@${userId.split('@')[0]}*\nEsperá *${h}h ${min}min* para volver a usarlo.`,
-          m,
-          { mentions: [userId] }
+          `🕒 Esperá ${Math.ceil(r / 60000)} minutos para volver a usarlo.`,
+          m
         )
       }
     }
@@ -39,22 +43,23 @@ let handler = async (m, { conn, text }) => {
     cooldowns.set(userId, now)
     await m.react('🕒')
 
-    let lugar = text?.toLowerCase().replace(/\s+/g, '') || 'uruguay'
-    let zona = ZONAS[lugar] || 'America/Montevideo'
+    // 🧠 Normalización inteligente
+    let input = (text || 'uruguay')
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .split(/\s+/)
+
+    // 🔍 Detectar zona por palabra
+    let zona = 'America/Montevideo'
+    for (const word of input) {
+      if (ZONAS[word]) {
+        zona = ZONAS[word]
+        break
+      }
+    }
 
     const ahora = new Date()
-    const horaNum = Number(
-      new Intl.DateTimeFormat('es-UY', {
-        hour: '2-digit',
-        hour12: false,
-        timeZone: zona
-      }).format(ahora)
-    )
-
-    let emoji = '🌙'
-    if (horaNum >= 6 && horaNum < 12) emoji = '🌅'
-    else if (horaNum >= 12 && horaNum < 19) emoji = '🌞'
-    else if (horaNum >= 19 && horaNum < 23) emoji = '🌆'
 
     const fecha = new Intl.DateTimeFormat('es-UY', {
       weekday: 'long',
@@ -68,14 +73,22 @@ let handler = async (m, { conn, text }) => {
       hour: '2-digit',
       minute: '2-digit',
       second: '2-digit',
+      hour12: false,
       timeZone: zona
     }).format(ahora)
 
-    const msg = `
-${emoji} *Hora actual (${zona}):*
+    const horaNum = Number(hora.split(':')[0])
+    let emoji = '🌙'
+    if (horaNum >= 6 && horaNum < 12) emoji = '🌅'
+    else if (horaNum >= 12 && horaNum < 19) emoji = '🌞'
+    else if (horaNum >= 19 && horaNum < 23) emoji = '🌆'
 
-📅 *${fecha.charAt(0).toUpperCase() + fecha.slice(1)}*
+    const msg = `
+${emoji} *Hora actual*
+
 ⏰ *${hora}*
+📅 *${fecha.charAt(0).toUpperCase() + fecha.slice(1)}*
+🗺️ Zona: *${zona}*
     `.trim()
 
     await conn.reply(m.chat, msg, m)
@@ -88,7 +101,7 @@ ${emoji} *Hora actual (${zona}):*
   }
 }
 
-handler.help = ['hora <país/ciudad>']
+handler.help = ['hora <ciudad/país>']
 handler.tags = ['utilidad']
 handler.command = ['hora', 'time', 'tiempo']
 export default handler
