@@ -4,26 +4,26 @@ import { sticker } from '../lib/sticker.js'
 let handler = async (m, { conn, text }) => {
   try {
     if (!text)
-      return conn.sendMessage(m.chat, {
-        text: "❌ Usá así:\n\n.ttp Hola mundo"
-      }, { quoted: m })
+      return conn.reply(m.chat, "❌ Usá así:\n\n.ttp Hola mundo", m)
 
     if (text.length > 80)
-      return conn.sendMessage(m.chat, {
-        text: "❌ Máximo 80 caracteres."
-      }, { quoted: m })
+      return conn.reply(m.chat, "❌ Máximo 80 caracteres.", m)
 
-    // 🧠 Generador de imagen estable
-    const url = `https://dummyimage.com/600x400/000/fff.png&text=${encodeURIComponent(text)}`
+    await m.react('🎨')
 
-    // Descargar imagen
+    // ✅ API TTP (texto blanco, fondo transparente)
+    const url = `https://api.xteam.xyz/ttp?text=${encodeURIComponent(text)}`
+
     const res = await axios.get(url, { responseType: "arraybuffer" })
     const imgBuffer = Buffer.from(res.data)
 
-    // 🎨 Convertir a sticker
-    const stiker = await sticker(imgBuffer, false, global.packname, global.author)
+    const stiker = await sticker(
+      imgBuffer,
+      false,
+      global.packname,
+      global.author
+    )
 
-    // 📨 Enviar sticker
     await conn.sendFile(
       m.chat,
       stiker,
@@ -33,11 +33,12 @@ let handler = async (m, { conn, text }) => {
       true
     )
 
+    await m.react('✅')
+
   } catch (e) {
-    console.error("❌ TTP STICKER ERROR:", e)
-    return conn.sendMessage(m.chat, {
-      text: "⚠️ Error al generar el sticker."
-    }, { quoted: m })
+    console.error("❌ TTP ERROR:", e)
+    await m.react('⚠️')
+    await conn.reply(m.chat, "⚠️ Error al generar el sticker.", m)
   }
 }
 
