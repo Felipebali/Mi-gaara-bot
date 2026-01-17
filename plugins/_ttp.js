@@ -11,10 +11,16 @@ let handler = async (m, { conn, text }) => {
 
     await m.react('🎨')
 
-    // ✅ API TTP (texto blanco, fondo transparente)
-    const url = `https://api.xteam.xyz/ttp?text=${encodeURIComponent(text)}`
+    // ✅ TTP sin fondo + letras blancas
+    const url = `https://skizo.tech/api/ttp?text=${encodeURIComponent(text)}`
 
-    const res = await axios.get(url, { responseType: "arraybuffer" })
+    const res = await axios.get(url, {
+      responseType: "arraybuffer",
+      headers: {
+        'User-Agent': 'FelixCat-Bot'
+      }
+    })
+
     const imgBuffer = Buffer.from(res.data)
 
     const stiker = await sticker(
@@ -24,19 +30,11 @@ let handler = async (m, { conn, text }) => {
       global.author
     )
 
-    await conn.sendFile(
-      m.chat,
-      stiker,
-      'ttp.webp',
-      '',
-      m,
-      true
-    )
-
+    await conn.sendFile(m.chat, stiker, 'ttp.webp', '', m, true)
     await m.react('✅')
 
   } catch (e) {
-    console.error("❌ TTP ERROR:", e)
+    console.error("❌ TTP ERROR:", e.message)
     await m.react('⚠️')
     await conn.reply(m.chat, "⚠️ Error al generar el sticker.", m)
   }
@@ -45,5 +43,4 @@ let handler = async (m, { conn, text }) => {
 handler.command = ['ttp']
 handler.help = ['ttp <texto>']
 handler.tags = ['sticker']
-
 export default handler
