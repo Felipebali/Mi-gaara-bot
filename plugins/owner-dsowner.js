@@ -22,25 +22,27 @@ let handler = async (m, { client, text, usedPrefix, command }) => {
   }
 
   if (!who) {
-    return client.sendText(
-      m.chat,
-      `❌ Número inválido.\n\nEjemplo:\n${usedPrefix}${command} +598 99 999 999`,
-      m
-    )
+    return client.sendMessage(m.chat, {
+      text: `❌ Número inválido.\n\nEjemplo:\n${usedPrefix}${command} +598 99 999 999`
+    }, { quoted: m })
   }
 
-  // ===== cargar config.js =====
+  // ===== leer config.js =====
   let configText
   try {
     configText = fs.readFileSync(CONFIG_PATH, "utf8")
   } catch {
-    return client.sendText(m.chat, "❌ Error al leer config.js", m)
+    return client.sendMessage(m.chat, {
+      text: "❌ Error al leer config.js"
+    }, { quoted: m })
   }
 
   // ===== extraer owners =====
   const ownersMatch = configText.match(/owners\s*=\s*\[([\s\S]*?)\]/)
   if (!ownersMatch) {
-    return client.sendText(m.chat, "❌ No se encontró `owners` en config.js", m)
+    return client.sendMessage(m.chat, {
+      text: "❌ No se encontró `owners` en config.js"
+    }, { quoted: m })
   }
 
   let currentOwners = ownersMatch[1]
@@ -51,7 +53,9 @@ let handler = async (m, { client, text, usedPrefix, command }) => {
   // ===== ADD OWNER =====
   if (command === "addowner" || command === "aowner") {
     if (currentOwners.includes(who)) {
-      return client.sendText(m.chat, `⚠️ *${who}* ya es owner.`, m)
+      return client.sendMessage(m.chat, {
+        text: `⚠️ *${who}* ya es owner.`
+      }, { quoted: m })
     }
 
     currentOwners.push(who)
@@ -60,17 +64,21 @@ let handler = async (m, { client, text, usedPrefix, command }) => {
   // ===== REMOVE OWNER =====
   if (command === "removeowner" || command === "rowner") {
     if (!currentOwners.includes(who)) {
-      return client.sendText(m.chat, `❌ *${who}* no es owner.`, m)
+      return client.sendMessage(m.chat, {
+        text: `❌ *${who}* no es owner.`
+      }, { quoted: m })
     }
 
     if (currentOwners.length === 1) {
-      return client.sendText(m.chat, "❌ No se puede eliminar el último owner.", m)
+      return client.sendMessage(m.chat, {
+        text: "❌ No se puede eliminar el último owner."
+      }, { quoted: m })
     }
 
     currentOwners = currentOwners.filter(o => o !== who)
   }
 
-  // ===== reescribir config.js =====
+  // ===== escribir config.js =====
   const newConfig = configText.replace(
     /owners\s*=\s*\[[\s\S]*?\]/,
     `owners = [\n  "${currentOwners.join('",\n  "')}"\n]`
@@ -81,11 +89,9 @@ let handler = async (m, { client, text, usedPrefix, command }) => {
   // actualizar memoria
   globalThis.owners = currentOwners
 
-  return client.sendText(
-    m.chat,
-    `✅ Owners actualizados correctamente.`,
-    m
-  )
+  return client.sendMessage(m.chat, {
+    text: "✅ Owners actualizados correctamente."
+  }, { quoted: m })
 }
 
 handler.command = /^(addowner|removeowner|aowner|rowner)$/i
