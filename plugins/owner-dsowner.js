@@ -1,45 +1,33 @@
 // Owner Manager – compatible con global.owner (MD)
-// addowner / aowner
-// removeowner / rowner
 
 let handler = async (m, { conn, text = "", command }) => {
   try {
-    let jid = null
-    let who = null
+    let jid
 
     // ===== OBTENER JID REAL =====
-
-    // 1️⃣ mención directa @usuario
-    if (m.mentionedJid && m.mentionedJid.length > 0) {
+    if (m.mentionedJid?.length) {
       jid = m.mentionedJid[0]
-    }
-
-    // 2️⃣ responder a un mensaje
-    else if (m.quoted?.sender) {
+    } else if (m.quoted?.sender) {
       jid = m.quoted.sender
-    }
-
-    // 3️⃣ número con +
-    else {
+    } else {
       const matchPlus = text.match(/\+[0-9\s]+/)
       if (matchPlus) {
-        who = matchPlus[0].replace(/\D/g, "")
-        jid = who + "@s.whatsapp.net"
+        jid = matchPlus[0].replace(/\D/g, "") + "@s.whatsapp.net"
       }
     }
 
     if (!jid) {
       return conn.sendMessage(
         m.chat,
-        { text: "❌ Usa @usuario, responde un mensaje o +598..." },
+        { text: "❌ Usa @usuario, responde o +598..." },
         { quoted: m }
       )
     }
 
-    // ===== NORMALIZAR NÚMERO =====
-    who = jid.split("@")[0]
+    // ===== NORMALIZAR =====
+    const who = jid.split("@")[0]
 
-    // ===== ASEGURAR ESTRUCTURA =====
+    // ===== ASEGURAR ARRAY =====
     if (!Array.isArray(global.owner)) global.owner = []
 
     const exists = global.owner.find(o => o[0] === who)
@@ -57,12 +45,13 @@ let handler = async (m, { conn, text = "", command }) => {
         )
       }
 
+      // ⬅️ FORMATO CORRECTO
       global.owner.push([who, "Owner", true])
 
       return conn.sendMessage(
         m.chat,
         {
-          text: `✅ @${who} agregado como owner.`,
+          text: `✅ @${who} ahora es owner.\n♻️ *Reinicia el bot para aplicar permisos.*`,
           mentions: [jid]
         },
         { quoted: m }
@@ -95,7 +84,7 @@ let handler = async (m, { conn, text = "", command }) => {
       return conn.sendMessage(
         m.chat,
         {
-          text: `✅ @${who} removido de owners.`,
+          text: `✅ @${who} removido de owners.\n♻️ *Reinicia el bot para aplicar permisos.*`,
           mentions: [jid]
         },
         { quoted: m }
