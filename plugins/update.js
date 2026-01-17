@@ -23,12 +23,15 @@ let handler = async (m, { conn }) => {
   let hasUpdates = false
 
   try {
-    // 🛡️ Respaldos
-    const backupFiles = ['config.js', '.env', 'owner-ban.js', 'grupo-warn.js']
+    // 🛡️ Respaldos (config.js YA NO SE PROTEGE)
+    const backupFiles = ['.env', 'owner-ban.js', 'grupo-warn.js']
     const backupDirs = ['GaaraSessions']
     const backups = {}
 
-    backupFiles.forEach(f => { if (fs.existsSync(f)) backups[f] = fs.readFileSync(f) })
+    backupFiles.forEach(f => {
+      if (fs.existsSync(f)) backups[f] = fs.readFileSync(f)
+    })
+
     backupDirs.forEach(d => {
       if (fs.existsSync(d)) {
         backups[d] = fs.readdirSync(d).reduce((acc, file) => {
@@ -41,25 +44,43 @@ let handler = async (m, { conn }) => {
     try { execSync('git init', { stdio: 'ignore' }) } catch {}
     try { execSync(`git remote add origin ${REPO}`, { stdio: 'ignore' }) } catch {}
 
+    // 🧹 Limpieza total antes de actualizar
+    try { execSync('git reset --hard', { stdio: 'ignore' }) } catch {}
+    try { execSync('git clean -fd', { stdio: 'ignore' }) } catch {}
+
     execSync('git fetch origin main', { stdio: 'ignore' })
 
-    const lastCommit = execSync('git log -1 origin/main --pretty=format:"%h - %s"', { encoding: 'utf8' })
+    const lastCommit = execSync(
+      'git log -1 origin/main --pretty=format:"%h - %s"',
+      { encoding: 'utf8' }
+    )
     msg += `📦 *Último commit remoto:*\n${lastCommit}\n\n`
 
-    const diff = execSync('git diff --name-status origin/main', { encoding: 'utf8' }).trim()
+    const diff = execSync(
+      'git diff --name-status origin/main',
+      { encoding: 'utf8' }
+    ).trim()
+
     if (diff) hasUpdates = true
 
     if (hasUpdates) {
       execSync('git reset --hard origin/main', { stdio: 'ignore' })
+
+      // 🔁 Restaurar SOLO archivos protegidos
       Object.keys(backups).forEach(f => {
         if (backupDirs.includes(f)) {
           if (!fs.existsSync(f)) fs.mkdirSync(f)
           Object.keys(backups[f]).forEach(file => {
             fs.writeFileSync(path.join(f, file), backups[f][file])
           })
-        } else fs.writeFileSync(f, backups[f])
+        } else {
+          fs.writeFileSync(f, backups[f])
+        }
       })
-      msg += '✅ *Bot actualizado correctamente.*\n🛡️ Archivos protegidos restaurados.\n\n'
+
+      msg += '✅ *Bot actualizado correctamente.*\n'
+      msg += '📦 config.js actualizado desde GitHub\n'
+      msg += '🛡️ Archivos protegidos restaurados.\n\n'
     } else {
       msg += '🟡 *El bot ya estaba actualizado. No se aplicaron cambios.*\n\n'
     }
@@ -68,6 +89,7 @@ let handler = async (m, { conn }) => {
     msg += `❌ *Error durante actualización:*\n${err.message}\n\n`
   }
 
+  // 📊 Cambios en plugins
   let before = []
   if (fs.existsSync(SNAPSHOT)) {
     try { before = JSON.parse(fs.readFileSync(SNAPSHOT)) } catch {}
