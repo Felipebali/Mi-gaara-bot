@@ -1,5 +1,5 @@
 import axios from "axios"
-import { sticker } from '../lib/sticker.js'
+import { sticker } from "../lib/sticker.js"
 
 let handler = async (m, { conn, text }) => {
   try {
@@ -11,36 +11,45 @@ let handler = async (m, { conn, text }) => {
 
     await m.react('🎨')
 
-    // ✅ TTP sin fondo + letras blancas
+    // PNG transparente con texto blanco
     const url = `https://skizo.tech/api/ttp?text=${encodeURIComponent(text)}`
 
     const res = await axios.get(url, {
       responseType: "arraybuffer",
-      headers: {
-        'User-Agent': 'FelixCat-Bot'
-      }
+      headers: { 'User-Agent': 'FelixCat-Bot' }
     })
 
     const imgBuffer = Buffer.from(res.data)
 
-    const stiker = await sticker(
+    // 👉 CONVERSIÓN A STICKER (WEBP)
+    const stick = await sticker(
       imgBuffer,
       false,
       global.packname,
       global.author
     )
 
-    await conn.sendFile(m.chat, stiker, 'ttp.webp', '', m, true)
+    // 👉 ENVÍA STICKER (NO imagen)
+    await conn.sendFile(
+      m.chat,
+      stick,
+      'ttp.webp',
+      '',
+      m,
+      true
+    )
+
     await m.react('✅')
 
   } catch (e) {
-    console.error("❌ TTP ERROR:", e.message)
+    console.error(e)
     await m.react('⚠️')
     await conn.reply(m.chat, "⚠️ Error al generar el sticker.", m)
   }
 }
 
 handler.command = ['ttp']
-handler.help = ['ttp <texto>']
 handler.tags = ['sticker']
+handler.help = ['ttp <texto>']
+
 export default handler
