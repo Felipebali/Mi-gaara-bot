@@ -1,55 +1,48 @@
 import axios from "axios"
-import { sticker } from "../lib/sticker.js"
+import { sticker } from '../lib/sticker.js'
 
 let handler = async (m, { conn, text }) => {
-  try {
-    if (!text)
-      return conn.reply(m.chat, "❌ Usá así:\n\n.ttp Hola mundo", m)
+try {
+if (!text)
+return conn.sendMessage(m.chat, {
+text: "❌ Usá así:\n\n.ttp Hola mundo"
+}, { quoted: m })
 
-    if (text.length > 80)
-      return conn.reply(m.chat, "❌ Máximo 80 caracteres.", m)
+if (text.length > 80)  
+  return conn.sendMessage(m.chat, {  
+    text: "❌ Máximo 80 caracteres."  
+  }, { quoted: m })  
 
-    await m.react('🎨')
+// 🧠 Generador de imagen estable  
+const url = `https://dummyimage.com/600x400/000/fff.png&text=${encodeURIComponent(text)}`  
 
-    // PNG transparente con texto blanco
-    const url = `https://skizo.tech/api/ttp?text=${encodeURIComponent(text)}`
+// Descargar imagen  
+const res = await axios.get(url, { responseType: "arraybuffer" })  
+const imgBuffer = Buffer.from(res.data)  
 
-    const res = await axios.get(url, {
-      responseType: "arraybuffer",
-      headers: { 'User-Agent': 'FelixCat-Bot' }
-    })
+// 🎨 Convertir a sticker  
+const stiker = await sticker(imgBuffer, false, global.packname, global.author)  
 
-    const imgBuffer = Buffer.from(res.data)
+// 📨 Enviar sticker  
+await conn.sendFile(  
+  m.chat,  
+  stiker,  
+  'ttp.webp',  
+  '',  
+  m,  
+  true  
+)
 
-    // 👉 CONVERSIÓN A STICKER (WEBP)
-    const stick = await sticker(
-      imgBuffer,
-      false,
-      global.packname,
-      global.author
-    )
-
-    // 👉 ENVÍA STICKER (NO imagen)
-    await conn.sendFile(
-      m.chat,
-      stick,
-      'ttp.webp',
-      '',
-      m,
-      true
-    )
-
-    await m.react('✅')
-
-  } catch (e) {
-    console.error(e)
-    await m.react('⚠️')
-    await conn.reply(m.chat, "⚠️ Error al generar el sticker.", m)
-  }
+} catch (e) {
+console.error("❌ TTP STICKER ERROR:", e)
+return conn.sendMessage(m.chat, {
+text: "⚠️ Error al generar el sticker."
+}, { quoted: m })
+}
 }
 
 handler.command = ['ttp']
-handler.tags = ['sticker']
 handler.help = ['ttp <texto>']
+handler.tags = ['sticker']
 
 export default handler
