@@ -1,133 +1,182 @@
 import fetch from "node-fetch"
-import yts from 'yt-search'
+import yts from "yt-search"
 
 const handler = async (m, { conn, text, usedPrefix, command }) => {
-    const ctxErr = (global.rcanalx || {})
-    const ctxWarn = (global.rcanalw || {})
-    const ctxOk = (global.rcanalr || {})
-    
-    try {
-        if (!text.trim()) return await conn.reply(m.chat, `❀ Por favor, ingresa el nombre de la música a descargar.`, m, ctxErr)
-        await m.react('🕒')
-        
-        const videoMatch = text.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/|shorts\/|live\/|v\/))([a-zA-Z0-9_-]{11})/)
-        const query = videoMatch ? 'https://youtu.be/' + videoMatch[1] : text
-        const search = await yts(query)
-        const result = videoMatch ? search.videos.find(v => v.videoId === videoMatch[1]) || search.all[0] : search.all[0]
-        if (!result) throw 'ꕥ No se encontraron resultados.'
-        
-        const { title, thumbnail, timestamp, views, ago, url, author, seconds } = result
-        if (seconds > 1800) throw '⚠ El contenido supera el límite de duración (10 minutos).'
-        
-        const vistas = formatViews(views)
-        const canal = author.name
-        const info = `╭──❀ Detalles del contenido ❀──╮
-🎀 Título » *${title}*  
-🌸 Canal » *${canal}*  
-🍃 Vistas » *${vistas}*  
-⏳ Duración » *${timestamp}*  
-🗓️ Publicado » *${ago}*  
-🔗 Link » *${url}*  
+  const ctxErr = global.rcanalx || {}
+  const ctxOk = global.rcanalr || {}
+
+  try {
+    if (!text?.trim())
+      return conn.reply(m.chat, `❀ Por favor, ingresa el nombre de la música a descargar.`, m, ctxErr)
+
+    await m.react('🕒')
+
+    const videoMatch = text.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|shorts\/|live\/|v\/))([a-zA-Z0-9_-]{11})/)
+    const query = videoMatch ? `https://youtu.be/${videoMatch[1]}` : text
+
+    const search = await yts(query)
+    const result = videoMatch
+      ? search.videos.find(v => v.videoId === videoMatch[1])
+      : search.videos[0]
+
+    if (!result) throw 'ꕥ No se encontraron resultados.'
+
+    const { title, thumbnail, timestamp, views, ago, url, author, seconds } = result
+    if (seconds > 1800) throw '⚠ El contenido supera el límite de duración (30 minutos).'
+
+    const info = `╭──❀ Detalles del contenido ❀──╮
+🎀 Título » *${title}*
+🌸 Canal » *${author.name}*
+🍃 Vistas » *${formatViews(views)}*
+⏳ Duración » *${timestamp}*
+🗓️ Publicado » *${ago}*
+🔗 Link » *${url}*
 ╰──────────────────────╯
 
-> 𐙚🌷 ｡･ﾟ✧ Preparando tu descarga... ˙𐙚🌸`
-        
-        const thumb = (await conn.getFile(thumbnail)).data
-        
-        // Enviar información y procesar descarga en paralelo
-        const [_, mediaResult] = await Promise.all([
-            conn.sendMessage(m.chat, { image: thumb, caption: info }, { quoted: m }),
-            processDownload(command, url, title)
-        ])
-        
-        if (!mediaResult?.url) throw '⚠ No se pudo obtener el contenido.'
-        
-        if (['play', 'yta', 'ytmp3', 'playaudio', 'ytaudio'].includes(command)) {
-            await conn.sendMessage(m.chat, { 
-                audio: { url: mediaResult.url }, 
-                fileName: `${title}.mp3`, 
-                mimetype: 'audio/mpeg' 
-            }, { quoted: m })
-        } else if (['play2', 'ytv', 'ytmp4', 'mp4'].includes(command)) {
-            await conn.sendFile(m.chat, mediaResult.url, `${title}.mp4`, `> ❀ ${title}`, m)
-        }
-        
-        await m.react('✔️')
-        
-    } catch (e) {
-        await m.react('✖️')
-        return await conn.reply(m.chat, typeof e === 'string' ? e : '⚠︎ Se ha producido un problema.\n> Usa *' + usedPrefix + 'report* para informarlo.\n\n' + e.message, m, ctxErr)
+> 🌷 Preparando descarga...`
+
+    const thumb = (await conn.getFile(thumbnail)).data
+
+    const [, media] = await Promise.all([
+      conn.sendMessage(m.chat, { image: thumb, caption: info }, { quoted: m }),
+      processDownload(command, url)
+    ])
+
+    if (!media?.url) throw '⚠ No se pudo obtener el contenido.'
+
+    if (isAudio(command)) {
+      await conn.sendMessage(m.chat, {
+        audio: { url: media.url },
+        mimetype: 'audio/mpeg',
+        fileName: `${title}.mp3`
+      }, { quoted: m })
+    } else {
+      await conn.sendFile(m.chat, media.url, `${title}.mp4`, `🎬 ${title}`, m)
     }
+
+    await m.react('✔️')
+
+  } catch (e) {
+    await m.react('✖️')
+    return conn.reply(
+      m.chat,
+      typeof e === 'string'
+        ? e
+        : `⚠ Error inesperado.\nUsa *${usedPrefix}report*.\n\n${e.message}`,
+      m,
+      ctxErr
+    )
+  }
 }
 
-// Función optimizada para procesar descargas
-async function processDownload(command, url, title) {
-    if (['play', 'yta', 'ytmp3', 'playaudio', 'ytaudio'].includes(command)) {
-        return await getAud(url)
-    } else if (['play2', 'ytv', 'ytmp4', 'mp4'].includes(command)) {
-        return await getVid(url)
+/* ================= UTILIDADES ================= */
+
+const isAudio = cmd =>
+  ['play', 'yta', 'ytmp3', 'playaudio', 'ytaudio'].includes(cmd)
+
+const isVideo = cmd =>
+  ['play2', 'ytv', 'ytmp4', 'mp4'].includes(cmd)
+
+/* ================= DESCARGAS ================= */
+
+async function processDownload(command, url) {
+  if (isAudio(command)) return await getAudio(url)
+  if (isVideo(command)) return await getVideo(url)
+  return null
+}
+
+/* ========= AUDIO (COBALT + FALLBACK) ========= */
+
+async function getAudio(url) {
+  const apis = [
+    {
+      name: 'Cobalt',
+      fetcher: () => cobalt(url, true)
+    },
+    {
+      name: 'Yupra',
+      fetcher: () => jsonFetch(
+        `${global.APIs.yupra.url}/api/downloader/ytmp3?url=${encodeURIComponent(url)}`,
+        r => r.result?.link
+      )
     }
-    return null
+  ]
+  return await tryApis(apis)
 }
 
-// APIs optimizadas con timeout más agresivo para audio
-async function getAud(url) {
-    const apis = [
-        { api: 'ZenzzXD', endpoint: `${global.APIs.zenzxz.url}/downloader/ytmp3?url=${encodeURIComponent(url)}`, extractor: res => res.data?.download_url, timeout: 6000 },
-        { api: 'ZenzzXD v2', endpoint: `${global.APIs.zenzxz.url}/downloader/ytmp3v2?url=${encodeURIComponent(url)}`, extractor: res => res.data?.download_url, timeout: 6000 },
-        { api: 'Yupra', endpoint: `${global.APIs.yupra.url}/api/downloader/ytmp3?url=${encodeURIComponent(url)}`, extractor: res => res.result?.link, timeout: 6000 },
-        { api: 'Vreden', endpoint: `${global.APIs.vreden.url}/api/v1/download/youtube/audio?url=${encodeURIComponent(url)}&quality=128`, extractor: res => res.result?.download?.url, timeout: 6000 },
-        { api: 'Vreden v2', endpoint: `${global.APIs.vreden.url}/api/v1/download/play/audio?query=${encodeURIComponent(url)}`, extractor: res => res.result?.download?.url, timeout: 6000 },
-        { api: 'Xyro', endpoint: `${global.APIs.xyro.url}/download/youtubemp3?url=${encodeURIComponent(url)}`, extractor: res => res.result?.download, timeout: 6000 }
-    ]
-    return await fetchFromApisOptimized(apis)
+/* ========= VIDEO (COBALT + FALLBACK) ========= */
+
+async function getVideo(url) {
+  const apis = [
+    {
+      name: 'Cobalt',
+      fetcher: () => cobalt(url, false)
+    },
+    {
+      name: 'Yupra',
+      fetcher: () => jsonFetch(
+        `${global.APIs.yupra.url}/api/downloader/ytmp4?url=${encodeURIComponent(url)}`,
+        r => r.result?.formats?.[0]?.url
+      )
+    }
+  ]
+  return await tryApis(apis)
 }
 
-async function getVid(url) {
-    const apis = [
-        { api: 'ZenzzXD', endpoint: `${global.APIs.zenzxz.url}/downloader/ytmp4?url=${encodeURIComponent(url)}&resolution=360p`, extractor: res => res.data?.download_url, timeout: 10000 },
-        { api: 'ZenzzXD v2', endpoint: `${global.APIs.zenzxz.url}/downloader/ytmp4v2?url=${encodeURIComponent(url)}&resolution=360`, extractor: res => res.data?.download_url, timeout: 10000 },
-        { api: 'Yupra', endpoint: `${global.APIs.yupra.url}/api/downloader/ytmp4?url=${encodeURIComponent(url)}`, extractor: res => res.result?.formats?.[0]?.url, timeout: 10000 },
-        { api: 'Vreden', endpoint: `${global.APIs.vreden.url}/api/v1/download/youtube/video?url=${encodeURIComponent(url)}&quality=360`, extractor: res => res.result?.download?.url, timeout: 10000 },
-        { api: 'Vreden v2', endpoint: `${global.APIs.vreden.url}/api/v1/download/play/video?query=${encodeURIComponent(url)}`, extractor: res => res.result?.download?.url, timeout: 10000 },
-        { api: 'Xyro', endpoint: `${global.APIs.xyro.url}/download/youtubemp4?url=${encodeURIComponent(url)}&quality=360`, extractor: res => res.result?.download, timeout: 10000 }
-    ]
-    return await fetchFromApisOptimized(apis)
-}
+/* ================= COBALT ================= */
 
-// Función optimizada con timeouts más rápidos
-async function fetchFromApisOptimized(apis) {
-    const promises = apis.map(async ({ api, endpoint, extractor, timeout }) => {
-        try {
-            const controller = new AbortController()
-            const timeoutId = setTimeout(() => controller.abort(), timeout)
-            const res = await fetch(endpoint, { signal: controller.signal }).then(r => r.json())
-            clearTimeout(timeoutId)
-            const link = extractor(res)
-            if (link) return { url: link, api }
-        } catch (e) {
-            return null
-        }
+async function cobalt(url, audioOnly = true) {
+  const res = await fetch("https://co.wuk.sh/api/json", {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      "accept": "application/json"
+    },
+    body: JSON.stringify({
+      url,
+      isAudioOnly: audioOnly,
+      aCodec: audioOnly ? "mp3" : undefined,
+      vCodec: audioOnly ? "none" : "h264",
+      quality: "360"
     })
-    
-    const results = await Promise.allSettled(promises)
-    for (const result of results) {
-        if (result.status === 'fulfilled' && result.value) {
-            return result.value
-        }
-    }
-    return null
+  }).then(r => r.json())
+
+  if (!res?.url) return null
+  return { url: res.url }
 }
 
-function formatViews(views) {
-    if (views === undefined) return "No disponible"
-    if (views >= 1_000_000_000) return `${(views / 1_000_000_000).toFixed(1)}B (${views.toLocaleString()})`
-    if (views >= 1_000_000) return `${(views / 1_000_000).toFixed(1)}M (${views.toLocaleString()})`
-    if (views >= 1_000) return `${(views / 1_000).toFixed(1)}k (${views.toLocaleString()})`
-    return views.toString()
+/* ================= HELPERS ================= */
+
+async function tryApis(apis) {
+  for (const api of apis) {
+    try {
+      const res = await api.fetcher()
+      if (res?.url) return res
+    } catch {}
+  }
+  return null
 }
 
-handler.command = handler.help = ['play', 'yta', 'ytmp3', 'play2', 'ytv', 'ytmp4', 'playaudio', 'mp4', 'ytaudio']
+async function jsonFetch(url, extractor) {
+  const controller = new AbortController()
+  setTimeout(() => controller.abort(), 8000)
+  const res = await fetch(url, { signal: controller.signal }).then(r => r.json())
+  const link = extractor(res)
+  return link ? { url: link } : null
+}
+
+function formatViews(v) {
+  if (!v) return 'No disponible'
+  if (v >= 1e9) return (v / 1e9).toFixed(1) + 'B'
+  if (v >= 1e6) return (v / 1e6).toFixed(1) + 'M'
+  if (v >= 1e3) return (v / 1e3).toFixed(1) + 'K'
+  return v.toString()
+}
+
+handler.command = handler.help = [
+  'play', 'yta', 'ytmp3', 'playaudio', 'ytaudio',
+  'play2', 'ytv', 'ytmp4', 'mp4'
+]
 handler.tags = ['descargas']
 handler.group = true
 
