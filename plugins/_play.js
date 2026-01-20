@@ -6,8 +6,8 @@ import { existsSync, promises } from "fs"
 
 const execAsync = promisify(exec)
 
-// ✅ yt-dlp REAL (Termux / Linux / VPS)
-const ytDlpPath = "yt-dlp"
+// ✅ COMANDO UNIVERSAL (Boxmine / Termux / VPS)
+const ytDlpCmd = "python -m yt_dlp"
 
 const cookiesPath = "./lib/cookies.txt"
 
@@ -88,8 +88,8 @@ let handler = async (m, { conn, args, text, isOwner }) => {
     const useCookies = existsSync(cookiesPath)
     const cookiesFlag = useCookies ? `--cookies "${cookiesPath}"` : ""
 
-    // ✅ Comando yt-dlp ESTABLE (cliente Android)
-    const cmd = `${ytDlpPath} \
+    // ✅ yt-dlp estable (cliente Android)
+    const cmd = `${ytDlpCmd} \
 -f "bestaudio[ext=m4a]/bestaudio/best" \
 --extractor-args "youtube:player_client=android" \
 --no-warnings \
