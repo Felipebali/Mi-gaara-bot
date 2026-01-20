@@ -1,6 +1,6 @@
-import fetch from 'node-fetch'
-import yts from 'yt-search'
-import ytdl from 'ytdl-core'
+const fetch = require('node-fetch')
+const yts = require('yt-search')
+const ytdl = require('ytdl-core')
 
 const LimitAud = 725 * 1024 * 1024
 const LimitVid = 425 * 1024 * 1024
@@ -16,26 +16,18 @@ const handler = async (m, { conn, command, text, usedPrefix }) => {
       m
     )
 
-  const yt = await yts.search({ query: text, hl: 'es', gl: 'ES' })
-  const video = yt.videos?.[0]
-
-  if (!video)
-    return conn.reply(m.chat, '❌ No se encontraron resultados', m)
+  const yt = await yts.search(text)
+  const video = yt.videos[0]
+  if (!video) return conn.reply(m.chat, '❌ No se encontraron resultados', m)
 
   const info = `⌘━─━─≪ *YOUTUBE* ≫─━─━⌘
-★ ${mid.smsYT1}
 ★ ${video.title}
-★ ${mid.smsYT15}
 ★ ${video.ago}
-★ ${mid.smsYT5}
 ★ ${secondString(video.duration.seconds)}
-★ ${mid.smsYT10}
 ★ ${MilesNumber(video.views)}
-★ ${mid.smsYT2}
 ★ ${video.author.name}
-★ ${mid.smsYT4}
-★ ${video.url.replace(/^https?:\/\//, '')}
-⌘━━─≪ ${gt} ≫─━━⌘`
+★ ${video.url}
+⌘━━━━━━━━━━━━━━⌘`
 
   tempStorage[m.sender] = {
     url: video.url,
@@ -46,13 +38,13 @@ const handler = async (m, { conn, command, text, usedPrefix }) => {
     m.chat,
     {
       image: { url: video.thumbnail },
-      caption: info + `\n\n🎶 Audio | 📽 Video`
+      caption: info + '\n\n🎶 Audio | 📽 Video'
     },
     { quoted: m }
   )
 }
 
-// ================= RESPUESTA 🎶 / 📽 =================
+// ================= RESPUESTA =================
 handler.before = async (m, { conn }) => {
   const text = m.text?.trim()
   if (!['🎶', 'audio', '📽', 'video'].includes(text)) return
@@ -61,62 +53,29 @@ handler.before = async (m, { conn }) => {
   if (!data) return
 
   try {
-    // ===== AUDIO =====
     if (text === '🎶' || text === 'audio') {
-      await conn.reply(m.chat, lenguajeGB['smsAvisoEG']() + mid.smsAud, fkontak)
-
       const audioUrl = await downloadAudio(data.url)
-      if (!audioUrl) throw 'No se pudo descargar el audio'
-
-      const size = await getFileSize(audioUrl)
-      const sendAsDoc = size > LimitAud
+      if (!audioUrl) throw 'Error audio'
 
       await conn.sendMessage(
         m.chat,
-        sendAsDoc
-          ? {
-              document: { url: audioUrl },
-              mimetype: 'audio/mpeg',
-              fileName: `${data.title}.mp3`
-            }
-          : {
-              audio: { url: audioUrl },
-              mimetype: 'audio/mpeg'
-            },
+        { audio: { url: audioUrl }, mimetype: 'audio/mpeg' },
         { quoted: m }
       )
     }
 
-    // ===== VIDEO =====
     if (text === '📽' || text === 'video') {
-      await conn.reply(m.chat, lenguajeGB['smsAvisoEG']() + mid.smsVid, fkontak)
-
       const videoUrl = await downloadVideo(data.url)
-      if (!videoUrl) throw 'No se pudo descargar el video'
-
-      const size = await getFileSize(videoUrl)
-      const sendAsDoc = size > LimitVid
+      if (!videoUrl) throw 'Error video'
 
       await conn.sendMessage(
         m.chat,
-        sendAsDoc
-          ? {
-              document: { url: videoUrl },
-              mimetype: 'video/mp4',
-              fileName: `${data.title}.mp4`,
-              caption: `⟡ *${data.title}*\n> ${wm}`
-            }
-          : {
-              video: { url: videoUrl },
-              mimetype: 'video/mp4',
-              caption: `⟡ *${data.title}*\n> ${wm}`
-            },
+        { video: { url: videoUrl }, mimetype: 'video/mp4' },
         { quoted: m }
       )
     }
   } catch (e) {
-    console.error(e)
-    await conn.reply(m.chat, '❌ Error al procesar la descarga', m)
+    await conn.reply(m.chat, '❌ Error en la descarga', m)
   } finally {
     delete tempStorage[m.sender]
   }
@@ -124,30 +83,11 @@ handler.before = async (m, { conn }) => {
 
 handler.command = /^(play|play2)$/i
 handler.register = true
-export default handler
+
+module.exports = handler
 
 // ================= DESCARGAS =================
 async function downloadAudio(url) {
-  const apis = [
-    `https://api.neoxr.eu/api/youtube?type=audio&quality=128kbps&url=${url}&apikey=GataDios`,
-    `https://api.zenkey.my.id/api/download/ytmp3?apikey=zenkey&url=${url}`,
-    `https://api.dorratz.com/v2/yt-mp3?url=${url}`
-  ]
-
-  for (const api of apis) {
-    try {
-      const res = await fetch(api).then(r => r.json())
-      const link =
-        res?.data?.url ||
-        res?.result?.download?.url ||
-        res?.download ||
-        res?.url
-
-      if (link) return link
-    } catch {}
-  }
-
-  // 🛟 fallback ytdl
   try {
     const info = await ytdl.getInfo(url)
     const format = ytdl.chooseFormat(info.formats, { filter: 'audioonly' })
@@ -158,144 +98,25 @@ async function downloadAudio(url) {
 }
 
 async function downloadVideo(url) {
-  const apis = [
-    `https://api.neoxr.eu/api/youtube?type=video&quality=720p&url=${url}&apikey=GataDios`,
-    `https://api.siputzx.my.id/api/d/ytmp4?url=${url}`,
-    `https://exonity.tech/api/ytdlp2-faster?apikey=adminsepuh&url=${url}`
-  ]
-
-  for (const api of apis) {
-    try {
-      const res = await fetch(api).then(r => r.json())
-      const link =
-        res?.data?.url ||
-        res?.result?.media?.mp4 ||
-        res?.dl
-
-      if (link) return link
-    } catch {}
+  try {
+    const info = await ytdl.getInfo(url)
+    const format = ytdl.chooseFormat(info.formats, { quality: '18' })
+    return format.url
+  } catch {
+    return null
   }
-
-  return null
 }
 
 // ================= UTILS =================
-async function getFileSize(url) {
-  try {
-    const res = await fetch(url, { method: 'HEAD' })
-    return Number(res.headers.get('content-length') || 0)
-  } catch {
-    return 0
-  }
-}
-
 function MilesNumber(n) {
   return n.toLocaleString('es-ES')
 }
 
 function secondString(seconds) {
-  seconds = Number(seconds)
   const m = Math.floor(seconds / 60)
   const s = seconds % 60
   return `${m}m ${s}s`
-}{ mimetype: 'audio/mp4' })
-} catch (e) {
-try {
-let d2 = await fetch(`https://exonity.tech/api/ytdlp?apikey=adminsepuh&url=${yt_play[0].url}`)
-let dp = await d2.json()
-const audioUrl = dp.result.audio
-await conn.sendMessage(m.chat, { audio: { url: audioUrl }, mimetype: 'audio/mpeg' }, { quoted: m }) 
-} catch (e) { 
-try {
-let d3 = await fetch(`https://api.dorratz.com/v2/yt-mp3?url=${yt_play[0].url}`)
-await conn.sendMessage(m.chat, { audio: d3, mimetype: 'audio/mp4' }, { quoted: m })   
-} catch (e) { 
-await m.react('❌')
-console.log(e)
-}}}}}}}
-
-if (command == 'video') {
-try {    
-let searchh = await yts(yt_play[0].url)
-let __res = searchh.all.map(v => v).filter(v => v.type == "video")
-let infoo = await ytdl.getInfo('https://youtu.be/' + __res[0].videoId)
-let ress = await ytdl.chooseFormat(infoo.formats, { filter: 'audioonly' })
-await conn.sendMessage(m.chat, { video: { url: await ress.url }, fileName: `${yt_play[0].title}.mp4`, mimetype: 'video/mp4', caption: `⟡ *${yt_play[0].title}*\n> ${wm}`}, { quoted: m })
-} catch (e1) {
-try {    
-const res = await fetch(`https://api.zenkey.my.id/api/download/ytmp3?apikey=zenkey&url=${yt_play[0].url}`)
-let { result } = await res.json()
-await conn.sendMessage(m.chat, { video: { url: await result.download.url }, fileName: `${yt_play[0].title}.mp4`, mimetype: 'video/mp4', caption: `⟡ *${yt_play[0].title}*\n> ${wm}`}, { quoted: m })
-} catch (e1) {
-try {    
-const apiUrl = `https://deliriussapi-oficial.vercel.app/download/ytmp4?url=${encodeURIComponent(yt_play[0].url)}`;
-const apiResponse = await fetch(apiUrl);
-const delius = await apiResponse.json();
-if (!delius.status) {
-return m.react("❌")}
-const downloadUrl = delius.data.download.url;
-await conn.sendMessage(m.chat, { video: { url: downloadUrl }, fileName: `${yt_play[0].title}.mp4`, mimetype: 'video/mp4', caption: `⟡ *${yt_play[0].title}*\n> ${wm}`}, { quoted: m })
-} catch (e1) {
-try {    
-const yt = await youtubedl(yt_play[0].url).catch(async _ => await youtubedlv2(yt_play[0].url))
-console.log(yt)
-let q = getBestVideoQuality(yt)
-console.log(q)
-await conn.sendMessage(m.chat, { video: { url: await yt.video[q].download() }, fileName: `${await yt.title}.mp4`, mimetype: 'video/mp4', caption: `⟡ *${yt_play[0].title}*\n⟡ \`${q}\` | ${await yt.video[q].fileSizeH}\n> ${wm}`}, { quoted: m })
-} catch (e) {
-await m.react('❌')
-console.log(e)
-}}}}}
-
-if (command == 'play3' || command == 'playdoc') {
-try {    
-let searchh = await yts(yt_play[0].url)
-let __res = searchh.all.map(v => v).filter(v => v.type == "video")
-let infoo = await ytdl.getInfo('https://youtu.be/' + __res[0].videoId)
-let ress = await ytdl.chooseFormat(infoo.formats, { filter: 'audioonly' })
-await conn.sendMessage(m.chat, { document: { url: ress.url }, mimetype: 'audio/mpeg', fileName: `${yt_play[0].title}.mp3` }, { quoted: m });
-} catch (e1) {
-try {    
-const res = await fetch(`https://api.zenkey.my.id/api/download/ytmp3?apikey=zenkey&url=${yt_play[0].url}`)
-let { result } = await res.json()
-await conn.sendMessage(m.chat, { document: { url: result.download.url }, mimetype: 'audio/mpeg', fileName: `${yt_play[0].title}.mp3` }, { quoted: m });
-} catch (e1) {
-try {    
-const apiUrl = `${apis}/download/ytmp4?url=${encodeURIComponent(yt_play[0].url)}`;
-const apiResponse = await fetch(apiUrl);
-const delius = await apiResponse.json();
-if (!delius.status) {
-return m.react("❌")}
-const downloadUrl = delius.data.download.url;
-await conn.sendMessage(m.chat, { document: { url: downloadUrl }, mimetype: 'audio/mpeg', fileName: `${yt_play[0].title}.mp3` }, { quoted: m });
-} catch (e1) {
-try {    
-let q = '128kbps'
-const yt = await youtubedl(yt_play[0].url).catch(async _ => await youtubedlv2(yt_play[0].url))
-const dl_url = await yt.audio[q].download()
-const ttl = await yt.title
-const size = await yt.audio[q].fileSizeH
-await conn.sendMessage(m.chat, { document: { url: dl_url }, mimetype: 'audio/mpeg', fileName: `${ttl}.mp3` }, { quoted: m });
-} catch (e2) {
-try {   
-const downloadUrl = await fetch9Convert(yt_play[0].url); 
-await conn.sendMessage(m.chat, { document: { url: downloadUrl }, mimetype: 'audio/mpeg', fileName: `${yt_play[0].title}.mp3` }, { quoted: m });
-} catch (e3) {
-try {
-const downloadUrl = await fetchY2mate(yt_play[0].url);
-await conn.sendMessage(m.chat, { document: { url: downloadUrl }, mimetype: 'audio/mpeg', fileName: `${yt_play[0].title}.mp3` }, { quoted: m });
-} catch (e4) {
-try {
-const res = await fetch(`https://api.zenkey.my.id/api/download/ytmp3?apikey=zenkey&url=${yt_play[0].url}`)
-const audioData = await res.json()
-if (audioData.status && audioData.result?.downloadUrl) {
-await conn.sendMessage(m.chat, { document: { url: audioData.result.downloadUrl }, mimetype: 'audio/mpeg', fileName: `${yt_play[0].title}.mp3` }, { quoted: m });
-}} catch (e5) {
-try {
-let d2 = await fetch(`https://exonity.tech/api/ytdlp2-faster?apikey=adminsepuh&url=${yt_play[0].url}`);
-let dp = await d2.json();
-const audiop = await getBuffer(dp.result.media.mp3);
-const fileSize = await getFileSize(dp.result.media.mp3);
+}wait getFileSize(dp.result.media.mp3);
 await conn.sendMessage(m.chat, { document: { url: audioData.result.downloadUrl }, mimetype: 'audio/mpeg', fileName: `${yt_play[0].title}.mp3` }, { quoted: m });
 } catch (e) {    
 await m.react('❌');
@@ -336,7 +157,7 @@ console.log(e2);
 }
 handler.command = /^(play[2-4]?|audio|video|playdoc2?)$/i
 //handler.limit = 2
-handler.register = true 
+handler.register = false
 export default handler
 
 async function search(query, options = {}) {
