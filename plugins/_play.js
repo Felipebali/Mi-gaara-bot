@@ -5,9 +5,9 @@ import path from "path"
 import { existsSync, promises } from "fs"
 
 const execAsync = promisify(exec)
-const ytDlpPath = process.platform === "win32"
-  ? "./node_modules/gs/ygs.exe"
-  : "./node_modules/gs/ygs"
+
+// ✅ yt-dlp REAL (Termux / Linux / VPS)
+const ytDlpPath = "yt-dlp"
 
 const cookiesPath = "./lib/cookies.txt"
 
@@ -84,11 +84,18 @@ let handler = async (m, { conn, args, text, isOwner }) => {
       { quoted: m }
     )
 
-    // 🍪 Cookies
+    // 🍪 Cookies (opcional)
     const useCookies = existsSync(cookiesPath)
     const cookiesFlag = useCookies ? `--cookies "${cookiesPath}"` : ""
 
-    const cmd = `${ytDlpPath} -f "bestaudio[ext=m4a]/bestaudio" ${cookiesFlag} --no-warnings -o "${outputPath}" "${url}"`
+    // ✅ Comando yt-dlp ESTABLE (cliente Android)
+    const cmd = `${ytDlpPath} \
+-f "bestaudio[ext=m4a]/bestaudio/best" \
+--extractor-args "youtube:player_client=android" \
+--no-warnings \
+${cookiesFlag} \
+-o "${outputPath}" \
+"${url}"`
 
     try {
       await execAsync(cmd)
