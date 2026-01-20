@@ -1,9 +1,14 @@
+import fs from "fs"
+import path from "path"
 import fetch from "node-fetch"
 import yts from "yt-search"
 import ytdl from "ytdl-core"
+import { spawn } from "child_process"
+
+const __dirname = process.cwd()
 
 // ================= HANDLER =================
-const handler = async (m, { conn, text, usedPrefix, command }) => {
+const handler = async (m, { conn, text, command }) => {
   try {
     if (!text.trim())
       return conn.reply(m.chat, "🌱 Ingresá un nombre o link de YouTube.", m)
@@ -22,18 +27,17 @@ const handler = async (m, { conn, text, usedPrefix, command }) => {
 
     if (!video) throw "❌ No se encontraron resultados."
 
-    const { title, thumbnail, timestamp, views, ago, url, author, seconds } = video
+    const { title, thumbnail, timestamp, views, url, author, seconds } = video
+    if (seconds > 3600) throw "⚠ Máximo 1 hora."
 
-    if (seconds > 3600) throw "⚠ Duración máxima: 1 hora."
-
-    const info = `🎧 *YouTube Audio*
+    const info = `🎧 *YouTube (Opus)*
 
 > 🎵 *Título:* ${title}
 > 👤 *Canal:* ${author.name}
 > ⏱️ *Duración:* ${timestamp}
 > 👁️ *Vistas:* ${formatViews(views)}
 
-> Enviando audio...`
+> Procesando audio...`
 
     const thumb = (await conn.getFile(thumbnail)).data
     await conn.sendMessage(
@@ -42,59 +46,66 @@ const handler = async (m, { conn, text, usedPrefix, command }) => {
       { quoted: m }
     )
 
-    // ===== AUDIO =====
-    if (["play", "mp3"].includes(command)) {
-      const audio = await getAud(url)
-      if (!audio?.url) throw "⚠ No se pudo procesar el audio."
+    const filePath = await ytdlToOpus(url)
+    if (!filePath) throw "⚠ No se pudo convertir el audio."
 
-      await conn.sendMessage(
-        m.chat,
-        {
-          audio: { url: audio.url },
-          mimetype: "audio/mpeg",
-          fileName: `${title}.mp3`
-        },
-        { quoted: m }
-      )
+    await conn.sendMessage(
+      m.chat,
+      {
+        audio: fs.readFileSync(filePath),
+        mimetype: "audio/ogg; codecs=opus",
+        ptt: true
+      },
+      { quoted: m }
+    )
 
-      await m.react("✔️")
-    }
+    fs.unlinkSync(filePath)
+    await m.react("✔️")
 
   } catch (e) {
     await m.react("✖️")
-    return conn.reply(
-      m.chat,
-      typeof e === "string" ? e : "⚠ Error inesperado.",
-      m
-    )
+    return conn.reply(m.chat, typeof e === "string" ? e : "⚠ Error.", m)
   }
 }
 
 handler.command = handler.help = ["play", "mp3"]
 handler.tags = ["download"]
 handler.group = true
-
 export default handler
 
-// ================= AUDIO (YTDL) =================
-async function getAud(url) {
-  try {
-    const info = await ytdl.getInfo(url)
+// ================= YTDL → OPUS =================
+async function ytdlToOpus(url) {
+  return new Promise(async (resolve) => {
+    try {
+      const temp = path.join(__dirname, `tmp_${Date.now()}.opus`)
 
-    const format = ytdl.chooseFormat(info.formats, {
-      quality: "highestaudio",
-      filter: "audioonly"
-    })
+      const ytdlStream = ytdl(url, {
+        filter: "audioonly",
+        quality: "highestaudio",
+        highWaterMark: 1 << 25
+      })
 
-    if (!format?.url) return null
+      const ffmpeg = spawn("ffmpeg", [
+        "-y",
+        "-i", "pipe:0",
+        "-vn",
+        "-c:a", "libopus",
+        "-b:a", "64k",
+        "-f", "opus",
+        temp
+      ])
 
-    return {
-      url: format.url,
-      api: "ytdl-core"
+      ytdlStream.pipe(ffmpeg.stdin)
+
+      ffmpeg.on("close", (code) => {
+        if (code === 0 && fs.existsSync(temp)) resolve(temp)
+        else resolve(null)
+      })
+
+    } catch {
+      resolve(null)
     }
-  } catch {
-    return null
-  }
+  })
 }
 
 // ================= UTILS =================
