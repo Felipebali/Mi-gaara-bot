@@ -1,83 +1,131 @@
-import yts from 'yt-search'
-import ytdl from 'ytdl-core'
+import yts from "yt-search"
+import { exec } from "child_process"
+import { promisify } from "util"
+import path from "path"
+import { existsSync, promises } from "fs"
 
-// ================= PLAY =================
-const handler = async (m, { conn, command, text, usedPrefix }) => {
-  if (!text)
-    return conn.reply(
-      m.chat,
-      `❌ Usa así:\n\n${usedPrefix + command} Billie Eilish - Bellyache`,
-      m
-    )
+const execAsync = promisify(exec)
+const ytDlpPath = process.platform === "win32"
+  ? "./node_modules/gs/ygs.exe"
+  : "./node_modules/gs/ygs"
 
-  // 🔍 Buscar en YouTube
-  const yt = await yts.search(text)
-  const video = yt.videos?.[0]
-  if (!video) return conn.reply(m.chat, '❌ No se encontraron resultados', m)
+const cookiesPath = "./lib/cookies.txt"
 
-  // ℹ️ Info
-  const info = `🎶 *YOUTUBE AUDIO*
-  
-📌 *Título:* ${video.title}
-⏱ *Duración:* ${secondString(video.duration.seconds)}
-👤 *Canal:* ${video.author.name}
-👁 *Vistas:* ${MilesNumber(video.views)}
-🔗 ${video.url}
+// ═══════════════════════════════════════
+// 🕐 ANTI-SPAM (2 minutos)
+// ═══════════════════════════════════════
+const userCooldowns = {}
 
-⏳ Descargando audio...`
-
-  await conn.sendMessage(
-    m.chat,
-    { image: { url: video.thumbnail }, caption: info },
-    { quoted: m }
-  )
-
+let handler = async (m, { conn, args, text, isOwner }) => {
   try {
-    // 🎧 Descargar audio
-    const audioUrl = await downloadAudio(video.url)
-    if (!audioUrl) throw 'Error audio'
+    const remoteJid = m.chat
+    const senderJid = m.sender
 
-    // 📤 Enviar audio directo
+    // 🚫 COOLDOWN (owner sin límite)
+    if (!isOwner) {
+      const now = Date.now()
+      const cooldownTime = 2 * 60 * 1000
+      const lastUse = userCooldowns[senderJid] || 0
+      const timeLeft = lastUse + cooldownTime - now
+
+      if (timeLeft > 0) {
+        const sec = Math.ceil(timeLeft / 1000)
+        const min = Math.floor(sec / 60)
+        const s = sec % 60
+        const t = min > 0 ? `${min}m ${s}s` : `${s}s`
+
+        return conn.sendMessage(
+          remoteJid,
+          { text: `⏰ *Espera ${t}* antes de usar *.play* de nuevo.` },
+          { quoted: m }
+        )
+      }
+
+      userCooldowns[senderJid] = now
+    }
+
+    // 🎵 QUERY
+    let query = (text || "").trim()
+    if (!query && args?.length) query = args.join(" ").trim()
+
+    if (!query) {
+      return conn.sendMessage(
+        remoteJid,
+        { text: "❗ Ejemplo:\n.play Canserbero - mundo de piedra" },
+        { quoted: m }
+      )
+    }
+
+    await conn.sendMessage(remoteJid, { react: { text: "⌛", key: m.key } })
+
+    const results = await search(query)
+    if (!results.length) {
+      return conn.sendMessage(
+        remoteJid,
+        { text: "❌ No se encontraron resultados." },
+        { quoted: m }
+      )
+    }
+
+    const video = results[0]
+    const url = video.url
+    const randomName = Math.random().toString(36).slice(2)
+    const outputPath = path.join("./tmp", `${randomName}.m4a`)
+
+    await promises.mkdir("./tmp", { recursive: true })
+
+    // 📸 Preview
     await conn.sendMessage(
-      m.chat,
+      remoteJid,
       {
-        audio: { url: audioUrl },
-        mimetype: 'audio/mpeg',
-        fileName: `${video.title}.mp3`
+        image: { url: video.thumbnail },
+        caption: `🎧 *${video.title}*\n\n⏳ Descargando audio...`
       },
       { quoted: m }
     )
+
+    // 🍪 Cookies
+    const useCookies = existsSync(cookiesPath)
+    const cookiesFlag = useCookies ? `--cookies "${cookiesPath}"` : ""
+
+    const cmd = `${ytDlpPath} -f "bestaudio[ext=m4a]/bestaudio" ${cookiesFlag} --no-warnings -o "${outputPath}" "${url}"`
+
+    try {
+      await execAsync(cmd)
+    } catch (e) {
+      console.error("❌ yt-dlp error:", e.stderr || e.message)
+    }
+
+    if (!existsSync(outputPath)) {
+      return conn.sendMessage(
+        remoteJid,
+        { text: "❌ No se pudo descargar el audio." },
+        { quoted: m }
+      )
+    }
+
+    const audio = await promises.readFile(outputPath)
+    await conn.sendMessage(
+      remoteJid,
+      { audio, mimetype: "audio/mp4" },
+      { quoted: m }
+    )
+
+    await promises.unlink(outputPath)
+    await conn.sendMessage(remoteJid, { react: { text: "✨", key: m.key } })
+
   } catch (e) {
-    console.error(e)
-    await conn.reply(m.chat, '❌ Error al descargar el audio', m)
+    console.error("❌ Error en .play:", e)
   }
 }
 
-handler.command = /^(play|play2)$/i
-handler.register = false
+// ✅ COMANDO
+handler.command = ["play"]
+
 export default handler
 
-// ================= DESCARGA AUDIO =================
-async function downloadAudio(url) {
-  try {
-    const info = await ytdl.getInfo(url)
-    const format = ytdl.chooseFormat(info.formats, {
-      filter: 'audioonly',
-      quality: 'highestaudio'
-    })
-    return format.url
-  } catch {
-    return null
-  }
-}
-
-// ================= UTILS =================
-function MilesNumber(n) {
-  return n.toLocaleString('es-ES')
-}
-
-function secondString(seconds) {
-  const m = Math.floor(seconds / 60)
-  const s = seconds % 60
-  return `${m}m ${s}s`
+// 🔍 BUSCADOR
+async function search(query, options = {}) {
+  const r = await yts.search({ query, hl: "es", gl: "ES", ...options })
+  return r.videos
 }
