@@ -1,72 +1,56 @@
-import yts from "yt-search"
-import ytdl from "@distube/ytdl-core"
+import fetch from 'node-fetch'
+import yts from 'yt-search'
 
-const handler = async (m, { conn, text, command }) => {
-  try {
-    if (!text) return conn.reply(m.chat, "🌱 Escribí un nombre o link de YouTube.", m)
-
-    await m.react("🕒")
-
-    const search = await yts(text)
-    const video = search.videos?.[0]
-    if (!video) throw "❌ No se encontraron resultados."
-
-    if (video.seconds > 3600)
-      throw "⚠ Máximo permitido: 1 hora."
-
-    const info = `🎧 *YouTube Audio*
-    
-🎵 *Título:* ${video.title}
-👤 *Canal:* ${video.author.name}
-⏱️ *Duración:* ${video.timestamp}
-👁️ *Vistas:* ${formatViews(video.views)}
-
-📤 Enviando audio...`
-
-    await conn.sendMessage(
+let handler = async (m, { conn, text, usedPrefix, command }) => {
+  if (!text)
+    return conn.reply(
       m.chat,
-      { image: { url: video.thumbnail }, caption: info },
-      { quoted: m }
+      `❌ Usá así:\n\n${usedPrefix + command} Billie Eilish`,
+      m
     )
 
-    // 🔊 AUDIO OPUS (PTT)
-    const stream = ytdl(video.url, {
-      filter: "audioonly",
-      quality: "highestaudio",
-      highWaterMark: 1 << 25
-    })
+  await conn.reply(m.chat, '🔎 Buscando en YouTube...', m)
+
+  const search = await yts(text)
+  const video = search.videos[0]
+
+  if (!video)
+    return conn.reply(m.chat, '❌ No encontré resultados.', m)
+
+  let info = `🎵 *YOUTUBE PLAY*\n
+📌 *Título:* ${video.title}
+⏱️ *Duración:* ${video.timestamp}
+👁️ *Vistas:* ${video.views.toLocaleString()}
+🔗 ${video.url}
+`
+
+  await conn.reply(m.chat, info, m)
+
+  try {
+    // 🔥 API estable
+    const api = `https://api.agungny.my.id/api/youtube-audio?url=${video.url}`
+
+    const res = await fetch(api)
+    const json = await res.json()
+
+    if (!json.status)
+      throw 'Error en la API'
 
     await conn.sendMessage(
       m.chat,
       {
-        audio: stream,
-        mimetype: "audio/ogg; codecs=opus",
-        ptt: true
+        audio: { url: json.result.url },
+        mimetype: 'audio/mpeg',
+        fileName: `${video.title}.mp3`
       },
       { quoted: m }
     )
 
-    await m.react("✔️")
-
   } catch (e) {
-    await m.react("✖️")
-    return conn.reply(
-      m.chat,
-      typeof e === "string" ? e : "⚠ Error al procesar el audio.",
-      m
-    )
+    console.error(e)
+    conn.reply(m.chat, '❌ Error al descargar el audio.', m)
   }
 }
 
-handler.command = ["play", "mp3"]
-handler.tags = ["download"]
-handler.group = true
+handler.command = ['play']
 export default handler
-
-function formatViews(v) {
-  if (!v) return "N/D"
-  if (v >= 1e9) return (v / 1e9).toFixed(1) + "B"
-  if (v >= 1e6) return (v / 1e6).toFixed(1) + "M"
-  if (v >= 1e3) return (v / 1e3).toFixed(1) + "k"
-  return v.toString()
-}
