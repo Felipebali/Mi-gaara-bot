@@ -1,6 +1,31 @@
 import fetch from 'node-fetch'
 import yts from 'yt-search'
 
+async function getAudio(url) {
+  const apis = [
+    `https://api.agungny.my.id/api/youtube-audio?url=${url}`,
+    `https://api.vreden.my.id/api/ytmp3?url=${url}`,
+    `https://api.lolhuman.xyz/api/ytaudio?apikey=GataDios&url=${url}`
+  ]
+
+  for (let api of apis) {
+    try {
+      const res = await fetch(api)
+      const json = await res.json()
+
+      // Normalizamos respuestas
+      if (json.result?.url) return json.result.url
+      if (json.result?.link) return json.result.link
+      if (json.link) return json.link
+
+    } catch (e) {
+      console.log('API falló:', api)
+    }
+  }
+
+  return null
+}
+
 let handler = async (m, { conn, text, usedPrefix, command }) => {
   if (!text)
     return conn.reply(
@@ -26,30 +51,20 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
 
   await conn.reply(m.chat, info, m)
 
-  try {
-    // 🔥 API estable
-    const api = `https://api.agungny.my.id/api/youtube-audio?url=${video.url}`
+  const audioUrl = await getAudio(video.url)
 
-    const res = await fetch(api)
-    const json = await res.json()
+  if (!audioUrl)
+    return conn.reply(m.chat, '❌ Ninguna API respondió 😔', m)
 
-    if (!json.status)
-      throw 'Error en la API'
-
-    await conn.sendMessage(
-      m.chat,
-      {
-        audio: { url: json.result.url },
-        mimetype: 'audio/mpeg',
-        fileName: `${video.title}.mp3`
-      },
-      { quoted: m }
-    )
-
-  } catch (e) {
-    console.error(e)
-    conn.reply(m.chat, '❌ Error al descargar el audio.', m)
-  }
+  await conn.sendMessage(
+    m.chat,
+    {
+      audio: { url: audioUrl },
+      mimetype: 'audio/mpeg',
+      fileName: `${video.title}.mp3`
+    },
+    { quoted: m }
+  )
 }
 
 handler.command = ['play']
