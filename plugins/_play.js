@@ -1,10 +1,11 @@
 import fetch from "node-fetch"
 import yts from "yt-search"
 
+// ============================
+// 🧊 Sistema de cooldown
+// ============================
 const cooldowns = new Map()
 const COOLDOWN_TIME = 2 * 60 * 1000 // 2 minutos
-
-const MAX_SIZE_MB = 10 // límite de BoxMine
 
 const handler = async (m, { conn, text, usedPrefix, command }) => {
   try {
@@ -29,10 +30,12 @@ const handler = async (m, { conn, text, usedPrefix, command }) => {
 
     await m.react('🔎')
 
+    // Buscar video en YouTube
     const search = await yts(text)
     const video = search.videos[0]
     if (!video) throw 'No se encontraron resultados.'
 
+    // Info del video
     const info = `
 🎵 *${video.title}*
 👤 *Canal:* ${video.author.name}
@@ -43,20 +46,24 @@ const handler = async (m, { conn, text, usedPrefix, command }) => {
 
     await conn.sendMessage(m.chat, { image: { url: video.thumbnail }, caption: info }, { quoted: m })
 
-    // Descargar audio
+    // ============================
+    // 🔊 Audio - enviamos link
+    // ============================
     if (['play','mp3'].includes(command)) {
       await m.react('🎧')
-      const audio = await getAudio(video.url)
-      if (!audio) return conn.reply(m.chat, '⚠️ No se pudo obtener el audio o excede el límite de BoxMine.', m)
-      await conn.sendMessage(m.chat, { audio: { url: audio }, mimetype: 'audio/mpeg', fileName: `${video.title}.mp3` }, { quoted: m })
+      const audioLink = await getAudio(video.url)
+      if (!audioLink) return conn.reply(m.chat, '⚠️ No se pudo obtener el audio.', m)
+      await conn.reply(m.chat, `🎵 Aquí está tu audio:\n${audioLink}`, m)
     }
 
-    // Descargar video
+    // ============================
+    // 🎥 Video - enviamos link
+    // ============================
     if (['play2','mp4'].includes(command)) {
       await m.react('🎬')
-      const mp4 = await getVideo(video.url)
-      if (!mp4) return conn.reply(m.chat, '⚠️ No se pudo obtener el video o excede el límite de BoxMine.', m)
-      await conn.sendMessage(m.chat, { video: { url: mp4 }, mimetype: 'video/mp4', fileName: `${video.title}.mp4` }, { quoted: m })
+      const videoLink = await getVideo(video.url)
+      if (!videoLink) return conn.reply(m.chat, '⚠️ No se pudo obtener el video.', m)
+      await conn.reply(m.chat, `🎥 Aquí está tu video:\n${videoLink}`, m)
     }
 
     await m.react('✔️')
@@ -64,7 +71,7 @@ const handler = async (m, { conn, text, usedPrefix, command }) => {
   } catch (e) {
     console.error(e)
     await m.react('❌')
-    conn.reply(m.chat, '⚠️ No se pudo procesar la descarga. Intenta con otro video o verifica que sea público.', m)
+    conn.reply(m.chat, '⚠️ No se pudo procesar la descarga. Intenta con otro video.', m)
   }
 }
 
@@ -74,25 +81,27 @@ handler.command = ['play','play2','mp3','mp4']
 export default handler
 
 // ============================
-// 📥 Descarga de audio (con límite)
+// 📥 Función para obtener link de audio
+// ============================
 async function getAudio(url) {
   const apis = [
     `https://co.wuk.sh/api/json?url=${encodeURIComponent(url)}`,
-    `https://yt1s.ltd/api/json/mp3?url=${encodeURIComponent(url)}`
+    `https://yt1s.ltd/api/json/mp3?url=${encodeURIComponent(url)}`,
+    `https://api.vevioz.com/api/button/mp3/${encodeURIComponent(url)}`
   ]
   for (const api of apis) {
     try {
       const res = await fetch(api)
       const json = await res.json()
-      const sizeMB = json.size ? json.size / (1024*1024) : 0
-      if ((json.url || json.download_url) && sizeMB <= MAX_SIZE_MB) return json.url || json.download_url
+      if (json.url || json.download_url) return json.url || json.download_url
     } catch {}
   }
   return null
 }
 
 // ============================
-// 🎥 Descarga de video (con límite)
+// 🎥 Función para obtener link de video
+// ============================
 async function getVideo(url) {
   const apis = [
     `https://co.wuk.sh/api/json?url=${encodeURIComponent(url)}`,
@@ -102,8 +111,7 @@ async function getVideo(url) {
     try {
       const res = await fetch(api)
       const json = await res.json()
-      const sizeMB = json.size ? json.size / (1024*1024) : 0
-      if ((json.url || json.download_url) && sizeMB <= MAX_SIZE_MB) return json.url || json.download_url
+      if (json.url || json.download_url) return json.url || json.download_url
     } catch {}
   }
   return null
