@@ -1,71 +1,55 @@
-import fetch from 'node-fetch'
-import yts from 'yt-search'
+import { exec } from 'child_process'
+import fs from 'fs'
+import path from 'path'
 
-async function getAudio(url) {
-  const apis = [
-    `https://api.agungny.my.id/api/youtube-audio?url=${url}`,
-    `https://api.vreden.my.id/api/ytmp3?url=${url}`,
-    `https://api.lolhuman.xyz/api/ytaudio?apikey=GataDios&url=${url}`
-  ]
+const handler = async (m, { conn, text, usedPrefix, command }) => {
+  if (!text) return conn.reply(m.chat, '🍃 Escribe el nombre o link del video.', m)
 
-  for (let api of apis) {
-    try {
-      const res = await fetch(api)
-      const json = await res.json()
+  await m.react('🔎')
 
-      // Normalizamos respuestas
-      if (json.result?.url) return json.result.url
-      if (json.result?.link) return json.result.link
-      if (json.link) return json.link
+  // Generar nombre temporal
+  const tmpName = `yt_${Date.now()}`
 
-    } catch (e) {
-      console.log('API falló:', api)
+  try {
+    if (['play','mp3'].includes(command)) {
+      // Descargar solo audio
+      const cmd = `yt-dlp -x --audio-format mp3 -o "/data/data/com.termux/files/home/Mi-gaara-bot/tmp/${tmpName}.%(ext)s" "${text}"`
+      await execPromise(cmd)
+      const filePath = `/data/data/com.termux/files/home/Mi-gaara-bot/tmp/${tmpName}.mp3`
+      if (!fs.existsSync(filePath)) throw 'No se pudo descargar el audio.'
+      await conn.sendMessage(m.chat, { audio: fs.readFileSync(filePath), mimetype: 'audio/mpeg', fileName: `${tmpName}.mp3` }, { quoted: m })
+      fs.unlinkSync(filePath)
     }
+
+    if (['play2','mp4'].includes(command)) {
+      // Descargar video
+      const cmd = `yt-dlp -f best -o "/data/data/com.termux/files/home/Mi-gaara-bot/tmp/${tmpName}.%(ext)s" "${text}"`
+      await execPromise(cmd)
+      const filePath = `/data/data/com.termux/files/home/Mi-gaara-bot/tmp/${tmpName}.mp4`
+      if (!fs.existsSync(filePath)) throw 'No se pudo descargar el video.'
+      await conn.sendMessage(m.chat, { video: fs.readFileSync(filePath), mimetype: 'video/mp4', fileName: `${tmpName}.mp4` }, { quoted: m })
+      fs.unlinkSync(filePath)
+    }
+
+    await m.react('✔️')
+  } catch (e) {
+    console.error(e)
+    await m.react('❌')
+    conn.reply(m.chat, '⚠️ Error al procesar la descarga.', m)
   }
-
-  return null
 }
 
-let handler = async (m, { conn, text, usedPrefix, command }) => {
-  if (!text)
-    return conn.reply(
-      m.chat,
-      `❌ Usá así:\n\n${usedPrefix + command} Billie Eilish`,
-      m
-    )
-
-  await conn.reply(m.chat, '🔎 Buscando en YouTube...', m)
-
-  const search = await yts(text)
-  const video = search.videos[0]
-
-  if (!video)
-    return conn.reply(m.chat, '❌ No encontré resultados.', m)
-
-  let info = `🎵 *YOUTUBE PLAY*\n
-📌 *Título:* ${video.title}
-⏱️ *Duración:* ${video.timestamp}
-👁️ *Vistas:* ${video.views.toLocaleString()}
-🔗 ${video.url}
-`
-
-  await conn.reply(m.chat, info, m)
-
-  const audioUrl = await getAudio(video.url)
-
-  if (!audioUrl)
-    return conn.reply(m.chat, '❌ Ninguna API respondió 😔', m)
-
-  await conn.sendMessage(
-    m.chat,
-    {
-      audio: { url: audioUrl },
-      mimetype: 'audio/mpeg',
-      fileName: `${video.title}.mp3`
-    },
-    { quoted: m }
-  )
+// Promesa para exec
+function execPromise(cmd) {
+  return new Promise((resolve, reject) => {
+    exec(cmd, (error, stdout, stderr) => {
+      if (error) reject(error)
+      else resolve(stdout)
+    })
+  })
 }
 
-handler.command = ['play']
+handler.help = ['play','play2','mp3','mp4']
+handler.tags = ['download']
+handler.command = ['play','play2','mp3','mp4']
 export default handler
