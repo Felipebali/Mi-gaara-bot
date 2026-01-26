@@ -1,51 +1,60 @@
+function isRealOwner(m) {
+  const sender = m.sender?.split('@')[0]
+  if (!sender) return false
+  return global.owner.some(([id]) => id === sender)
+}
+
 let handler = async (m, { args, usedPrefix, command }) => {
 
-  // ✅ Validación REAL del bot
-  if (!m.isOwner) {
-    return m.reply('⛔ Comando exclusivo para *OWNERS*')
+  // 🔐 VALIDACIÓN REAL (IGNORA EL CORE)
+  if (!isRealOwner(m)) {
+    return m.reply('⛔ Este comando es exclusivo para *OWNERS*')
   }
 
   // ───── LISTAR OWNERS ─────
   if (command === 'listowner') {
     let txt = '👑 *OWNERS DEL BOT*\n\n'
     global.owner.forEach(([id, name], i) => {
-      txt += `${i + 1}. 👤 ${name}\n🆔 ${id}\n\n`
+      txt += `${i + 1}. 👤 ${name || 'Owner'}\n🆔 ${id}\n\n`
     })
     return m.reply(txt.trim())
   }
 
+  // ───── VALIDAR MENCIÓN ─────
   if (!m.mentionedJid[0]) {
-    return m.reply(`⚠️ Uso correcto:\n\n${usedPrefix}${command} @usuario Nombre(opcional)`)
+    return m.reply(
+      `⚠️ Uso correcto:\n\n` +
+      `${usedPrefix}aowner @usuario Nombre\n` +
+      `${usedPrefix}rowner @usuario`
+    )
   }
 
-  const jid = m.mentionedJid[0]
-  const id = jid.split('@')[0]
+  const targetId = m.mentionedJid[0].split('@')[0]
   const name = args.slice(1).join(' ') || 'Owner'
-
   const mainOwner = global.owner[0][0]
 
   // ───── AGREGAR OWNER ─────
   if (command === 'aowner') {
-    if (global.owner.some(([o]) => o === id)) {
+    if (global.owner.some(([id]) => id === targetId)) {
       return m.reply('⚠️ Ese usuario ya es owner')
     }
 
-    global.owner.push([id, name, true])
+    global.owner.push([targetId, name, true])
 
     return m.reply(
       `✅ *OWNER AGREGADO*\n\n` +
-      `👤 ${name}\n🆔 ${id}\n\n` +
-      `⚠️ *Reinicia el bot para que tome efecto*`
+      `👤 ${name}\n🆔 ${targetId}\n\n` +
+      `⚠️ *Reiniciá el bot para que tenga permisos*`
     )
   }
 
   // ───── QUITAR OWNER ─────
   if (command === 'rowner') {
-    if (id === mainOwner) {
+    if (targetId === mainOwner) {
       return m.reply('🚫 No podés quitar al owner principal')
     }
 
-    const index = global.owner.findIndex(([o]) => o === id)
+    const index = global.owner.findIndex(([id]) => id === targetId)
     if (index === -1) {
       return m.reply('⚠️ Ese usuario no es owner')
     }
@@ -53,8 +62,8 @@ let handler = async (m, { args, usedPrefix, command }) => {
     global.owner.splice(index, 1)
 
     return m.reply(
-      `🗑️ *OWNER ELIMINADO*\n\n🆔 ${id}\n\n` +
-      `⚠️ *Reinicia el bot para que tome efecto*`
+      `🗑️ *OWNER ELIMINADO*\n\n🆔 ${targetId}\n\n` +
+      `⚠️ *Reiniciá el bot para aplicar cambios*`
     )
   }
 }
@@ -62,6 +71,7 @@ let handler = async (m, { args, usedPrefix, command }) => {
 handler.help = ['aowner', 'rowner', 'listowner']
 handler.tags = ['owner']
 handler.command = ['aowner', 'rowner', 'listowner']
-// handler.owner = true
+// 🚫 NO handler.owner
+// 🚫 NO m.isOwner
 
 export default handler
