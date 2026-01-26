@@ -1,12 +1,7 @@
-let handler = async (m, { conn, args, usedPrefix, command }) => {
+let handler = async (m, { args, usedPrefix, command }) => {
 
-  // ───── Normalizar sender ─────
-  const sender = m.sender.split('@')[0]
-
-  // ───── Verificar owner (número o LID) ─────
-  const isOwner = global.owner.some(([id]) => id === sender)
-
-  if (!isOwner) {
+  // ✅ Validación REAL del bot
+  if (!m.isOwner) {
     return m.reply('⛔ Comando exclusivo para *OWNERS*')
   }
 
@@ -19,40 +14,38 @@ let handler = async (m, { conn, args, usedPrefix, command }) => {
     return m.reply(txt.trim())
   }
 
-  // ───── Validar mención ─────
   if (!m.mentionedJid[0]) {
     return m.reply(`⚠️ Uso correcto:\n\n${usedPrefix}${command} @usuario Nombre(opcional)`)
   }
 
-  const targetJid = m.mentionedJid[0]
-  const targetId = targetJid.split('@')[0]
+  const jid = m.mentionedJid[0]
+  const id = jid.split('@')[0]
   const name = args.slice(1).join(' ') || 'Owner'
 
-  // Owner principal (primer número del config)
   const mainOwner = global.owner[0][0]
 
   // ───── AGREGAR OWNER ─────
   if (command === 'aowner') {
-    if (global.owner.some(([id]) => id === targetId)) {
-      return m.reply('⚠️ Ese usuario ya es *owner*')
+    if (global.owner.some(([o]) => o === id)) {
+      return m.reply('⚠️ Ese usuario ya es owner')
     }
 
-    global.owner.push([targetId, name, true])
+    global.owner.push([id, name, true])
 
     return m.reply(
       `✅ *OWNER AGREGADO*\n\n` +
-      `👤 Nombre: ${name}\n` +
-      `🆔 ID: ${targetId}`
+      `👤 ${name}\n🆔 ${id}\n\n` +
+      `⚠️ *Reinicia el bot para que tome efecto*`
     )
   }
 
   // ───── QUITAR OWNER ─────
   if (command === 'rowner') {
-    if (targetId === mainOwner) {
-      return m.reply('🚫 No podés quitar al *OWNER PRINCIPAL*')
+    if (id === mainOwner) {
+      return m.reply('🚫 No podés quitar al owner principal')
     }
 
-    const index = global.owner.findIndex(([id]) => id === targetId)
+    const index = global.owner.findIndex(([o]) => o === id)
     if (index === -1) {
       return m.reply('⚠️ Ese usuario no es owner')
     }
@@ -60,7 +53,8 @@ let handler = async (m, { conn, args, usedPrefix, command }) => {
     global.owner.splice(index, 1)
 
     return m.reply(
-      `🗑️ *OWNER ELIMINADO*\n\n🆔 ID: ${targetId}`
+      `🗑️ *OWNER ELIMINADO*\n\n🆔 ${id}\n\n` +
+      `⚠️ *Reinicia el bot para que tome efecto*`
     )
   }
 }
@@ -68,6 +62,6 @@ let handler = async (m, { conn, args, usedPrefix, command }) => {
 handler.help = ['aowner', 'rowner', 'listowner']
 handler.tags = ['owner']
 handler.command = ['aowner', 'rowner', 'listowner']
-handler.owner = false // ⚠️ IMPORTANTE
+handler.owner = true
 
 export default handler
