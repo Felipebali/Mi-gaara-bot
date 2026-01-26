@@ -1,20 +1,22 @@
 let handler = async (m, { conn, args, usedPrefix, command }) => {
 
-  // ───── Validación Owner ─────
-  const senderNum = m.sender.split('@')[0]
-  const isOwner = global.owner.some(([id]) => id === senderNum)
+  // ───── Normalizar sender ─────
+  const sender = m.sender.split('@')[0]
+
+  // ───── Verificar owner (número o LID) ─────
+  const isOwner = global.owner.some(([id]) => id === sender)
 
   if (!isOwner) {
-    return m.reply('⛔ Este comando es exclusivo para *OWNERS*')
+    return m.reply('⛔ Comando exclusivo para *OWNERS*')
   }
 
   // ───── LISTAR OWNERS ─────
   if (command === 'listowner') {
-    let texto = '👑 *LISTA DE OWNERS*\n\n'
+    let txt = '👑 *OWNERS DEL BOT*\n\n'
     global.owner.forEach(([id, name], i) => {
-      texto += `${i + 1}. 👤 ${name}\n📞 ${id}\n\n`
+      txt += `${i + 1}. 👤 ${name}\n🆔 ${id}\n\n`
     })
-    return m.reply(texto.trim())
+    return m.reply(txt.trim())
   }
 
   // ───── Validar mención ─────
@@ -22,43 +24,43 @@ let handler = async (m, { conn, args, usedPrefix, command }) => {
     return m.reply(`⚠️ Uso correcto:\n\n${usedPrefix}${command} @usuario Nombre(opcional)`)
   }
 
-  const jid = m.mentionedJid[0]
-  const numero = jid.split('@')[0]
-  const nombre = args.slice(1).join(' ') || 'Owner'
+  const targetJid = m.mentionedJid[0]
+  const targetId = targetJid.split('@')[0]
+  const name = args.slice(1).join(' ') || 'Owner'
 
-  // Owner principal (el primero del config.js)
+  // Owner principal (primer número del config)
   const mainOwner = global.owner[0][0]
 
   // ───── AGREGAR OWNER ─────
   if (command === 'aowner') {
-    if (global.owner.some(([id]) => id === numero)) {
-      return m.reply('⚠️ Ese usuario *ya es owner*')
+    if (global.owner.some(([id]) => id === targetId)) {
+      return m.reply('⚠️ Ese usuario ya es *owner*')
     }
 
-    global.owner.push([numero, nombre, true])
+    global.owner.push([targetId, name, true])
 
     return m.reply(
       `✅ *OWNER AGREGADO*\n\n` +
-      `👤 Nombre: ${nombre}\n` +
-      `📞 ID: ${numero}`
+      `👤 Nombre: ${name}\n` +
+      `🆔 ID: ${targetId}`
     )
   }
 
   // ───── QUITAR OWNER ─────
   if (command === 'rowner') {
-    if (numero === mainOwner) {
+    if (targetId === mainOwner) {
       return m.reply('🚫 No podés quitar al *OWNER PRINCIPAL*')
     }
 
-    const index = global.owner.findIndex(([id]) => id === numero)
+    const index = global.owner.findIndex(([id]) => id === targetId)
     if (index === -1) {
-      return m.reply('⚠️ Ese usuario *no es owner*')
+      return m.reply('⚠️ Ese usuario no es owner')
     }
 
     global.owner.splice(index, 1)
 
     return m.reply(
-      `🗑️ *OWNER ELIMINADO*\n\n📞 ID: ${numero}`
+      `🗑️ *OWNER ELIMINADO*\n\n🆔 ID: ${targetId}`
     )
   }
 }
@@ -66,6 +68,6 @@ let handler = async (m, { conn, args, usedPrefix, command }) => {
 handler.help = ['aowner', 'rowner', 'listowner']
 handler.tags = ['owner']
 handler.command = ['aowner', 'rowner', 'listowner']
-handler.owner = true
+handler.owner = false // ⚠️ IMPORTANTE
 
 export default handler
