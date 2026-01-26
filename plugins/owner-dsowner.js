@@ -62,6 +62,6 @@ let handler = async (m, { args, usedPrefix, command }) => {
 handler.help = ['aowner', 'rowner', 'listowner']
 handler.tags = ['owner']
 handler.command = ['aowner', 'rowner', 'listowner']
-handler.owner = true
+// handler.owner = true
 
 export default handler
