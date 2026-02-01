@@ -1,118 +1,99 @@
-import fetch from "node-fetch"
-import yts from "yt-search"
+import fetch from 'node-fetch';
 
-// ============================
-// 🧊 Sistema de cooldown
-// ============================
-const cooldowns = new Map()
-const COOLDOWN_TIME = 2 * 60 * 1000 // 2 minutos
+const SERVERS = [
+  { name: 'Servidor Masha', baseUrl: masha },
+  { name: 'Servidor Alya', baseUrl: alya },
+  { name: 'Servidor Masachika', baseUrl: masachika }
+];
 
-const handler = async (m, { conn, text, usedPrefix, command }) => {
+// Función para desordenar (shuffle) los servidores
+function shuffleArray(array) {
+  return [...array].sort(() => Math.random() - 0.5);
+}
+
+// Intenta acceder a los servidores de forma aleatoria
+async function tryServers(servers, endpoint, queryParam) {
+  const shuffledServers = shuffleArray(servers);
+
+  for (const server of shuffledServers) {
+    try {
+      const url = `${server.baseUrl}${endpoint}${encodeURIComponent(queryParam)}`;
+      const res = await fetch(url);
+
+      if (!res.ok) throw new Error(`Error HTTP ${res.status}`);
+
+      const json = await res.json();
+      if (!json || Object.keys(json).length === 0) throw new Error('Respuesta vacía');
+
+      return { json, server: server.name };
+    } catch (err) {
+      console.error(`❌ ${server.name} falló:`, err.message || err);
+      continue;
+    }
+  }
+
+  throw '❌ Todos los servidores fallaron. Intenta más tarde.';
+}
+
+let handler = async (m, { text, conn, command }) => {
+  if (!text) return m.reply('🔍 Ingresa el nombre de una canción. Ej: *.play Aishite Ado*');
+
   try {
-    const isOwner = global.owner?.some(([id]) => m.sender.includes(id))
-    const isAdmin = m.isGroup && (m.isAdmin || m.isSuperAdmin)
+    // Buscar video
+    const { json: searchJson, server: searchServer } = await tryServers(SERVERS, '/search_youtube?query=', text);
 
-    if (!isOwner && !isAdmin) {
-      const now = Date.now()
-      const last = cooldowns.get(m.sender) || 0
-      const remaining = COOLDOWN_TIME - (now - last)
-      if (remaining > 0) {
-        return conn.reply(
-          m.chat,
-          `🧊 Espera *${Math.ceil(remaining / 1000)}s* para usar *${usedPrefix}${command}*`,
-          m
-        )
-      }
-      cooldowns.set(m.sender, now)
+    if (!searchJson.results?.length) return m.reply('⚠️ No se encontraron resultados.');
+
+    const video = searchJson.results[0];
+    const thumb = video.thumbnails.find(t => t.width === 720)?.url || video.thumbnails[0]?.url;
+    const videoTitle = video.title;
+    const videoUrl = video.url;
+    const duration = Math.floor(video.duration);
+
+    const msgInfo = `
+╭─⃝🌸⃝─⃝❀⃝─〔 彡 AlyaBot 彡 〕─⃝❀⃝─⃝🌸⃝─╮
+│
+│  (๑>◡<๑)✨ ¡Aquí tienes tu cancioncita~!
+│
+│━━━━━━━━━━━━━━━━━━━━━━━
+│💿 𝒯тιтυℓσ: ${videoTitle} 🌸
+│⏱️ Dυɾαƈισɳ: ${duration}s
+│👀 νιѕтαѕ: ${video.views.toLocaleString()}
+│🎤 Aυƚσɾ: ${video.channel}
+│🔗 ℓιηк: ${videoUrl}
+│📡 รε૨ѵε૨: ${searchServer}-nyan~ 🐾
+╰─⃝🌸⃝─〔  Enviando con amor 〕─⃝🌸⃝─╯
+`.trim();
+
+    await conn.sendMessage(m.chat, { image: { url: thumb }, caption: msgInfo }, { quoted: m });
+
+    // Intentar descarga con endpoint principal
+    let downloadJson;
+    try {
+      const { json } = await tryServers(SERVERS, '/download_audio?url=', videoUrl);
+      downloadJson = json;
+    } catch (err) {
+      console.error('⚠️ Endpoint principal de descarga falló, intentando con el respaldo...');
+      const { json } = await tryServers(SERVERS, '/download_audioV2?url=', videoUrl);
+      downloadJson = json;
     }
 
-    if (!text) return conn.reply(m.chat, '🍃 Escribe el nombre o link del video.', m)
+    if (!downloadJson?.file_url) return m.reply('❌ No se pudo descargar el audio.');
 
-    await m.react('🔎')
-
-    // Buscar video en YouTube
-    const search = await yts(text)
-    const video = search.videos[0]
-    if (!video) throw 'No se encontraron resultados.'
-
-    // Info del video
-    const info = `
-🎵 *${video.title}*
-👤 *Canal:* ${video.author.name}
-⏱️ *Duración:* ${video.timestamp}
-👁️ *Vistas:* ${video.views.toLocaleString()}
-🔗 ${video.url}
-`.trim()
-
-    await conn.sendMessage(m.chat, { image: { url: video.thumbnail }, caption: info }, { quoted: m })
-
-    // ============================
-    // 🔊 Audio - enviamos link
-    // ============================
-    if (['play','mp3'].includes(command)) {
-      await m.react('🎧')
-      const audioLink = await getAudio(video.url)
-      if (!audioLink) return conn.reply(m.chat, '⚠️ No se pudo obtener el audio.', m)
-      await conn.reply(m.chat, `🎵 Aquí está tu audio:\n${audioLink}`, m)
-    }
-
-    // ============================
-    // 🎥 Video - enviamos link
-    // ============================
-    if (['play2','mp4'].includes(command)) {
-      await m.react('🎬')
-      const videoLink = await getVideo(video.url)
-      if (!videoLink) return conn.reply(m.chat, '⚠️ No se pudo obtener el video.', m)
-      await conn.reply(m.chat, `🎥 Aquí está tu video:\n${videoLink}`, m)
-    }
-
-    await m.react('✔️')
+    await conn.sendMessage(m.chat, {
+      audio: { url: downloadJson.file_url },
+      mimetype: 'audio/mpeg',
+      fileName: `${downloadJson.title || videoTitle}.mp3`
+    }, { quoted: m });
 
   } catch (e) {
-    console.error(e)
-    await m.react('❌')
-    conn.reply(m.chat, '⚠️ No se pudo procesar la descarga. Intenta con otro video.', m)
+    console.error(e);
+    m.reply('❌ Error al procesar tu solicitud.');
   }
-}
+};
 
-handler.help = ['play','play2','mp3','mp4']
-handler.tags = ['download']
-handler.command = ['play','play2','mp3','mp4']
-export default handler
+handler.command = ['play', 'mp3', 'ytmp3', 'playmp3'];
+handler.help = ['play <canción>'];
+handler.tags = ['downloader'];
 
-// ============================
-// 📥 Función para obtener link de audio
-// ============================
-async function getAudio(url) {
-  const apis = [
-    `https://co.wuk.sh/api/json?url=${encodeURIComponent(url)}`,
-    `https://yt1s.ltd/api/json/mp3?url=${encodeURIComponent(url)}`,
-    `https://api.vevioz.com/api/button/mp3/${encodeURIComponent(url)}`
-  ]
-  for (const api of apis) {
-    try {
-      const res = await fetch(api)
-      const json = await res.json()
-      if (json.url || json.download_url) return json.url || json.download_url
-    } catch {}
-  }
-  return null
-}
-
-// ============================
-// 🎥 Función para obtener link de video
-// ============================
-async function getVideo(url) {
-  const apis = [
-    `https://co.wuk.sh/api/json?url=${encodeURIComponent(url)}`,
-    `https://yt1s.ltd/api/json/mp4?url=${encodeURIComponent(url)}`
-  ]
-  for (const api of apis) {
-    try {
-      const res = await fetch(api)
-      const json = await res.json()
-      if (json.url || json.download_url) return json.url || json.download_url
-    } catch {}
-  }
-  return null
-}
+export default handler;
