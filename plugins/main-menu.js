@@ -30,7 +30,6 @@ let handler = async (m, { conn }) => {
 ┗━━━━━━━━━━━━━━━━━━━━━┛
 
 ┏━━━ 📚 *TIPOS DE MENÚ* ━━━┓
-┃ 👤 *.menuser* – Comandos para todos
 ┃ 🎮 *.menuj* – Juegos y entretenimiento
 ┃ 💾 *.menudl* – Descargas y convertidores
 ┃ 👥 *.menugp* – Herramientas para grupos
@@ -63,10 +62,9 @@ let handler = async (m, { conn }) => {
 
 ┏━━━ 🎶 *MÚSICA / VIDEOS* ━━━┓
 ┃ 🎵 *.play* – Música de YouTube
-┃ 🎶 *.audio* – Alternativa de audio
 ┃ 🔊 *.mp3* – Convierte a MP3
-┃ 🎬 *.video* – Video completo
-┃ 🎥 *.play2* – Alternativa de video
+┃ 🎬 *.mp2* – Segunda alternativa
+┃ 🎥 *.play2* – Alternativa de audio
 ┗━━━━━━━━━━━━━━━━━━━━━┛
 
 ┏━━━ 🖼️ *STICKERS & MULTIMEDIA* ━━━┓
