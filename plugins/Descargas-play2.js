@@ -42,7 +42,7 @@ async function resolveStreamUrl(transcodingUrl, trackAuthorization) {
 
 let handler = async (m, { conn, args, text, usedPrefix, command }) => {
   const query = (text?.trim() || args?.join(' ') || '').trim()
-  if (!query) return m.reply(`Uso: ${usedPrefix + command} <búsqueda soundcloud>`)
+  if (!query) return m.reply(`Uso: ${usedPrefix + command} <búsqueda de audio>`)
 
   await conn.sendMessage(m.chat, {
     react: { text: "🕘", key: m.key }
