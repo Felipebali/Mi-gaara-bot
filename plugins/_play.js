@@ -80,6 +80,7 @@ let handler = async (m, { conn, args }) => {
 
     const video = search.videos[0]
 
+    // Enviar info del video con miniatura
     await conn.sendMessage(
       m.chat,
       {
@@ -88,19 +89,7 @@ let handler = async (m, { conn, args }) => {
           `👤 ${video.author.name}\n` +
           `⏱ ${video.timestamp}\n` +
           `👁 ${video.views.toLocaleString()}\n\n` +
-          `⏳ Descargando audio...`
-      },
-      { quoted: m }
-    )
-
-    const { buffer, fileName } = await yt.download(video.url, '128k')
-
-    await conn.sendMessage(
-      m.chat,
-      {
-        audio: buffer,
-        mimetype: 'audio/mpeg',
-        fileName,
+          `⏳ Descargando audio...`,
         contextInfo: {
           externalAdReply: {
             title: video.title,
@@ -110,6 +99,20 @@ let handler = async (m, { conn, args }) => {
             renderLargerThumbnail: true
           }
         }
+      },
+      { quoted: m }
+    )
+
+    // Descargar audio
+    const { buffer, fileName } = await yt.download(video.url, '128k')
+
+    // Enviar audio puro, sin miniatura
+    await conn.sendMessage(
+      m.chat,
+      {
+        audio: buffer,
+        mimetype: 'audio/mpeg',
+        fileName
       },
       { quoted: m }
     )
