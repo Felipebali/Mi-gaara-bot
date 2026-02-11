@@ -1,14 +1,8 @@
-let handler = async (m, { conn, isBotAdmin }) => {
-  if (!m.isGroup) return
-  if (!isBotAdmin) return
-  if (!m.text) return
+// ANTILINK EXACTO – SOLO ESE LINK
+if (m.isGroup && m.text) {
+  const blockedLink = 'https://www.instagram.com/nachorsp?igsh=MXBmNG9xemI0OTh3Zw=='
 
-  // LINK ESPECÍFICO A BLOQUEAR
-  const linkBloqueado = "https://www.instagram.com/nachorsp"
-
-  if (!m.text.includes(linkBloqueado)) return
-
-  try {
+  if (m.text.includes(blockedLink)) {
     await conn.sendMessage(m.chat, {
       delete: {
         remoteJid: m.chat,
@@ -17,14 +11,6 @@ let handler = async (m, { conn, isBotAdmin }) => {
         participant: m.key.participant
       }
     })
-  } catch (e) {
-    console.error("ANTILINK ERROR:", e)
+    return
   }
 }
-
-// 🚫 SIN COMANDO – ACTIVO SIEMPRE
-handler.command = []
-handler.group = true
-handler.botAdmin = true
-
-export default handler 
