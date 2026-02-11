@@ -1,16 +1,24 @@
-// ANTILINK EXACTO – SOLO ESE LINK
-if (m.isGroup && m.text) {
-  const blockedLink = 'https://www.instagram.com/nachorsp?igsh=MXBmNG9xemI0OTh3Zw=='
+const text =
+  m.text ||
+  m.message.conversation ||
+  m.message.extendedTextMessage?.text ||
+  m.message.caption ||
+  "";
 
-  if (m.text.includes(blockedLink)) {
-    await conn.sendMessage(m.chat, {
-      delete: {
-        remoteJid: m.chat,
-        fromMe: false,
-        id: m.key.id,
-        participant: m.key.participant
-      }
-    })
-    return
-  }
+if (!text) return true;
+
+// 🚫 SOLO ESTE LINK
+const blockedExactLink = "https://www.instagram.com/nachorsp?igsh=MXBmNG9xemI0OTh3Zw==";
+
+if (text.includes(blockedExactLink)) {
+  await conn.sendMessage(m.chat, {
+    delete: {
+      remoteJid: m.chat,
+      fromMe: false,
+      id: m.key.id,
+      participant: m.key.participant || m.sender,
+    },
+  });
+
+  return false;
 }
