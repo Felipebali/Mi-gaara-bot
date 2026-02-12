@@ -121,7 +121,6 @@ let handler = async (m, { conn }) => {
 ┃ 💣 *.wipe*
 ┃ 🪄 *.resetlink*
 ┃ ⚙️ *.update*
-┃ 👑 *.owner*
 ┗━━━━━━━━━━━━━━━━━━━━━┛
 
 🐾 *${botname}* siempre vigilante 😼  
