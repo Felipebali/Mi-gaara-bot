@@ -136,7 +136,7 @@ let handler = async (m, { conn }) => {
   }
 };
 
-handler.help = ['menu', 'menú', 'allmenu'];
+handler.help = ['menu', 'menú', 'help'];
 handler.tags = ['main'];
 handler.command = ['menu', 'menú', 'allmenu'];
 
