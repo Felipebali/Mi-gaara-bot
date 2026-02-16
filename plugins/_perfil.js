@@ -1,8 +1,8 @@
 // 📂 plugins/perfil.js
 // .perfil | .setbr | .bio
-// Muestra rol admin del grupo y dueño del bot
+// Versión estable sin errores
 
-let handler = async (m, { conn, text, mentionedJid, command, participants }) => {
+let handler = async (m, { conn, text, mentionedJid, command }) => {
   try {
 
     // =====================
@@ -17,11 +17,8 @@ let handler = async (m, { conn, text, mentionedJid, command, participants }) => 
     // =====================
     // BASE DE DATOS
     // =====================
+    global.db.data.users[jid] = global.db.data.users[jid] || {}
     let user = global.db.data.users[jid]
-    if (!user) {
-      global.db.data.users[jid] = {}
-      user = global.db.data.users[jid]
-    }
 
     // =====================
     // SET FECHA NACIMIENTO
@@ -74,9 +71,12 @@ let handler = async (m, { conn, text, mentionedJid, command, participants }) => 
       // =====================
       let rolGrupo = 'Usuario 👤'
 
-      if (m.isGroup && participants) {
-        const userData = participants.find(p => p.id === jid)
-        if (userData?.admin) rolGrupo = 'Admin 🛡️'
+      if (m.isGroup) {
+        try {
+          const metadata = await conn.groupMetadata(m.chat)
+          const participante = metadata.participants.find(p => p.id === jid)
+          if (participante?.admin) rolGrupo = 'Admin 🛡️'
+        } catch {}
       }
 
       if (isOwner) rolGrupo = 'Dueño del Bot 👑'
@@ -104,14 +104,13 @@ let handler = async (m, { conn, text, mentionedJid, command, participants }) => 
     }
 
   } catch (e) {
-    console.error(e)
-    m.reply('❌ Error en el comando.')
+    console.error('Error en perfil:', e)
+    m.reply('❌ Error en el comando perfil.')
   }
 }
 
 handler.command = ['perfil', 'setbr', 'bio']
 handler.tags = ['info']
 handler.help = ['perfil', 'setbr', 'bio']
-handler.group = false
 
-export default handler 
+export default handler
