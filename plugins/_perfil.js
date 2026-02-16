@@ -1,18 +1,12 @@
 // 📂 plugins/perfil.js
 // .perfil | .setbr | .bio
-// Versión estable sin errores
+// Usa sistema de foto como gpu.js
+// Si no hay foto → manda solo texto
 
-let handler = async (m, { conn, text, mentionedJid, command }) => {
+let handler = async (m, { conn, text, command }) => {
   try {
 
-    // =====================
-    // USUARIO OBJETIVO
-    // =====================
-    let who = mentionedJid && mentionedJid[0]
-      ? mentionedJid[0]
-      : m.sender
-
-    const jid = conn.decodeJid ? conn.decodeJid(who) : who
+    const jid = conn.decodeJid ? conn.decodeJid(m.sender) : m.sender
 
     // =====================
     // BASE DE DATOS
@@ -45,20 +39,13 @@ let handler = async (m, { conn, text, mentionedJid, command }) => {
     // =====================
     if (command === 'perfil') {
 
-      let pp = 'https://i.imgur.com/2yaf2wb.png'
-      try {
-        pp = await conn.profilePictureUrl(jid, 'image')
-      } catch {}
-
       const nombre = await conn.getName(jid)
       const numero = jid.split('@')[0]
 
       const nacimiento = user.birth || 'No registrado'
       const bio = user.bio || 'Sin biografía'
 
-      // =====================
-      // DUEÑO DEL BOT
-      // =====================
+      // 🔐 OWNERS reales
       const owners = (global.owner || []).map(v => {
         if (Array.isArray(v)) v = v[0]
         return String(v).replace(/[^0-9]/g, '') + '@s.whatsapp.net'
@@ -66,9 +53,7 @@ let handler = async (m, { conn, text, mentionedJid, command }) => {
 
       const isOwner = owners.includes(jid)
 
-      // =====================
-      // ADMIN DEL GRUPO
-      // =====================
+      // 🛡️ ADMIN GRUPO
       let rolGrupo = 'Usuario 👤'
 
       if (m.isGroup) {
@@ -92,19 +77,37 @@ let handler = async (m, { conn, text, mentionedJid, command }) => {
 ╰━━━━━━━━━━━━⬣
 `
 
-      await conn.sendMessage(
-        m.chat,
-        {
-          image: { url: pp },
+      // =====================
+      // FOTO (MISMA LÓGICA GPU)
+      // =====================
+      let ppUrl = null
+      try {
+        ppUrl = await conn.profilePictureUrl(jid, 'image')
+      } catch {
+        ppUrl = null
+      }
+
+      // ✅ Si tiene foto → manda imagen
+      if (ppUrl) {
+        await conn.sendMessage(m.chat, {
+          image: { url: ppUrl },
           caption: textoPerfil,
           mentions: [jid]
-        },
-        { quoted: m }
-      )
+        }, { quoted: m })
+      }
+
+      // ✅ Si NO tiene foto → solo texto
+      else {
+        await conn.sendMessage(m.chat, {
+          text: textoPerfil,
+          mentions: [jid]
+        }, { quoted: m })
+      }
+
     }
 
   } catch (e) {
-    console.error('Error en perfil:', e)
+    console.error('Error perfil:', e)
     m.reply('❌ Error en el comando perfil.')
   }
 }
