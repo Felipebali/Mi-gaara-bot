@@ -1,40 +1,77 @@
 // 📂 plugins/tagall.js — FelixCat-Bot 🐾
-// TagAll con toggle .antitagall — sin citar nunca
+// TagAll + Antitagall automático
 
 let handler = async function (m, { conn, groupMetadata, args, isAdmin, isOwner, command }) {
-  if (!m.isGroup) return m.reply('❌ Este comando solo funciona en grupos.');
+  if (!m.isGroup) return;
 
   const chatId = m.chat;
 
-  // Inicializar configuración del chat
+  // Inicializar config
   if (!global.db.data.chats[chatId]) global.db.data.chats[chatId] = {};
   const chatData = global.db.data.chats[chatId];
 
-  // 🔥 Toggle .antitagall — SOLO ADMIN / OWNER
+  // =========================
+  // 🔥 DETECTOR AUTOMÁTICO
+  // =========================
+
+  const text = m.text || '';
+
+  const tagallSignatures = [
+    "🔥 Se activó el tag de todos! 🔥",
+    "⚡ Usuarios invocados:",
+    "💥 Que comience la acción!",
+    "tagall-FelixCat"
+  ];
+
+  const isTagallMsg = tagallSignatures.some(sig => text.includes(sig));
+
+  // Si alguien copia el tagall y NO es el bot
+  if (
+    chatData.tagallEnabled &&
+    isTagallMsg &&
+    !m.key.fromMe // no borrar si es el bot
+  ) {
+    try {
+      await conn.sendMessage(chatId, {
+        delete: m.key
+      });
+    } catch (e) {}
+    return;
+  }
+
+  // =========================
+  // 🔥 Toggle .antitagall
+  // =========================
+
   if (command === 'antitagall') {
     if (!(isAdmin || isOwner)) {
-      return await conn.sendMessage(chatId, { text: '❌ Solo un administrador puede usar este comando.' });
+      return conn.sendMessage(chatId, {
+        text: '❌ Solo un administrador puede usar este comando.'
+      });
     }
 
     chatData.tagallEnabled = !chatData.tagallEnabled;
-    return await conn.sendMessage(chatId, { 
-      text: `⚡ TagAll ahora está ${chatData.tagallEnabled ? 'activado ✅' : 'desactivado ❌'} para este grupo.` 
+
+    return conn.sendMessage(chatId, {
+      text: `⚡ TagAll ahora está ${chatData.tagallEnabled ? 'activado ✅' : 'desactivado ❌'} para este grupo.`
     });
   }
 
-  // ===========================
-  // TagAll normal (.tagall / .invocar / .todos)
-  // ===========================
+  // =========================
+  // TagAll normal
+  // =========================
 
   if (!(isAdmin || isOwner)) {
-    return await conn.sendMessage(chatId, {
+    return conn.sendMessage(chatId, {
       text: '❌ Solo un administrador puede usar este comando.',
       mentions: [m.sender]
     });
   }
 
   if (!chatData.tagallEnabled) {
-    return await conn.sendMessage(chatId, { text: '⚠️ El TagAll está desactivado. Usa ".antitagall" para activarlo.' });
+    return conn.sendMessage(chatId, {
+      text: '⚠️ El TagAll está desactivado. Usa ".antitagall" para activarlo.'
+    });
   }
 
   const participantes = groupMetadata?.participants || [];
@@ -51,13 +88,19 @@ let handler = async function (m, { conn, groupMetadata, args, isAdmin, isOwner, 
     mensajeOpcional
   ].filter(Boolean).join('\n');
 
-  // Envía el mensaje SIN citar NADA
-  await conn.sendMessage(chatId, { text: mensaje, mentions: mencionados.concat(m.sender) });
+  await conn.sendMessage(chatId, {
+    text: mensaje,
+    mentions: mencionados.concat(m.sender)
+  });
 };
 
-// Comandos
+
+// =========================
+// CONFIG
+// =========================
+
 handler.command = ['invocar', 'todos', 'tagall', 'antitagall'];
-handler.help = ['tagall / .antitagall (toggle)'];
+handler.help = ['tagall', 'antitagall'];
 handler.tags = ['grupos'];
 handler.group = true;
 handler.admin = true;
