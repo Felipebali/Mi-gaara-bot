@@ -6,18 +6,18 @@ let handler = async (m, { conn, text, command }) => {
   try {
 
     // =====================
-    // JID NORMALIZADO
+    // QUIÉN USA EL COMANDO
     // =====================
-    const jid = conn.decodeJid ? conn.decodeJid(m.sender) : m.sender
-    const numero = jid.replace(/[^0-9]/g, '')
+    const who = conn.decodeJid ? conn.decodeJid(m.sender) : m.sender
+    const username = who.split('@')[0]
 
     // =====================
     // BASE DE DATOS
     // =====================
     global.db.data.users = global.db.data.users || {}
-    global.db.data.users[jid] = global.db.data.users[jid] || {}
+    global.db.data.users[who] = global.db.data.users[who] || {}
 
-    let user = global.db.data.users[jid]
+    let user = global.db.data.users[who]
 
     // =====================
     // SET FECHA NACIMIENTO
@@ -42,7 +42,7 @@ let handler = async (m, { conn, text, command }) => {
     // =====================
     if (command === 'perfil') {
 
-      const nombre = await conn.getName(jid)
+      const nombre = await conn.getName(who)
 
       const nacimiento = user.birth || 'No registrado'
       const bio = user.bio || 'Sin biografía'
@@ -55,7 +55,7 @@ let handler = async (m, { conn, text, command }) => {
         return String(v).replace(/[^0-9]/g, '') + '@s.whatsapp.net'
       })
 
-      const isOwner = owners.includes(jid)
+      const isOwner = owners.includes(who)
 
       // =====================
       // ROL
@@ -69,7 +69,7 @@ let handler = async (m, { conn, text, command }) => {
           const metadata = await conn.groupMetadata(m.chat)
           const participante = metadata.participants.find(p => {
             const id = conn.decodeJid ? conn.decodeJid(p.id) : p.id
-            return id === jid
+            return id === who
           })
 
           if (participante?.admin) rol = 'Admin del Grupo 🛡️'
@@ -77,13 +77,13 @@ let handler = async (m, { conn, text, command }) => {
       }
 
       // =====================
-      // TEXTO PERFIL BONITO
+      // TEXTO PERFIL
       // =====================
       const textoPerfil = `
 👤 *PERFIL DE USUARIO*
 
 🏷️ *Nombre:* ${nombre}
-📱 *Número:* +${numero}
+🆔 *Usuario:* @${username}
 ⭐ *Rol:* ${rol}
 
 🎂 *Nacimiento:* ${nacimiento}
@@ -97,7 +97,7 @@ let handler = async (m, { conn, text, command }) => {
       // =====================
       let ppUrl = null
       try {
-        ppUrl = await conn.profilePictureUrl(jid, 'image')
+        ppUrl = await conn.profilePictureUrl(who, 'image')
       } catch {
         ppUrl = null
       }
@@ -113,7 +113,7 @@ let handler = async (m, { conn, text, command }) => {
             caption: textoPerfil,
             footer: '*FelixCat-Bot 🐱*',
             headerType: 4,
-            mentions: [jid]
+            mentions: [who]
           },
           { quoted: m }
         )
@@ -122,7 +122,7 @@ let handler = async (m, { conn, text, command }) => {
           m.chat,
           {
             text: textoPerfil,
-            mentions: [jid]
+            mentions: [who]
           },
           { quoted: m }
         )
