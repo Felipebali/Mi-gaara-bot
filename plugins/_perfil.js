@@ -1,6 +1,6 @@
 // 📂 plugins/perfil.js
 // .perfil | .setbr | .bio
-// Sistema estable — Estilo visual tipo creador
+// Rol detecta Owner + Admin correctamente
 
 let handler = async (m, { conn, text, command }) => {
   try {
@@ -56,13 +56,11 @@ let handler = async (m, { conn, text, command }) => {
       const isOwner = owners.includes(who)
 
       // =====================
-      // ROL
+      // ADMIN GRUPO
       // =====================
-      let rol = 'Usuario 👤'
+      let isAdmin = false
 
-      if (isOwner) {
-        rol = 'Creador del Bot 👑'
-      } else if (m.isGroup) {
+      if (m.isGroup) {
         try {
           const metadata = await conn.groupMetadata(m.chat)
           const participante = metadata.participants.find(p => {
@@ -70,8 +68,21 @@ let handler = async (m, { conn, text, command }) => {
             return id === who
           })
 
-          if (participante?.admin) rol = 'Admin del Grupo 🛡️'
+          if (participante?.admin) isAdmin = true
         } catch {}
+      }
+
+      // =====================
+      // ROL FINAL
+      // =====================
+      let rol = 'Usuario 👤'
+
+      if (isOwner && isAdmin) {
+        rol = 'Dueño del Bot 👑 | Admin 🛡️'
+      } else if (isOwner) {
+        rol = 'Dueño del Bot 👑'
+      } else if (isAdmin) {
+        rol = 'Admin del Grupo 🛡️'
       }
 
       // =====================
