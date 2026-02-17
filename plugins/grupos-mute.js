@@ -8,17 +8,10 @@ let handler = async (m, { conn, text, usedPrefix, command, isAdmin, isBotAdmin }
 
   let who;
 
-  const numberRegex = /@[0-9]+/g;
-  const numberMatches = text.match(numberRegex);
-
-  if (numberMatches && numberMatches.length > 0) {
-    who = numberMatches[0].replace("@", "") + "@s.whatsapp.net";
-  } else {
-    who = m.mentionedJid?.[0]
-      ? m.mentionedJid[0]
-      : m.quoted
-      ? m.quoted.sender
-      : null;
+  if (m.mentionedJid && m.mentionedJid[0]) {
+    who = m.mentionedJid[0];
+  } else if (m.quoted) {
+    who = m.quoted.sender;
   }
 
   if (!who) return m.reply(`✏️ Uso:\n${usedPrefix + command} @usuario`);
@@ -40,20 +33,16 @@ let handler = async (m, { conn, text, usedPrefix, command, isAdmin, isBotAdmin }
   user.mute = user.mute || {};
   user.mute[m.chat] = user.mute[m.chat] || false;
 
-  let trueOrFalse =
-    command === "desilenciar" || command === "unmute"
-      ? false
-      : true;
+  let estado = (command === "desilenciar" || command === "unmute") ? false : true;
 
-  user.mute[m.chat] = trueOrFalse;
+  user.mute[m.chat] = estado;
 
   await m.react("☑️");
 
-  if (trueOrFalse) {
-    m.reply("🔇 Usuario silenciado correctamente.");
-  } else {
-    m.reply("🔊 Usuario desilenciado correctamente.");
-  }
+  m.reply(estado
+    ? "🔇 Usuario silenciado correctamente."
+    : "🔊 Usuario desilenciado correctamente."
+  );
 
 };
 
@@ -61,13 +50,9 @@ handler.command = [
   "silenciar",
   "mute",
   "desilenciar",
-  "unmute",
-  "silencio",
-  "hacesilencio"
+  "unmute"
 ];
 
-handler.tags = ["grupo"];
-handler.help = ["mute @usuario", "unmute @usuario"];
 handler.group = true;
 handler.admin = true;
 handler.botAdmin = true;
@@ -77,28 +62,38 @@ export default handler;
 
 
 // =============================
-// 🚨 DETECTOR DE MUTE (BORRAR)
+// 🚨 BEFORE (BORRAR MENSAJES)
 // =============================
 
-export async function before(m, { conn }) {
+export async function before(m, { conn, isAdmin }) {
 
-  if (!m.isGroup) return;
-  if (!m.sender) return;
+  if (!m.isGroup) return false;
+  if (!m.sender) return false;
 
   global.db.data.users = global.db.data.users || {};
-  global.db.data.users[m.sender] = global.db.data.users[m.sender] || {};
-
   let user = global.db.data.users[m.sender];
 
-  if (!user.mute) return;
-  if (!user.mute[m.chat]) return;
+  if (!user) return false;
+  if (!user.mute) return false;
+  if (!user.mute[m.chat]) return false;
+
+  // ❗ No borrar admins
+  if (isAdmin) return false;
 
   try {
+
     await conn.sendMessage(m.chat, {
-      delete: m.key
+      delete: {
+        remoteJid: m.chat,
+        fromMe: false,
+        id: m.key.id,
+        participant: m.sender
+      }
     });
+
   } catch (e) {
-    console.log("Error borrando mensaje mute:", e);
+    console.log("Error borrando:", e);
   }
 
+  return true;
 }
