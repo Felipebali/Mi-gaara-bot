@@ -1,27 +1,27 @@
 // 📂 plugins/owner.js — FelixCat 🐾
-// Muestra la lista de owners del bot
+// Comando .owner que usa SOLO global.owner
 
 let handler = async (m, { conn }) => {
 
   if (!global.owner || !global.owner.length) {
-    return m.reply("❌ No hay owners configurados.");
+    return m.reply("❌ No hay owners configurados en global.owner");
   }
-
-  // Filtrar solo números reales (no LID)
-  const owners = global.owner
-    .map(v => Array.isArray(v) ? v[0] : v)
-    .filter(num => /^\d+$/.test(num)); // solo números
-
-  if (!owners.length) {
-    return m.reply("❌ No se encontraron números válidos.");
-  }
-
-  const mentions = owners.map(n => n + '@s.whatsapp.net');
 
   let texto = `👑 *OWNERS DEL BOT* 👑\n\n`;
+  let mentions = [];
 
-  owners.forEach((num, i) => {
-    texto += `➤ Owner ${i + 1}: @${num}\n`;
+  global.owner.forEach((data, i) => {
+
+    let numero = Array.isArray(data) ? data[0] : data;
+
+    // Solo números reales (no LID)
+    if (!numero.includes('@')) {
+      let jid = numero + '@s.whatsapp.net';
+      mentions.push(jid);
+
+      texto += `➤ Owner ${i + 1}: @${numero}\n`;
+    }
+
   });
 
   texto += `\n🤖 FelixCat Bot`;
@@ -35,6 +35,6 @@ let handler = async (m, { conn }) => {
 
 handler.help = ['owner'];
 handler.tags = ['info'];
-handler.command = ['owner', 'dueños', 'creador'];
+handler.command = ['owner'];
 
 export default handler;
