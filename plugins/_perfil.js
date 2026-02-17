@@ -3,7 +3,16 @@
 let handler = async (m, { conn, text, command }) => {
   try {
 
-    const jid = conn.decodeJid ? conn.decodeJid(m.sender) : m.sender
+    // =====================
+    // NORMALIZAR JID
+    // =====================
+    const getJid = (id) => {
+      if (!id) return null
+      if (conn.decodeJid) id = conn.decodeJid(id)
+      return id.split(':')[0] + '@s.whatsapp.net'
+    }
+
+    const jid = getJid(m.sender)
     const username = jid.split('@')[0]
 
     // =====================
@@ -44,7 +53,7 @@ let handler = async (m, { conn, text, command }) => {
     if (command === 'setbr') {
       if (!text) return m.reply('✏️ Uso:\n.setbr 31/12/1998')
       user.birth = text.trim()
-      return m.reply('✅ Fecha de nacimiento guardada.')
+      return m.reply('✅ Fecha guardada.')
     }
 
     // =====================
@@ -53,7 +62,7 @@ let handler = async (m, { conn, text, command }) => {
     if (command === 'bio') {
       if (!text) return m.reply('✏️ Uso:\n.bio Hola 😎')
       user.bio = text.trim()
-      return m.reply('✅ Biografía guardada.')
+      return m.reply('✅ Bio guardada.')
     }
 
     // =====================
@@ -88,8 +97,7 @@ let handler = async (m, { conn, text, command }) => {
           const metadata = await conn.groupMetadata(m.chat)
 
           const participante = metadata.participants.find(p => {
-            const id = conn.decodeJid ? conn.decodeJid(p.id) : p.id
-            return id === jid
+            return getJid(p.id) === jid
           })
 
           if (participante?.admin) isAdmin = true
@@ -105,9 +113,6 @@ let handler = async (m, { conn, text, command }) => {
       else if (isOwner) rol = 'Dueño 👑'
       else if (isAdmin) rol = 'Admin 🛡️'
 
-      // =====================
-      // TEXTO
-      // =====================
       const textoPerfil = `
 👤 *PERFIL DE USUARIO*
 
@@ -123,19 +128,14 @@ let handler = async (m, { conn, text, command }) => {
 `.trim()
 
       // =====================
-      // FOTO PERFIL SEGURA
+      // FOTO PERFIL
       // =====================
       let ppUrl = null
 
       try {
         ppUrl = await conn.profilePictureUrl(jid, 'image')
-      } catch {
-        ppUrl = null
-      }
+      } catch {}
 
-      // =====================
-      // ENVÍO
-      // =====================
       if (ppUrl) {
         await conn.sendMessage(m.chat, {
           image: { url: ppUrl },
@@ -152,9 +152,7 @@ let handler = async (m, { conn, text, command }) => {
 
   } catch (err) {
     console.error('Perfil error:', err)
-
-    // 🔥 fallback absoluto
-    m.reply('⚠️ No se pudo cargar completamente el perfil, pero el bot sigue funcionando.')
+    m.reply('⚠️ No se pudo cargar completamente el perfil.')
   }
 }
 
