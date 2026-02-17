@@ -23,21 +23,15 @@ let handler = async (m, { conn, text, usedPrefix, command, isAdmin, isBotAdmin }
 
   if (!who) return m.reply(`✏️ Uso:\n${usedPrefix + command} @usuario`);
 
-  // =====================
-  // PROTEGER OWNERS
-  // =====================
+  // 🔐 PROTEGER OWNERS
   const ownerJids = (global.owner || []).map(v => {
     if (Array.isArray(v)) v = v[0];
     return String(v).replace(/[^0-9]/g, '') + '@s.whatsapp.net';
   });
 
-  if (ownerJids.includes(who)) {
-    return m.react("❌");
-  }
+  if (ownerJids.includes(who)) return m.react("❌");
 
-  // =====================
-  // BASE GLOBAL
-  // =====================
+  // 📂 BASE
   global.db.data.users = global.db.data.users || {};
   global.db.data.users[who] = global.db.data.users[who] || {};
 
@@ -79,3 +73,32 @@ handler.admin = true;
 handler.botAdmin = true;
 
 export default handler;
+
+
+
+// =============================
+// 🚨 DETECTOR DE MUTE (BORRAR)
+// =============================
+
+export async function before(m, { conn }) {
+
+  if (!m.isGroup) return;
+  if (!m.sender) return;
+
+  global.db.data.users = global.db.data.users || {};
+  global.db.data.users[m.sender] = global.db.data.users[m.sender] || {};
+
+  let user = global.db.data.users[m.sender];
+
+  if (!user.mute) return;
+  if (!user.mute[m.chat]) return;
+
+  try {
+    await conn.sendMessage(m.chat, {
+      delete: m.key
+    });
+  } catch (e) {
+    console.log("Error borrando mensaje mute:", e);
+  }
+
+}
