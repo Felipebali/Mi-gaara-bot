@@ -1,5 +1,5 @@
 // 📂 plugins/welcome.js
-// Welcome + Leave con foto — SIN DUPLICADOS
+// Welcome + Leave con toggle usando SOLO: welcome
 
 let handler = async (m, { conn, isAdmin }) => {
     if (!m.isGroup)
@@ -12,6 +12,7 @@ let handler = async (m, { conn, isAdmin }) => {
 
     let chat = global.db.data.chats[m.chat];
 
+    // Si no existe, por defecto desactivado
     if (typeof chat.welcome === 'undefined') chat.welcome = false;
 
     chat.welcome = !chat.welcome;
@@ -21,7 +22,6 @@ let handler = async (m, { conn, isAdmin }) => {
     });
 };
 
-
 // --- BEFORE ---
 handler.before = async function (m, { conn }) {
     if (!m.isGroup) return;
@@ -29,20 +29,17 @@ handler.before = async function (m, { conn }) {
     if (!global.db.data.chats[m.chat]) global.db.data.chats[m.chat] = {};
     let chat = global.db.data.chats[m.chat];
 
+    // Si welcome está apagado → no hacer nada
     if (!chat.welcome) return;
 
-    // 🛑 Anti spam (1.5 segundos)
-    const now = Date.now();
-    if (chat._lastWelcome && now - chat._lastWelcome < 1500) return;
-    chat._lastWelcome = now;
-
-    // Obtener lista anterior
+    // Obtener lista anterior o crearla
     if (!chat.participants) {
         const meta = await conn.groupMetadata(m.chat);
         chat.participants = meta.participants.map(p => p.id);
         return;
     }
 
+    // Metadata actual
     const meta = await conn.groupMetadata(m.chat);
     const current = meta.participants.map(p => p.id);
     const old = chat.participants;
@@ -52,64 +49,28 @@ handler.before = async function (m, { conn }) {
 
     const groupName = meta.subject;
 
-    // =====================
-    // BIENVENIDA
-    // =====================
+    // 🎉 Bienvenida
     for (let user of added) {
-
-        const texto = `🎉 ¡Bienvenido/a *@${user.split("@")[0]}* al grupo *${groupName}*!\nDisfruta tu estadía.`
-
-        let ppUrl = null
-        try {
-            ppUrl = await conn.profilePictureUrl(user, 'image')
-        } catch {}
-
-        if (ppUrl) {
-            await conn.sendMessage(m.chat, {
-                image: { url: ppUrl },
-                caption: texto,
-                mentions: [user]
-            })
-        } else {
-            await conn.sendMessage(m.chat, {
-                text: texto,
-                mentions: [user]
-            })
-        }
+        await conn.sendMessage(m.chat, {
+            text: `🎉 ¡Bienvenido/a *@${user.split("@")[0]}* al grupo *${groupName}*!\nDisfruta tu estadía.`,
+            mentions: [user]
+        });
     }
 
-
-    // =====================
-    // DESPEDIDA
-    // =====================
+    // 👋 Despedida
     for (let user of removed) {
-
-        const texto = `👋 *@${user.split("@")[0]}* salió del grupo *${groupName}*.`
-
-        let ppUrl = null
-        try {
-            ppUrl = await conn.profilePictureUrl(user, 'image')
-        } catch {}
-
-        if (ppUrl) {
-            await conn.sendMessage(m.chat, {
-                image: { url: ppUrl },
-                caption: texto,
-                mentions: [user]
-            })
-        } else {
-            await conn.sendMessage(m.chat, {
-                text: texto,
-                mentions: [user]
-            })
-        }
+        await conn.sendMessage(m.chat, {
+            text: `👋 *@${user.split("@")[0]}* salió del grupo *${groupName}*.`,
+            mentions: [user]
+        });
     }
 
     chat.participants = current;
 };
 
-
+// 📌 ARRAY DE COMANDOS
 handler.command = ["welcome", "welc", "wl"];
+
 handler.group = true;
 handler.admin = true;
 
