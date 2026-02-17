@@ -1,128 +1,79 @@
 // 📂 plugins/perfil.js
-// .perfil | .setbr | .bio
-// Sistema estable — Detecta owner y admin correctamente
+// 👤 Perfil del usuario (con foto si tiene)
 
-let handler = async (m, { conn, text, command }) => {
+let handler = async (m, { conn }) => {
   try {
+    await m.react?.('👤')
 
-    // =====================
-    // JID NORMALIZADO
-    // =====================
-    const jid = conn.decodeJid ? conn.decodeJid(m.sender) : m.sender
-    const numero = jid.replace(/[^0-9]/g, '')
+    const user = m.sender
+    const number = user.split('@')[0]
 
-    // =====================
-    // BASE DE DATOS SEGURA
-    // =====================
-    global.db.data.users = global.db.data.users || {}
-    global.db.data.users[jid] = global.db.data.users[jid] || {}
+    // 📛 Nombre
+    let name = await conn.getName(user)
 
-    let user = global.db.data.users[jid]
-
-    // =====================
-    // SET FECHA NACIMIENTO
-    // =====================
-    if (command === 'setbr') {
-      if (!text) return m.reply('✏️ Uso:\n.setbr 31/12/1998')
-
-      user.birth = text.trim()
-      return m.reply('✅ Fecha de nacimiento guardada.')
+    // 👑 Detectar admin
+    let isAdmin = false
+    if (m.isGroup) {
+      const groupMeta = await conn.groupMetadata(m.chat)
+      const participant = groupMeta.participants.find(p => p.id === user)
+      if (participant?.admin) isAdmin = true
     }
 
-    // =====================
-    // SET BIO
-    // =====================
-    if (command === 'bio') {
-      if (!text) return m.reply('✏️ Uso:\n.bio Hola soy nuevo 😎')
-
-      user.bio = text.trim()
-      return m.reply('✅ Biografía guardada.')
+    // 🖼️ Foto de perfil
+    let ppUrl = null
+    try {
+      ppUrl = await conn.profilePictureUrl(user, 'image')
+    } catch {
+      ppUrl = null
     }
 
-    // =====================
-    // PERFIL
-    // =====================
-    if (command === 'perfil') {
+    // 🧾 Texto perfil
+    const caption = `
+👤 *PERFIL DE USUARIO*
 
-      const nombre = await conn.getName(jid)
+📛 *Nombre:* ${name}
+📱 *Número:* +${number}
+👑 *Admin:* ${isAdmin ? '✅ Sí' : '❌ No'}
+🤖 *Bot:* FelixCat-Bot
 
-      const nacimiento = user.birth || 'No registrado'
-      const bio = user.bio || 'Sin biografía'
+⚡ *Estado:* Activo
+`.trim()
 
-      // =====================
-      // OWNERS REALES
-      // =====================
-      const owners = (global.owner || []).map(v => {
-        if (Array.isArray(v)) v = v[0]
-        return String(v).replace(/[^0-9]/g, '') + '@s.whatsapp.net'
-      })
-
-      const isOwner = owners.includes(jid)
-
-      // =====================
-      // ROL GRUPO
-      // =====================
-      let rol = 'Usuario 👤'
-
-      if (isOwner) {
-        rol = 'Creador del Bot 👑'
-      } else if (m.isGroup) {
-        try {
-          const metadata = await conn.groupMetadata(m.chat)
-          const participante = metadata.participants.find(p => {
-            const id = conn.decodeJid ? conn.decodeJid(p.id) : p.id
-            return id === jid
-          })
-
-          if (participante?.admin) {
-            rol = 'Admin del Grupo 🛡️'
-          }
-        } catch {}
-      }
-
-      const textoPerfil = `
-╭━━━〔 👤 PERFIL 〕━━━⬣
-┃ 🏷️ Nombre: ${nombre}
-┃ 📱 Número: +${numero}
-┃ ⭐ Rol: ${rol}
-┃ 🎂 Nacimiento: ${nacimiento}
-┃ 📝 Bio: ${bio}
-┃ 📅 Hoy: ${new Date().toLocaleDateString()}
-╰━━━━━━━━━━━━⬣
-`
-
-      // =====================
-      // FOTO PERFIL (como gpu)
-      // =====================
-      let ppUrl = null
-      try {
-        ppUrl = await conn.profilePictureUrl(jid, 'image')
-      } catch {
-        ppUrl = null
-      }
-
-      if (ppUrl) {
-        await conn.sendMessage(m.chat, {
+    // ✅ Si tiene foto → enviar imagen estilo creator
+    if (ppUrl) {
+      await conn.sendMessage(
+        m.chat,
+        {
           image: { url: ppUrl },
-          caption: textoPerfil,
-          mentions: [jid]
-        }, { quoted: m })
-      } else {
-        await conn.sendMessage(m.chat, {
-          text: textoPerfil,
-          mentions: [jid]
-        }, { quoted: m })
-      }
+          caption: caption,
+          footer: '*FelixCat-Bot 🐱*',
+          headerType: 4,
+          mentions: [user]
+        },
+        { quoted: m }
+      )
+    } 
+    
+    // ❌ Si no tiene foto → solo texto
+    else {
+      await conn.sendMessage(
+        m.chat,
+        {
+          text: caption,
+          mentions: [user]
+        },
+        { quoted: m }
+      )
     }
 
   } catch (e) {
-    console.error('Error perfil:', e)
-    m.reply('❌ Error en el comando perfil.')
+    console.error(e)
+    m.reply('⚠️ Error al mostrar el perfil.')
   }
 }
 
-handler.command = ['perfil', 'setbr', 'bio']
+handler.help = ['perfil']
 handler.tags = ['info']
-handler.help = ['perfil', 'setbr', 'bio']
+handler.command = ['perfil', 'profile']
 
 export default handler
