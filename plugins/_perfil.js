@@ -18,7 +18,7 @@ let handler = async (m, { conn, text, command }) => {
     // SET FECHA NACIMIENTO
     // =====================
     if (command === 'setbr') {
-      if (!text) return m.reply('✏️ Uso:\n.setbr 31/12/1998')
+      if (!text) return m.reply('✏️ Uso:\n.setbr 01/01/0000')
 
       user.birth = text.trim()
       return m.reply('✅ Fecha de nacimiento guardada.')
