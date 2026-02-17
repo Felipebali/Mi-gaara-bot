@@ -3,39 +3,33 @@
 let handler = async (m, { conn, text, command }) => {
   try {
 
-    const who = conn.decodeJid ? conn.decodeJid(m.sender) : m.sender
-    const username = who.split('@')[0]
+    const jid = conn.decodeJid ? conn.decodeJid(m.sender) : m.sender
+    const username = jid.split('@')[0]
 
     // =====================
-    // BASE DE DATOS SEGURA
+    // DB SEGURA
     // =====================
     global.db.data = global.db.data || {}
     global.db.data.users = global.db.data.users || {}
-    global.db.data.users[who] = global.db.data.users[who] || {}
+    global.db.data.users[jid] = global.db.data.users[jid] || {}
 
-    let user = global.db.data.users[who]
+    let user = global.db.data.users[jid]
 
     // =====================
     // CALCULAR EDAD
     // =====================
     const calcularEdad = (fecha) => {
       try {
-        const partes = fecha.split('/')
-        if (partes.length !== 3) return null
+        const [d, m, a] = fecha.split('/').map(Number)
+        if (!d || !m || !a) return null
 
-        const dia = Number(partes[0])
-        const mes = Number(partes[1])
-        const anio = Number(partes[2])
-
-        if (!dia || !mes || !anio) return null
-
-        const nacimiento = new Date(anio, mes - 1, dia)
+        const nacimiento = new Date(a, m - 1, d)
         const hoy = new Date()
 
         let edad = hoy.getFullYear() - nacimiento.getFullYear()
-        const m = hoy.getMonth() - nacimiento.getMonth()
+        const diff = hoy.getMonth() - nacimiento.getMonth()
 
-        if (m < 0 || (m === 0 && hoy.getDate() < nacimiento.getDate()))
+        if (diff < 0 || (diff === 0 && hoy.getDate() < nacimiento.getDate()))
           edad--
 
         return edad
@@ -70,8 +64,8 @@ let handler = async (m, { conn, text, command }) => {
       const nacimiento = user.birth || 'No registrado'
       const bio = user.bio || 'Sin biografía'
 
-      const edadCalculada = user.birth ? calcularEdad(user.birth) : null
-      const edadTexto = edadCalculada !== null ? `${edadCalculada} años` : 'No disponible'
+      const edad = user.birth ? calcularEdad(user.birth) : null
+      const edadTexto = edad !== null ? `${edad} años` : 'No disponible'
 
       // =====================
       // OWNERS
@@ -81,7 +75,7 @@ let handler = async (m, { conn, text, command }) => {
         return String(v).replace(/[^0-9]/g, '')
       })
 
-      const senderNumber = who.replace(/[^0-9]/g, '')
+      const senderNumber = jid.replace(/[^0-9]/g, '')
       const isOwner = ownerNumbers.includes(senderNumber)
 
       // =====================
@@ -95,10 +89,10 @@ let handler = async (m, { conn, text, command }) => {
 
           const participante = metadata.participants.find(p => {
             const id = conn.decodeJid ? conn.decodeJid(p.id) : p.id
-            return id === who
+            return id === jid
           })
 
-          if (participante && participante.admin) isAdmin = true
+          if (participante?.admin) isAdmin = true
         } catch {}
       }
 
@@ -107,54 +101,60 @@ let handler = async (m, { conn, text, command }) => {
       // =====================
       let rol = 'Usuario 👤'
 
-      if (isOwner && isAdmin) {
-        rol = 'Dueño del Bot 👑 | Admin 🛡️'
-      } else if (isOwner) {
-        rol = 'Dueño del Bot 👑'
-      } else if (isAdmin) {
-        rol = 'Admin del Grupo 🛡️'
-      }
+      if (isOwner && isAdmin) rol = 'Dueño 👑 | Admin 🛡️'
+      else if (isOwner) rol = 'Dueño 👑'
+      else if (isAdmin) rol = 'Admin 🛡️'
 
+      // =====================
+      // TEXTO
+      // =====================
       const textoPerfil = `
 👤 *PERFIL DE USUARIO*
 
-🆔 *Usuario:* @${username}
-⭐ *Rol:* ${rol}
+🆔 Usuario: @${username}
+⭐ Rol: ${rol}
 
-🎂 *Nacimiento:* ${nacimiento}
-🎉 *Edad:* ${edadTexto}
+🎂 Nacimiento: ${nacimiento}
+🎉 Edad: ${edadTexto}
 
-📝 *Bio:* ${bio}
+📝 Bio: ${bio}
 
-📅 *Hoy:* ${new Date().toLocaleDateString()}
+📅 Hoy: ${new Date().toLocaleDateString()}
 `.trim()
 
       // =====================
-      // FOTO PERFIL (GPU STYLE)
+      // FOTO PERFIL SEGURA
       // =====================
       let ppUrl = null
 
       try {
-        ppUrl = await conn.profilePictureUrl(who, 'image')
-      } catch {}
+        ppUrl = await conn.profilePictureUrl(jid, 'image')
+      } catch {
+        ppUrl = null
+      }
 
+      // =====================
+      // ENVÍO
+      // =====================
       if (ppUrl) {
         await conn.sendMessage(m.chat, {
           image: { url: ppUrl },
           caption: textoPerfil,
-          mentions: [who]
+          mentions: [jid]
         }, { quoted: m })
       } else {
         await conn.sendMessage(m.chat, {
           text: textoPerfil,
-          mentions: [who]
+          mentions: [jid]
         }, { quoted: m })
       }
     }
 
-  } catch (e) {
-    console.error('Error perfil:', e)
-    m.reply('❌ Error en el comando perfil.')
+  } catch (err) {
+    console.error('Perfil error:', err)
+
+    // 🔥 fallback absoluto
+    m.reply('⚠️ No se pudo cargar completamente el perfil, pero el bot sigue funcionando.')
   }
 }
 
