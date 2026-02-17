@@ -1,24 +1,29 @@
 // 📂 plugins/perfil.js
 // .perfil | .setbr | .bio
-// Usa sistema de foto como gpu.js
-// Si no hay foto → manda solo texto
+// Sistema estable — Detecta owner y admin correctamente
 
 let handler = async (m, { conn, text, command }) => {
   try {
 
+    // =====================
+    // JID NORMALIZADO
+    // =====================
     const jid = conn.decodeJid ? conn.decodeJid(m.sender) : m.sender
+    const numero = jid.replace(/[^0-9]/g, '')
 
     // =====================
-    // BASE DE DATOS
+    // BASE DE DATOS SEGURA
     // =====================
+    global.db.data.users = global.db.data.users || {}
     global.db.data.users[jid] = global.db.data.users[jid] || {}
+
     let user = global.db.data.users[jid]
 
     // =====================
     // SET FECHA NACIMIENTO
     // =====================
     if (command === 'setbr') {
-      if (!text) return m.reply('✏️ Uso:\n.setbr 01/01/0000')
+      if (!text) return m.reply('✏️ Uso:\n.setbr 31/12/1998')
 
       user.birth = text.trim()
       return m.reply('✅ Fecha de nacimiento guardada.')
@@ -40,12 +45,13 @@ let handler = async (m, { conn, text, command }) => {
     if (command === 'perfil') {
 
       const nombre = await conn.getName(jid)
-      const numero = jid.split('@')[0]
 
       const nacimiento = user.birth || 'No registrado'
       const bio = user.bio || 'Sin biografía'
 
-      // 🔐 OWNERS reales
+      // =====================
+      // OWNERS REALES
+      // =====================
       const owners = (global.owner || []).map(v => {
         if (Array.isArray(v)) v = v[0]
         return String(v).replace(/[^0-9]/g, '') + '@s.whatsapp.net'
@@ -53,24 +59,32 @@ let handler = async (m, { conn, text, command }) => {
 
       const isOwner = owners.includes(jid)
 
-      // 🛡️ ADMIN GRUPO
-      let rolGrupo = 'Usuario 👤'
+      // =====================
+      // ROL GRUPO
+      // =====================
+      let rol = 'Usuario 👤'
 
-      if (m.isGroup) {
+      if (isOwner) {
+        rol = 'Creador del Bot 👑'
+      } else if (m.isGroup) {
         try {
           const metadata = await conn.groupMetadata(m.chat)
-          const participante = metadata.participants.find(p => p.id === jid)
-          if (participante?.admin) rolGrupo = 'Admin 🛡️'
+          const participante = metadata.participants.find(p => {
+            const id = conn.decodeJid ? conn.decodeJid(p.id) : p.id
+            return id === jid
+          })
+
+          if (participante?.admin) {
+            rol = 'Admin del Grupo 🛡️'
+          }
         } catch {}
       }
-
-      if (isOwner) rolGrupo = 'Dueño del Bot 👑'
 
       const textoPerfil = `
 ╭━━━〔 👤 PERFIL 〕━━━⬣
 ┃ 🏷️ Nombre: ${nombre}
 ┃ 📱 Número: +${numero}
-┃ 🛡️ Rol: ${rolGrupo}
+┃ ⭐ Rol: ${rol}
 ┃ 🎂 Nacimiento: ${nacimiento}
 ┃ 📝 Bio: ${bio}
 ┃ 📅 Hoy: ${new Date().toLocaleDateString()}
@@ -78,7 +92,7 @@ let handler = async (m, { conn, text, command }) => {
 `
 
       // =====================
-      // FOTO (MISMA LÓGICA GPU)
+      // FOTO PERFIL (como gpu)
       // =====================
       let ppUrl = null
       try {
@@ -87,23 +101,18 @@ let handler = async (m, { conn, text, command }) => {
         ppUrl = null
       }
 
-      // ✅ Si tiene foto → manda imagen
       if (ppUrl) {
         await conn.sendMessage(m.chat, {
           image: { url: ppUrl },
           caption: textoPerfil,
           mentions: [jid]
         }, { quoted: m })
-      }
-
-      // ✅ Si NO tiene foto → solo texto
-      else {
+      } else {
         await conn.sendMessage(m.chat, {
           text: textoPerfil,
           mentions: [jid]
         }, { quoted: m })
       }
-
     }
 
   } catch (e) {
