@@ -1,5 +1,5 @@
 // 📂 plugins/welcome.js
-// Welcome + Leave usando sistema de foto igual a perfil.js
+// Welcome + Leave con foto — SIN DUPLICADOS
 
 let handler = async (m, { conn, isAdmin }) => {
     if (!m.isGroup)
@@ -31,6 +31,11 @@ handler.before = async function (m, { conn }) {
 
     if (!chat.welcome) return;
 
+    // 🛑 Anti spam (1.5 segundos)
+    const now = Date.now();
+    if (chat._lastWelcome && now - chat._lastWelcome < 1500) return;
+    chat._lastWelcome = now;
+
     // Obtener lista anterior
     if (!chat.participants) {
         const meta = await conn.groupMetadata(m.chat);
@@ -57,21 +62,15 @@ handler.before = async function (m, { conn }) {
         let ppUrl = null
         try {
             ppUrl = await conn.profilePictureUrl(user, 'image')
-        } catch {
-            ppUrl = null
-        }
+        } catch {}
 
-        // Si tiene foto → imagen
         if (ppUrl) {
             await conn.sendMessage(m.chat, {
                 image: { url: ppUrl },
                 caption: texto,
                 mentions: [user]
             })
-        }
-
-        // Si NO tiene foto → texto
-        else {
+        } else {
             await conn.sendMessage(m.chat, {
                 text: texto,
                 mentions: [user]
@@ -90,9 +89,7 @@ handler.before = async function (m, { conn }) {
         let ppUrl = null
         try {
             ppUrl = await conn.profilePictureUrl(user, 'image')
-        } catch {
-            ppUrl = null
-        }
+        } catch {}
 
         if (ppUrl) {
             await conn.sendMessage(m.chat, {
