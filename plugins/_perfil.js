@@ -6,6 +6,10 @@ let handler = async (m, { conn, text, command }) => {
     const who = conn.decodeJid ? conn.decodeJid(m.sender) : m.sender
     const username = who.split('@')[0]
 
+    // =====================
+    // BASE DE DATOS SEGURA
+    // =====================
+    global.db.data = global.db.data || {}
     global.db.data.users = global.db.data.users || {}
     global.db.data.users[who] = global.db.data.users[who] || {}
 
@@ -16,7 +20,13 @@ let handler = async (m, { conn, text, command }) => {
     // =====================
     const calcularEdad = (fecha) => {
       try {
-        const [dia, mes, anio] = fecha.split('/').map(Number)
+        const partes = fecha.split('/')
+        if (partes.length !== 3) return null
+
+        const dia = Number(partes[0])
+        const mes = Number(partes[1])
+        const anio = Number(partes[2])
+
         if (!dia || !mes || !anio) return null
 
         const nacimiento = new Date(anio, mes - 1, dia)
@@ -82,12 +92,13 @@ let handler = async (m, { conn, text, command }) => {
       if (m.isGroup) {
         try {
           const metadata = await conn.groupMetadata(m.chat)
+
           const participante = metadata.participants.find(p => {
             const id = conn.decodeJid ? conn.decodeJid(p.id) : p.id
             return id === who
           })
 
-          if (participante?.admin) isAdmin = true
+          if (participante && participante.admin) isAdmin = true
         } catch {}
       }
 
@@ -119,9 +130,10 @@ let handler = async (m, { conn, text, command }) => {
 `.trim()
 
       // =====================
-      // FOTO PERFIL
+      // FOTO PERFIL (GPU STYLE)
       // =====================
       let ppUrl = null
+
       try {
         ppUrl = await conn.profilePictureUrl(who, 'image')
       } catch {}
@@ -141,7 +153,7 @@ let handler = async (m, { conn, text, command }) => {
     }
 
   } catch (e) {
-    console.error(e)
+    console.error('Error perfil:', e)
     m.reply('❌ Error en el comando perfil.')
   }
 }
