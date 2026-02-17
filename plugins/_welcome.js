@@ -1,5 +1,5 @@
 // 📂 plugins/welcome.js
-// Welcome + Leave con foto de perfil — SIN ERRORES
+// Welcome + Leave con toggle usando SOLO: welcome
 
 let handler = async (m, { conn, isAdmin }) => {
     if (!m.isGroup)
@@ -12,6 +12,7 @@ let handler = async (m, { conn, isAdmin }) => {
 
     let chat = global.db.data.chats[m.chat];
 
+    // Si no existe, por defecto desactivado
     if (typeof chat.welcome === 'undefined') chat.welcome = false;
 
     chat.welcome = !chat.welcome;
@@ -21,51 +22,55 @@ let handler = async (m, { conn, isAdmin }) => {
     });
 };
 
+// --- BEFORE ---
+handler.before = async function (m, { conn }) {
+    if (!m.isGroup) return;
 
-// 📌 EVENTO DE ENTRADA Y SALIDA
-handler.participantsUpdate = async function ({ id, participants, action }) {
+    if (!global.db.data.chats[m.chat]) global.db.data.chats[m.chat] = {};
+    let chat = global.db.data.chats[m.chat];
 
-    if (!global.db.data.chats[id]) global.db.data.chats[id] = {};
-    let chat = global.db.data.chats[id];
-
+    // Si welcome está apagado → no hacer nada
     if (!chat.welcome) return;
 
-    const conn = this;
-
-    let metadata = await conn.groupMetadata(id);
-    let groupName = metadata.subject;
-
-    for (let user of participants) {
-
-        let pp;
-        try {
-            pp = await conn.profilePictureUrl(user, 'image');
-        } catch {
-            pp = 'https://i.imgur.com/6RLK9Hh.png';
-        }
-
-        // 🎉 Usuario entra
-        if (action === 'add') {
-            await conn.sendMessage(id, {
-                image: { url: pp },
-                caption: `🎉 ¡Bienvenido/a *@${user.split("@")[0]}* al grupo *${groupName}*!\nDisfruta tu estadía.`,
-                mentions: [user]
-            });
-        }
-
-        // 👋 Usuario sale
-        if (action === 'remove') {
-            await conn.sendMessage(id, {
-                image: { url: pp },
-                caption: `👋 *@${user.split("@")[0]}* salió del grupo *${groupName}*.`,
-                mentions: [user]
-            });
-        }
+    // Obtener lista anterior o crearla
+    if (!chat.participants) {
+        const meta = await conn.groupMetadata(m.chat);
+        chat.participants = meta.participants.map(p => p.id);
+        return;
     }
+
+    // Metadata actual
+    const meta = await conn.groupMetadata(m.chat);
+    const current = meta.participants.map(p => p.id);
+    const old = chat.participants;
+
+    const added = current.filter(x => !old.includes(x));
+    const removed = old.filter(x => !current.includes(x));
+
+    const groupName = meta.subject;
+
+    // 🎉 Bienvenida
+    for (let user of added) {
+        await conn.sendMessage(m.chat, {
+            text: `🎉 ¡Bienvenido/a *@${user.split("@")[0]}* al grupo *${groupName}*!\nDisfruta tu estadía.`,
+            mentions: [user]
+        });
+    }
+
+    // 👋 Despedida
+    for (let user of removed) {
+        await conn.sendMessage(m.chat, {
+            text: `👋 *@${user.split("@")[0]}* salió del grupo *${groupName}*.`,
+            mentions: [user]
+        });
+    }
+
+    chat.participants = current;
 };
 
-
+// 📌 ARRAY DE COMANDOS
 handler.command = ["welcome", "welc", "wl"];
+
 handler.group = true;
 handler.admin = true;
 
