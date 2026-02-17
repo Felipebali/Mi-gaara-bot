@@ -42,8 +42,6 @@ let handler = async (m, { conn, text, command }) => {
     // =====================
     if (command === 'perfil') {
 
-      const nombre = await conn.getName(who)
-
       const nacimiento = user.birth || 'No registrado'
       const bio = user.bio || 'Sin biografía'
 
@@ -82,7 +80,6 @@ let handler = async (m, { conn, text, command }) => {
       const textoPerfil = `
 👤 *PERFIL DE USUARIO*
 
-🏷️ *Nombre:* ${nombre}
 🆔 *Usuario:* @${username}
 ⭐ *Rol:* ${rol}
 
@@ -103,7 +100,7 @@ let handler = async (m, { conn, text, command }) => {
       }
 
       // =====================
-      // ENVÍO ESTILO CREADOR
+      // ENVÍO
       // =====================
       if (ppUrl) {
         await conn.sendMessage(
