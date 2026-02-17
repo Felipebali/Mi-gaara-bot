@@ -84,7 +84,7 @@ const handler = async (m, { conn, text, mentionedJid }) => {
   if (global.db.write) await global.db.write()
 
   if (!removed) {
-    return conn.reply(m.chat, `⚠️ El usuario no tenía advertencias registradas.`, m)
+    return conn.reply(m.chat, `⚠️ El usuario no se encuentra en la base de datos.`, m)
   }
 
   // =================== MENSAJE FINAL ===================
@@ -92,7 +92,7 @@ const handler = async (m, { conn, text, mentionedJid }) => {
   const fecha = new Date().toLocaleString('es-UY', { timeZone: 'America/Montevideo' })
 
   await conn.sendMessage(m.chat, {
-    text: `${emoji} *Reset completado*\n\n👤 Usuario: @${number}\n🧾 Advertencias: eliminadas\n📅 ${fecha}\n\n${done} Base actualizada correctamente.`,
+    text: `${emoji} *Reset completado*\n\n👤 Usuario: @${number}\n🧾 Base de datos eliminada\n📅 ${fecha}\n\n${done} Base actualizada correctamente.`,
     mentions: [who]
   })
 }
