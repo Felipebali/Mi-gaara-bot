@@ -1,27 +1,27 @@
 // 📂 plugins/owner.js — FelixCat 🐾
-// Comando .owner que usa SOLO global.owner
+// .owner → muestra solo los 3 primeros owners de global.owner
 
 let handler = async (m, { conn }) => {
 
   if (!global.owner || !global.owner.length) {
-    return m.reply("❌ No hay owners configurados en global.owner");
+    return m.reply("❌ No hay owners configurados.");
   }
+
+  // Tomar solo los primeros 3
+  const owners = global.owner.slice(0, 3);
 
   let texto = `👑 *OWNERS DEL BOT* 👑\n\n`;
   let mentions = [];
 
-  global.owner.forEach((data, i) => {
+  owners.forEach((data, i) => {
 
     let numero = Array.isArray(data) ? data[0] : data;
+    let nombre = Array.isArray(data) ? data[1] || "Owner" : "Owner";
 
-    // Solo números reales (no LID)
-    if (!numero.includes('@')) {
-      let jid = numero + '@s.whatsapp.net';
-      mentions.push(jid);
+    let jid = numero + '@s.whatsapp.net';
+    mentions.push(jid);
 
-      texto += `➤ Owner ${i + 1}: @${numero}\n`;
-    }
-
+    texto += `➤ ${nombre}: @${numero}\n`;
   });
 
   texto += `\n🤖 FelixCat Bot`;
