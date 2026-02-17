@@ -1,5 +1,5 @@
 // 📂 plugins/welcome.js
-// Welcome + Leave con toggle usando SOLO: welcome + foto de perfil
+// Welcome + Leave usando sistema de foto igual a perfil.js
 
 let handler = async (m, { conn, isAdmin }) => {
     if (!m.isGroup)
@@ -31,7 +31,7 @@ handler.before = async function (m, { conn }) {
 
     if (!chat.welcome) return;
 
-    // Obtener lista anterior o crearla
+    // Obtener lista anterior
     if (!chat.participants) {
         const meta = await conn.groupMetadata(m.chat);
         chat.participants = meta.participants.map(p => p.id);
@@ -47,38 +47,65 @@ handler.before = async function (m, { conn }) {
 
     const groupName = meta.subject;
 
-    // 🎉 Bienvenida
+    // =====================
+    // BIENVENIDA
+    // =====================
     for (let user of added) {
 
-        let pp;
+        const texto = `🎉 ¡Bienvenido/a *@${user.split("@")[0]}* al grupo *${groupName}*!\nDisfruta tu estadía.`
+
+        let ppUrl = null
         try {
-            pp = await conn.profilePictureUrl(user, 'image');
+            ppUrl = await conn.profilePictureUrl(user, 'image')
         } catch {
-            pp = 'https://i.imgur.com/6RLK9Hh.png'; // imagen default
+            ppUrl = null
         }
 
-        await conn.sendMessage(m.chat, {
-            image: { url: pp },
-            caption: `🎉 ¡Bienvenido/a *@${user.split("@")[0]}* al grupo *${groupName}*!\nDisfruta tu estadía.`,
-            mentions: [user]
-        });
+        // Si tiene foto → imagen
+        if (ppUrl) {
+            await conn.sendMessage(m.chat, {
+                image: { url: ppUrl },
+                caption: texto,
+                mentions: [user]
+            })
+        }
+
+        // Si NO tiene foto → texto
+        else {
+            await conn.sendMessage(m.chat, {
+                text: texto,
+                mentions: [user]
+            })
+        }
     }
 
-    // 👋 Despedida
+
+    // =====================
+    // DESPEDIDA
+    // =====================
     for (let user of removed) {
 
-        let pp;
+        const texto = `👋 *@${user.split("@")[0]}* salió del grupo *${groupName}*.`
+
+        let ppUrl = null
         try {
-            pp = await conn.profilePictureUrl(user, 'image');
+            ppUrl = await conn.profilePictureUrl(user, 'image')
         } catch {
-            pp = 'https://i.imgur.com/6RLK9Hh.png'; // imagen default
+            ppUrl = null
         }
 
-        await conn.sendMessage(m.chat, {
-            image: { url: pp },
-            caption: `👋 *@${user.split("@")[0]}* salió del grupo *${groupName}*.`,
-            mentions: [user]
-        });
+        if (ppUrl) {
+            await conn.sendMessage(m.chat, {
+                image: { url: ppUrl },
+                caption: texto,
+                mentions: [user]
+            })
+        } else {
+            await conn.sendMessage(m.chat, {
+                text: texto,
+                mentions: [user]
+            })
+        }
     }
 
     chat.participants = current;
