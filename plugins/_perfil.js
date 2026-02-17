@@ -1,26 +1,18 @@
 // 📂 plugins/perfil.js
-// .perfil | .setbr | .bio
-// Rol detecta Owner + Admin correctamente
 
 let handler = async (m, { conn, text, command }) => {
   try {
 
-    // =====================
-    // QUIÉN USA EL COMANDO
-    // =====================
     const who = conn.decodeJid ? conn.decodeJid(m.sender) : m.sender
     const username = who.split('@')[0]
 
-    // =====================
-    // BASE DE DATOS
-    // =====================
     global.db.data.users = global.db.data.users || {}
     global.db.data.users[who] = global.db.data.users[who] || {}
 
     let user = global.db.data.users[who]
 
     // =====================
-    // SET FECHA NACIMIENTO
+    // SET NACIMIENTO
     // =====================
     if (command === 'setbr') {
       if (!text) return m.reply('✏️ Uso:\n.setbr 31/12/1998')
@@ -32,7 +24,7 @@ let handler = async (m, { conn, text, command }) => {
     // SET BIO
     // =====================
     if (command === 'bio') {
-      if (!text) return m.reply('✏️ Uso:\n.bio Hola soy nuevo 😎')
+      if (!text) return m.reply('✏️ Uso:\n.bio Hola 😎')
       user.bio = text.trim()
       return m.reply('✅ Biografía guardada.')
     }
@@ -46,17 +38,18 @@ let handler = async (m, { conn, text, command }) => {
       const bio = user.bio || 'Sin biografía'
 
       // =====================
-      // OWNERS
+      // OWNERS FIX
       // =====================
-      const owners = (global.owner || []).map(v => {
+      const ownerNumbers = (global.owner || []).map(v => {
         if (Array.isArray(v)) v = v[0]
-        return String(v).replace(/[^0-9]/g, '') + '@s.whatsapp.net'
+        return String(v).replace(/[^0-9]/g, '')
       })
 
-      const isOwner = owners.includes(who)
+      const senderNumber = who.replace(/[^0-9]/g, '')
+      const isOwner = ownerNumbers.includes(senderNumber)
 
       // =====================
-      // ADMIN GRUPO
+      // ADMIN
       // =====================
       let isAdmin = false
 
@@ -85,9 +78,6 @@ let handler = async (m, { conn, text, command }) => {
         rol = 'Admin del Grupo 🛡️'
       }
 
-      // =====================
-      // TEXTO PERFIL
-      // =====================
       const textoPerfil = `
 👤 *PERFIL DE USUARIO*
 
@@ -106,39 +96,24 @@ let handler = async (m, { conn, text, command }) => {
       let ppUrl = null
       try {
         ppUrl = await conn.profilePictureUrl(who, 'image')
-      } catch {
-        ppUrl = null
-      }
+      } catch {}
 
-      // =====================
-      // ENVÍO
-      // =====================
       if (ppUrl) {
-        await conn.sendMessage(
-          m.chat,
-          {
-            image: { url: ppUrl },
-            caption: textoPerfil,
-            footer: '*FelixCat-Bot 🐱*',
-            headerType: 4,
-            mentions: [who]
-          },
-          { quoted: m }
-        )
+        await conn.sendMessage(m.chat, {
+          image: { url: ppUrl },
+          caption: textoPerfil,
+          mentions: [who]
+        }, { quoted: m })
       } else {
-        await conn.sendMessage(
-          m.chat,
-          {
-            text: textoPerfil,
-            mentions: [who]
-          },
-          { quoted: m }
-        )
+        await conn.sendMessage(m.chat, {
+          text: textoPerfil,
+          mentions: [who]
+        }, { quoted: m })
       }
     }
 
   } catch (e) {
-    console.error('Error perfil:', e)
+    console.error(e)
     m.reply('❌ Error en el comando perfil.')
   }
 }
