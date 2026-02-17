@@ -12,6 +12,29 @@ let handler = async (m, { conn, text, command }) => {
     let user = global.db.data.users[who]
 
     // =====================
+    // CALCULAR EDAD
+    // =====================
+    const calcularEdad = (fecha) => {
+      try {
+        const [dia, mes, anio] = fecha.split('/').map(Number)
+        if (!dia || !mes || !anio) return null
+
+        const nacimiento = new Date(anio, mes - 1, dia)
+        const hoy = new Date()
+
+        let edad = hoy.getFullYear() - nacimiento.getFullYear()
+        const m = hoy.getMonth() - nacimiento.getMonth()
+
+        if (m < 0 || (m === 0 && hoy.getDate() < nacimiento.getDate()))
+          edad--
+
+        return edad
+      } catch {
+        return null
+      }
+    }
+
+    // =====================
     // SET NACIMIENTO
     // =====================
     if (command === 'setbr') {
@@ -37,8 +60,11 @@ let handler = async (m, { conn, text, command }) => {
       const nacimiento = user.birth || 'No registrado'
       const bio = user.bio || 'Sin biografía'
 
+      const edadCalculada = user.birth ? calcularEdad(user.birth) : null
+      const edadTexto = edadCalculada !== null ? `${edadCalculada} años` : 'No disponible'
+
       // =====================
-      // OWNERS FIX
+      // OWNERS
       // =====================
       const ownerNumbers = (global.owner || []).map(v => {
         if (Array.isArray(v)) v = v[0]
@@ -66,7 +92,7 @@ let handler = async (m, { conn, text, command }) => {
       }
 
       // =====================
-      // ROL FINAL
+      // ROL
       // =====================
       let rol = 'Usuario 👤'
 
@@ -85,6 +111,8 @@ let handler = async (m, { conn, text, command }) => {
 ⭐ *Rol:* ${rol}
 
 🎂 *Nacimiento:* ${nacimiento}
+🎉 *Edad:* ${edadTexto}
+
 📝 *Bio:* ${bio}
 
 📅 *Hoy:* ${new Date().toLocaleDateString()}
