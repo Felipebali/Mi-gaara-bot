@@ -1,5 +1,5 @@
 // 📂 plugins/welcome.js
-// Welcome + Leave con toggle usando SOLO: welcome
+// Welcome + Leave con toggle usando SOLO: welcome + foto de perfil
 
 let handler = async (m, { conn, isAdmin }) => {
     if (!m.isGroup)
@@ -12,7 +12,6 @@ let handler = async (m, { conn, isAdmin }) => {
 
     let chat = global.db.data.chats[m.chat];
 
-    // Si no existe, por defecto desactivado
     if (typeof chat.welcome === 'undefined') chat.welcome = false;
 
     chat.welcome = !chat.welcome;
@@ -22,6 +21,7 @@ let handler = async (m, { conn, isAdmin }) => {
     });
 };
 
+
 // --- BEFORE ---
 handler.before = async function (m, { conn }) {
     if (!m.isGroup) return;
@@ -29,7 +29,6 @@ handler.before = async function (m, { conn }) {
     if (!global.db.data.chats[m.chat]) global.db.data.chats[m.chat] = {};
     let chat = global.db.data.chats[m.chat];
 
-    // Si welcome está apagado → no hacer nada
     if (!chat.welcome) return;
 
     // Obtener lista anterior o crearla
@@ -39,7 +38,6 @@ handler.before = async function (m, { conn }) {
         return;
     }
 
-    // Metadata actual
     const meta = await conn.groupMetadata(m.chat);
     const current = meta.participants.map(p => p.id);
     const old = chat.participants;
@@ -51,16 +49,34 @@ handler.before = async function (m, { conn }) {
 
     // 🎉 Bienvenida
     for (let user of added) {
+
+        let pp;
+        try {
+            pp = await conn.profilePictureUrl(user, 'image');
+        } catch {
+            pp = 'https://i.imgur.com/6RLK9Hh.png'; // imagen default
+        }
+
         await conn.sendMessage(m.chat, {
-            text: `🎉 ¡Bienvenido/a *@${user.split("@")[0]}* al grupo *${groupName}*!\nDisfruta tu estadía.`,
+            image: { url: pp },
+            caption: `🎉 ¡Bienvenido/a *@${user.split("@")[0]}* al grupo *${groupName}*!\nDisfruta tu estadía.`,
             mentions: [user]
         });
     }
 
     // 👋 Despedida
     for (let user of removed) {
+
+        let pp;
+        try {
+            pp = await conn.profilePictureUrl(user, 'image');
+        } catch {
+            pp = 'https://i.imgur.com/6RLK9Hh.png'; // imagen default
+        }
+
         await conn.sendMessage(m.chat, {
-            text: `👋 *@${user.split("@")[0]}* salió del grupo *${groupName}*.`,
+            image: { url: pp },
+            caption: `👋 *@${user.split("@")[0]}* salió del grupo *${groupName}*.`,
             mentions: [user]
         });
     }
@@ -68,9 +84,8 @@ handler.before = async function (m, { conn }) {
     chat.participants = current;
 };
 
-// 📌 ARRAY DE COMANDOS
-handler.command = ["welcome", "welc", "wl"];
 
+handler.command = ["welcome", "welc", "wl"];
 handler.group = true;
 handler.admin = true;
 
