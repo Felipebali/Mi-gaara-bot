@@ -14,11 +14,18 @@ let handler = async (m, { conn, text, command }) => {
     if (!global.db.data.users[jid]) {
       global.db.data.users[jid] = {
         registered: Date.now(),
-        insignias: []
+        insignias: [],
+        mensajes: 0 // contador de mensajes
       }
     }
 
     let user = global.db.data.users[jid]
+
+    // =====================
+    // CONTADOR DE MENSAJES
+    // =====================
+    // Cada vez que usa un comando del bot se suma
+    user.mensajes = (user.mensajes || 0) + 1
 
     // =====================
     // FUNCIONES FECHA
@@ -117,7 +124,7 @@ let handler = async (m, { conn, text, command }) => {
       const nombre = text.replace(/@\d+/g, '').trim()
       if (!nombre) return m.reply('✏️ Escribe la insignia.')
 
-      if (!global.db.data.users[target]) global.db.data.users[target] = { registered: Date.now(), insignias: [] }
+      if (!global.db.data.users[target]) global.db.data.users[target] = { registered: Date.now(), insignias: [], mensajes: 0 }
 
       let tu = global.db.data.users[target]
       if (!tu.insignias) tu.insignias = []
@@ -208,6 +215,12 @@ let handler = async (m, { conn, text, command }) => {
             const hoy = new Date()
             const diasGrupo = Math.floor((hoy - ingreso) / 86400000)
             ingresoTexto = `${ingreso.toLocaleDateString()} (${diasGrupo} días en el grupo)`
+          } else {
+            // Si no hay joinedTimestamp usamos la fecha de registro
+            const ingreso = new Date(user.registered)
+            const hoy = new Date()
+            const diasGrupo = Math.floor((hoy - ingreso) / 86400000)
+            ingresoTexto = `${ingreso.toLocaleDateString()} (${diasGrupo} días en el grupo)`
           }
         } catch {}
       }
@@ -229,6 +242,7 @@ ${insignias.join('\n')}
 🎂 Cumple en: ${cumpleTexto}
 
 📥 Ingresó al grupo: ${ingresoTexto}
+✉️ Mensajes enviados: ${user.mensajes}
 
 📝 Bio: ${bio}
 `.trim()
