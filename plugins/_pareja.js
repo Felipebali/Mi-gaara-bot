@@ -13,7 +13,6 @@ const saveDB = (data) => fs.writeFileSync(file, JSON.stringify(data, null, 2))
 let handler = async (m, { conn, command }) => {
 
   let db = loadDB()
-
   const sender = m.sender
   const ahora = Date.now()
 
@@ -32,26 +31,23 @@ let handler = async (m, { conn, command }) => {
     return db[id]
   }
 
-  const user = getUser(sender)
-
   const getTarget = () => {
     if (m.mentionedJid?.length) return m.mentionedJid[0]
     if (m.quoted?.sender) return m.quoted.sender
     return null
   }
 
-  // =====================
-  // 💌 PROPUESTA
-  // =====================
+  // ================= 💌 PROPUESTA =================
 
   if (command === 'pareja') {
 
     const target = getTarget()
-    if (!target) return m.reply('💌 Menciona a la persona.')
+    if (!target) return m.reply('💌 Menciona o responde al mensaje de la persona.')
 
     if (target === sender)
-      return m.reply('🤨 No puedes proponerte a ti mismo.')
+      return m.reply('❌ No puedes proponerte a ti mismo.')
 
+    const user = getUser(sender)
     const tu = getUser(target)
 
     if (user.estado !== 'soltero')
@@ -73,11 +69,11 @@ let handler = async (m, { conn, command }) => {
     )
   }
 
-  // =====================
-  // ✅ ACEPTAR
-  // =====================
+  // ================= ✅ ACEPTAR =================
 
   if (command === 'aceptar') {
+
+    const user = getUser(sender)
 
     if (!user.propuesta)
       return m.reply('❌ No tienes propuestas pendientes.')
@@ -85,7 +81,6 @@ let handler = async (m, { conn, command }) => {
     const proposer = user.propuesta
     const proposerUser = getUser(proposer)
 
-    // Verificación extra
     if (proposerUser.estado !== 'soltero') {
       user.propuesta = null
       saveDB(db)
@@ -114,11 +109,11 @@ let handler = async (m, { conn, command }) => {
     )
   }
 
-  // =====================
-  // ❌ RECHAZAR
-  // =====================
+  // ================= ❌ RECHAZAR =================
 
   if (command === 'rechazar') {
+
+    const user = getUser(sender)
 
     if (!user.propuesta)
       return m.reply('❌ No tienes propuestas pendientes.')
@@ -138,11 +133,11 @@ let handler = async (m, { conn, command }) => {
     )
   }
 
-  // =====================
-  // 💔 TERMINAR
-  // =====================
+  // ================= 💔 TERMINAR =================
 
   if (command === 'terminar') {
+
+    const user = getUser(sender)
 
     if (!user.pareja)
       return m.reply('❌ No tienes pareja.')
@@ -170,11 +165,11 @@ let handler = async (m, { conn, command }) => {
     )
   }
 
-  // =====================
-  // 💍 CASAR
-  // =====================
+  // ================= 💍 CASAR =================
 
   if (command === 'casar') {
+
+    const user = getUser(sender)
 
     if (!user.pareja)
       return m.reply('❌ No tienes pareja.')
@@ -205,11 +200,11 @@ let handler = async (m, { conn, command }) => {
     )
   }
 
-  // =====================
-  // ⚖️ DIVORCIO
-  // =====================
+  // ================= ⚖️ DIVORCIO =================
 
   if (command === 'divorciar') {
+
+    const user = getUser(sender)
 
     if (user.estado !== 'casados')
       return m.reply('❌ No estás casado.')
@@ -219,13 +214,9 @@ let handler = async (m, { conn, command }) => {
 
     pareja.pareja = null
     pareja.estado = 'soltero'
-    pareja.matrimonioFecha = null
-    pareja.relacionFecha = null
 
     user.pareja = null
     user.estado = 'soltero'
-    user.matrimonioFecha = null
-    user.relacionFecha = null
 
     saveDB(db)
 
@@ -237,11 +228,11 @@ let handler = async (m, { conn, command }) => {
     )
   }
 
-  // =====================
-  // ❤️ AMOR
-  // =====================
+  // ================= ❤️ AMOR =================
 
   if (command === 'amor') {
+
+    const user = getUser(sender)
 
     if (!user.pareja)
       return m.reply('❌ No tienes pareja.')
@@ -252,11 +243,11 @@ let handler = async (m, { conn, command }) => {
     return m.reply(`❤️ Amor aumentado\nNivel: ${user.amor}`)
   }
 
-  // =====================
-  // 📊 RELACION
-  // =====================
+  // ================= 📊 RELACION =================
 
   if (command === 'relacion') {
+
+    const user = getUser(sender)
 
     if (!user.pareja)
       return m.reply('❌ Estás soltero.')
@@ -272,6 +263,41 @@ let handler = async (m, { conn, command }) => {
     )
   }
 
+  // ================= 🧹 CLEARSHIP =================
+
+  if (command === 'clearship') {
+
+    const target = getTarget() || sender
+    const user = getUser(target)
+
+    if (!user.pareja)
+      return m.reply('❌ No hay relación para borrar.')
+
+    const parejaID = user.pareja
+    const pareja = getUser(parejaID)
+
+    pareja.pareja = null
+    pareja.estado = 'soltero'
+    pareja.relacionFecha = null
+    pareja.matrimonioFecha = null
+    pareja.propuesta = null
+
+    user.pareja = null
+    user.estado = 'soltero'
+    user.relacionFecha = null
+    user.matrimonioFecha = null
+    user.propuesta = null
+
+    saveDB(db)
+
+    return conn.reply(
+      m.chat,
+      `🧹 Relación eliminada\n@${target.split('@')[0]} 💔 @${parejaID.split('@')[0]}`,
+      m,
+      { mentions: [target, parejaID] }
+    )
+  }
+
 }
 
 handler.command = [
@@ -282,7 +308,8 @@ handler.command = [
   'casar',
   'divorciar',
   'relacion',
-  'amor'
+  'amor',
+  'clearship'
 ]
 
 export default handler
