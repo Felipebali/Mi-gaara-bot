@@ -1,4 +1,4 @@
-// 📂 plugins/perfil.js — PERFIL FelixCat 🐾 ROLES + INSIGNIAS (Owners solo para insignias)
+// 📂 plugins/perfil.js — PERFIL FelixCat 🐾 ROLES + INSIGNIAS + Contador de mensajes y fecha de ingreso correcta
 
 let handler = async (m, { conn, text, command }) => {
   try {
@@ -14,8 +14,9 @@ let handler = async (m, { conn, text, command }) => {
     if (!global.db.data.users[jid]) {
       global.db.data.users[jid] = {
         registered: Date.now(),
+        joinGroup: m.isGroup ? Date.now() : null, // Fecha de ingreso inicial
         insignias: [],
-        mensajes: 0 // contador de mensajes
+        mensajes: 0
       }
     }
 
@@ -24,8 +25,28 @@ let handler = async (m, { conn, text, command }) => {
     // =====================
     // CONTADOR DE MENSAJES
     // =====================
-    // Cada vez que usa un comando del bot se suma
+    // Contar todos los mensajes
     user.mensajes = (user.mensajes || 0) + 1
+
+    // =====================
+    // ACTUALIZAR FECHA DE INGRESO REAL
+    // =====================
+    if (m.isGroup) {
+      try {
+        const meta = await conn.groupMetadata(m.chat)
+        const participante = meta.participants.find(u => {
+          const id = conn.decodeJid ? conn.decodeJid(u.id) : u.id
+          return id === jid
+        })
+        if (participante && participante.joinedTimestamp) {
+          user.joinGroup = participante.joinedTimestamp
+        } else if (!user.joinGroup) {
+          user.joinGroup = Date.now()
+        }
+      } catch {
+        if (!user.joinGroup) user.joinGroup = Date.now()
+      }
+    }
 
     // =====================
     // FUNCIONES FECHA
@@ -200,29 +221,14 @@ let handler = async (m, { conn, text, command }) => {
       else if (isAdmin) rol = 'Admin 🛡️'
 
       // =====================
-      // FECHA DE INGRESO AL GRUPO
+      // FECHA DE INGRESO
       // =====================
       let ingresoTexto = 'No disponible'
-      if (m.isGroup) {
-        try {
-          const meta = await conn.groupMetadata(m.chat)
-          const participante = meta.participants.find(u => {
-            const id = conn.decodeJid ? conn.decodeJid(u.id) : u.id
-            return id === jid
-          })
-          if (participante && participante.joinedTimestamp) {
-            const ingreso = new Date(participante.joinedTimestamp)
-            const hoy = new Date()
-            const diasGrupo = Math.floor((hoy - ingreso) / 86400000)
-            ingresoTexto = `${ingreso.toLocaleDateString()} (${diasGrupo} días en el grupo)`
-          } else {
-            // Si no hay joinedTimestamp usamos la fecha de registro
-            const ingreso = new Date(user.registered)
-            const hoy = new Date()
-            const diasGrupo = Math.floor((hoy - ingreso) / 86400000)
-            ingresoTexto = `${ingreso.toLocaleDateString()} (${diasGrupo} días en el grupo)`
-          }
-        } catch {}
+      if (user.joinGroup) {
+        const ingreso = new Date(user.joinGroup)
+        const hoy = new Date()
+        const diasGrupo = Math.floor((hoy - ingreso) / 86400000)
+        ingresoTexto = `${ingreso.toLocaleDateString()} (${diasGrupo} días en el grupo)`
       }
 
       // =====================
