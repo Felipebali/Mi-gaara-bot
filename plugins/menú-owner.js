@@ -15,18 +15,6 @@ let handler = async (m, { conn }) => {
 ┃ 📆 ${fecha}
 ╰━━━━━━━━━━━━━━━━━━━━━━╯
 
-⚙️ *Gestión del Bot*
-• .restart — Reinicia el bot 🔁
-• .update — Actualiza el bot 🆙
-• .exec / .exec2 — Ejecuta código 💻
-• .setcmd — Configura comando ⚙️
-• .setprefix — Cambia prefijo ✏️
-• .dsowner — Quita dueño ❌
-• .join <link> — Unirse a grupo 🔗
-• .resetlink — Resetear link del grupo ♻️
-• .setpp — Cambiar foto del bot 🤖🖼️
-• .setpg — Cambiar foto del grupo 👥🖼️
-
 🖼️ *Multimedia / Perfil*
 • .gpu — Descargar foto de perfil de usuario 🧑🖼️
 • .gpo — Descargar foto del grupo 🏞️
@@ -42,6 +30,18 @@ let handler = async (m, { conn }) => {
 • .vln — Ver lista 📋
 • .clrn — Limpiar lista 🗑️
 • .resetuser @user — Reiniciar datos 🔄
+
+⚙️ *Gestión del Bot*
+• .restart — Reinicia el bot 🔁
+• .update — Actualiza el bot 🆙
+• .exec / .exec2 — Ejecuta código 💻
+• .setcmd — Configura comando ⚙️
+• .setprefix — Cambia prefijo ✏️
+• .dsowner — Quita dueño ❌
+• .join <link> — Unirse a grupo 🔗
+• .resetlink — Resetear link del grupo ♻️
+• .setpp — Cambiar foto del bot 🤖🖼️
+• .setpg — Cambiar foto del grupo 👥🖼️
 
 ━━━━━━━━━━━━━━━━━━━
 🐾 *FelixCat – Propietario Supremo*
