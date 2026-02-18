@@ -36,7 +36,7 @@ let handler = async (m, { conn }) => {
 ┗━━━━━━━━━━━━━━━━━━━━━┛
 
 ┏━━━ 💕 *RELACIONES* ━━━┓
-┃ 💘 *.pareja @usuario* – Proponer relación
+┃ 💘 *.pareja citando mensaje* – Proponer relación
 ┃ ✅ *.aceptar* – Aceptar propuesta
 ┃ ❌ *.rechazar* – Rechazar propuesta
 ┃ 💔 *.terminar* – Terminar relación
