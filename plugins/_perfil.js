@@ -1,4 +1,4 @@
-// 📂 plugins/perfil.js — PERFIL FelixCat 🐾 FUNCIONAL TOTAL
+// 📂 plugins/perfil.js — PERFIL FelixCat 🐾 FULL FIX
 
 let handler = async (m, { conn, text, command }) => {
   try {
@@ -16,7 +16,7 @@ let handler = async (m, { conn, text, command }) => {
     if (!global.db.data.users[jid]) {
       global.db.data.users[jid] = {
         registered: Date.now(),
-        joinGroup: m.isGroup ? Date.now() : null,
+        joinGroup: null,
         insignias: [],
         mensajes: 0
       }
@@ -31,10 +31,10 @@ let handler = async (m, { conn, text, command }) => {
     user.mensajes = (user.mensajes || 0) + 1
 
     // =====================
-    // FECHA INGRESO GRUPO
+    // FECHA INGRESO GRUPO FIX
     // =====================
 
-    if (m.isGroup && !user.joinGroup) {
+    if (m.isGroup && (!user.joinGroup || user.joinGroup < 1000000000000)) {
       user.joinGroup = Date.now()
     }
 
@@ -146,6 +146,7 @@ let handler = async (m, { conn, text, command }) => {
       if (!global.db.data.users[target]) {
         global.db.data.users[target] = {
           registered: Date.now(),
+          joinGroup: null,
           insignias: [],
           mensajes: 0
         }
@@ -167,7 +168,7 @@ let handler = async (m, { conn, text, command }) => {
     }
 
     // =====================
-    // QUITAR INSIGNIA (FIX)
+    // QUITAR TODAS LAS INSIGNIAS
     // =====================
 
     if (command === 'quitar') {
@@ -178,26 +179,17 @@ let handler = async (m, { conn, text, command }) => {
       const target = getTarget()
       if (!target) return m.reply('✏️ Menciona o responde al usuario.')
 
-      const nombre = text.replace(/@\d+/g, '').trim().toLowerCase()
-      if (!nombre) return m.reply('✏️ Escribe la insignia a quitar.')
-
       let tu = global.db.data.users[target]
 
       if (!tu || !tu.insignias || !tu.insignias.length)
         return m.reply('❌ Ese usuario no tiene insignias.')
 
-      const antes = tu.insignias.length
-
-      tu.insignias = tu.insignias.filter(i =>
-        i.toLowerCase() !== nombre
-      )
-
-      if (antes === tu.insignias.length)
-        return m.reply('⚠️ No se encontró esa insignia.')
+      const cantidad = tu.insignias.length
+      tu.insignias = []
 
       return conn.reply(
         m.chat,
-        `🗑️ Insignia eliminada\n\n👤 @${target.split('@')[0]}\n🎖️ ${nombre}`,
+        `🗑️ Se eliminaron *${cantidad}* insignias\n\n👤 @${target.split('@')[0]}`,
         m,
         { mentions: [target] }
       )
@@ -213,11 +205,19 @@ let handler = async (m, { conn, text, command }) => {
         return m.reply('❌ Solo los dueños pueden usar este comando.')
 
       let lista = []
+      let mentions = []
 
       for (let id in global.db.data.users) {
+
         let u = global.db.data.users[id]
+
         if (u.insignias && u.insignias.length) {
-          lista.push(`👤 @${id.split('@')[0]}\n🏅 ${u.insignias.join(', ')}`)
+
+          lista.push(
+            `👤 @${id.split('@')[0]}\n🏅 ${u.insignias.join(', ')}`
+          )
+
+          mentions.push(id)
         }
       }
 
@@ -228,9 +228,7 @@ let handler = async (m, { conn, text, command }) => {
         m.chat,
         `🏅 *USUARIOS CON INSIGNIAS*\n\n${lista.join('\n\n')}`,
         m,
-        {
-          mentions: Object.keys(global.db.data.users)
-        }
+        { mentions }
       )
     }
 
