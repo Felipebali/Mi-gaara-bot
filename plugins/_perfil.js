@@ -17,18 +17,11 @@ let handler = async (m, { conn, text, command }) => {
       global.db.data.users[jid] = {
         registered: Date.now(),
         joinGroup: null,
-        insignias: [],
-        mensajes: 0
+        insignias: []
       }
     }
 
     let user = global.db.data.users[jid]
-
-    // =====================
-    // CONTADOR MENSAJES GLOBAL
-    // =====================
-
-    user.mensajes = (user.mensajes || 0) + 1
 
     // =====================
     // FECHA INGRESO GRUPO
@@ -119,11 +112,6 @@ let handler = async (m, { conn, text, command }) => {
         { nombre: 'Libra ♎', elemento: '🌪️ Aire', personalidad: 'Equilibrado, sociable y diplomático.' },
         { nombre: 'Escorpio ♏', elemento: '💧 Agua', personalidad: 'Intenso, apasionado y misterioso.' },
         { nombre: 'Sagitario ♐', elemento: '🔥 Fuego', personalidad: 'Aventurero, optimista y sincero.' }
-      ]
-
-      const fechas = [
-        [20,1],[19,2],[21,3],[20,4],[21,5],[21,6],
-        [23,7],[23,8],[23,9],[23,10],[22,11],[22,12]
       ]
 
       const index =
@@ -269,8 +257,6 @@ let handler = async (m, { conn, text, command }) => {
       const elemento = zodiaco?.elemento || 'No disponible'
       const personalidad = zodiaco?.personalidad || 'No disponible'
 
-      // INSIGNIAS
-
       let insignias = []
 
       if (isRealOwner) insignias.push('👑 Dueño')
@@ -281,13 +267,9 @@ let handler = async (m, { conn, text, command }) => {
 
       if (!insignias.length) insignias.push('Ninguna')
 
-      // ROL
-
       let rol = 'Usuario 👤'
       if (isRealOwner) rol = 'Dueño 👑'
       else if (isAdmin) rol = 'Admin 🛡️'
-
-      // INGRESO
 
       let ingresoTexto = 'No disponible'
 
@@ -316,7 +298,6 @@ ${insignias.join('\n')}
 🎂 Cumple en: ${cumpleTexto}
 
 📥 Ingreso: ${ingresoTexto}
-✉️ Mensajes: ${user.mensajes}
 
 📝 Bio: ${bio}
 `.trim()
