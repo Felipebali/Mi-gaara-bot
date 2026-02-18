@@ -68,18 +68,19 @@ let handler = async (m, { conn, text, command }) => {
       const edadTexto = edad !== null ? `${edad} años` : 'No disponible'
 
       // =====================
-      // OWNERS
+      // OWNER DETECCIÓN REAL
       // =====================
+      const senderNumber = jid.replace(/[^0-9]/g, '')
+
       const ownerNumbers = (global.owner || []).map(v => {
         if (Array.isArray(v)) v = v[0]
         return String(v).replace(/[^0-9]/g, '')
       })
 
-      const senderNumber = jid.replace(/[^0-9]/g, '')
       const isOwner = ownerNumbers.includes(senderNumber)
 
       // =====================
-      // ADMIN
+      // ADMIN DETECCIÓN REAL
       // =====================
       let isAdmin = false
 
@@ -89,7 +90,8 @@ let handler = async (m, { conn, text, command }) => {
 
           const participante = metadata.participants.find(p => {
             const id = conn.decodeJid ? conn.decodeJid(p.id) : p.id
-            return id === jid
+            const num = id.replace(/[^0-9]/g, '')
+            return num === senderNumber
           })
 
           if (participante?.admin) isAdmin = true
@@ -97,7 +99,7 @@ let handler = async (m, { conn, text, command }) => {
       }
 
       // =====================
-      // ROL
+      // ROL FINAL
       // =====================
       let rol = 'Usuario 👤'
 
@@ -106,7 +108,7 @@ let handler = async (m, { conn, text, command }) => {
       else if (isAdmin) rol = 'Admin 🛡️'
 
       // =====================
-      // TEXTO
+      // TEXTO PERFIL
       // =====================
       const textoPerfil = `
 👤 *PERFIL DE USUARIO*
@@ -123,7 +125,7 @@ let handler = async (m, { conn, text, command }) => {
 `.trim()
 
       // =====================
-      // FOTO PERFIL SEGURA
+      // FOTO PERFIL
       // =====================
       let ppUrl = null
 
@@ -152,9 +154,7 @@ let handler = async (m, { conn, text, command }) => {
 
   } catch (err) {
     console.error('Perfil error:', err)
-
-    // 🔥 fallback absoluto
-    m.reply('⚠️ No se pudo cargar completamente el perfil, pero el bot sigue funcionando.')
+    m.reply('⚠️ Error al cargar el perfil.')
   }
 }
 
