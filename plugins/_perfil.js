@@ -1,20 +1,22 @@
-// 📂 plugins/perfil.js — PERFIL FelixCat 🐾 ROLES + INSIGNIAS + Contador de mensajes y fecha de ingreso correcta
+// 📂 plugins/perfil.js — PERFIL FelixCat 🐾 FUNCIONAL TOTAL
 
 let handler = async (m, { conn, text, command }) => {
   try {
+
     const jid = conn.decodeJid ? conn.decodeJid(m.sender) : m.sender
     const username = jid.split('@')[0]
 
     // =====================
     // DATABASE
     // =====================
+
     if (!global.db.data) global.db.data = {}
     if (!global.db.data.users) global.db.data.users = {}
 
     if (!global.db.data.users[jid]) {
       global.db.data.users[jid] = {
         registered: Date.now(),
-        joinGroup: m.isGroup ? Date.now() : null, // Fecha de ingreso inicial
+        joinGroup: m.isGroup ? Date.now() : null,
         insignias: [],
         mensajes: 0
       }
@@ -23,34 +25,23 @@ let handler = async (m, { conn, text, command }) => {
     let user = global.db.data.users[jid]
 
     // =====================
-    // CONTADOR DE MENSAJES
+    // CONTADOR MENSAJES
     // =====================
-    // Contar todos los mensajes
+
     user.mensajes = (user.mensajes || 0) + 1
 
     // =====================
-    // ACTUALIZAR FECHA DE INGRESO REAL
+    // FECHA INGRESO GRUPO
     // =====================
-    if (m.isGroup) {
-      try {
-        const meta = await conn.groupMetadata(m.chat)
-        const participante = meta.participants.find(u => {
-          const id = conn.decodeJid ? conn.decodeJid(u.id) : u.id
-          return id === jid
-        })
-        if (participante && participante.joinedTimestamp) {
-          user.joinGroup = participante.joinedTimestamp
-        } else if (!user.joinGroup) {
-          user.joinGroup = Date.now()
-        }
-      } catch {
-        if (!user.joinGroup) user.joinGroup = Date.now()
-      }
+
+    if (m.isGroup && !user.joinGroup) {
+      user.joinGroup = Date.now()
     }
 
     // =====================
     // FUNCIONES FECHA
     // =====================
+
     const calcularEdad = (fecha) => {
       try {
         const [d, m, a] = fecha.split('/').map(Number)
@@ -69,16 +60,12 @@ let handler = async (m, { conn, text, command }) => {
 
     const diasParaCumple = (fecha) => {
       try {
-        const partes = fecha.split('/')
-        if (partes.length < 2) return null
-        const d = Number(partes[0])
-        const m = Number(partes[1])
+        const [d, m] = fecha.split('/').map(Number)
         if (!d || !m) return null
         const hoy = new Date()
-        const hoyBase = new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate())
         let cumple = new Date(hoy.getFullYear(), m - 1, d)
-        if (cumple < hoyBase) cumple = new Date(hoy.getFullYear() + 1, m - 1, d)
-        return Math.floor((cumple - hoyBase) / 86400000)
+        if (cumple < hoy) cumple.setFullYear(hoy.getFullYear() + 1)
+        return Math.ceil((cumple - hoy) / 86400000)
       } catch {
         return null
       }
@@ -87,6 +74,7 @@ let handler = async (m, { conn, text, command }) => {
     // =====================
     // TARGET
     // =====================
+
     const getTarget = () => {
       if (m.mentionedJid && m.mentionedJid.length) return m.mentionedJid[0]
       if (m.quoted && m.quoted.sender) return m.quoted.sender
@@ -94,19 +82,24 @@ let handler = async (m, { conn, text, command }) => {
     }
 
     // =====================
-    // OWNER DETECCION
+    // OWNER
     // =====================
+
     const senderNumber = jid.replace(/[^0-9]/g, '')
+
     const ownerNumbers = (global.owner || []).map(v => {
       if (Array.isArray(v)) v = v[0]
       return String(v).replace(/[^0-9]/g, '')
     })
+
     const isRealOwner = ownerNumbers.includes(senderNumber)
 
     // =====================
-    // ADMIN DETECCION
+    // ADMIN
     // =====================
+
     let isAdmin = false
+
     if (m.isGroup) {
       try {
         const meta = await conn.groupMetadata(m.chat)
@@ -122,6 +115,7 @@ let handler = async (m, { conn, text, command }) => {
     // =====================
     // COMANDOS
     // =====================
+
     if (command === 'setbr') {
       if (!text) return m.reply('✏️ Uso:\n.setbr 31/12/1998')
       user.birth = text.trim()
@@ -135,22 +129,34 @@ let handler = async (m, { conn, text, command }) => {
     }
 
     // =====================
-    // SOLO OWNERS PARA INSIGNIAS
+    // OTORGAR INSIGNIA
     // =====================
+
     if (command === 'otorgar') {
-      if (!isRealOwner) return m.reply('❌ Solo los dueños del bot pueden usar este comando.')
+
+      if (!isRealOwner)
+        return m.reply('❌ Solo los dueños pueden usar este comando.')
 
       const target = getTarget()
-      if (!target) return m.reply('✏️ Menciona o responde.')
+      if (!target) return m.reply('✏️ Menciona o responde al usuario.')
+
       const nombre = text.replace(/@\d+/g, '').trim()
       if (!nombre) return m.reply('✏️ Escribe la insignia.')
 
-      if (!global.db.data.users[target]) global.db.data.users[target] = { registered: Date.now(), insignias: [], mensajes: 0 }
+      if (!global.db.data.users[target]) {
+        global.db.data.users[target] = {
+          registered: Date.now(),
+          insignias: [],
+          mensajes: 0
+        }
+      }
 
       let tu = global.db.data.users[target]
+
       if (!tu.insignias) tu.insignias = []
 
-      if (!tu.insignias.includes(nombre)) tu.insignias.push(nombre)
+      if (!tu.insignias.includes(nombre))
+        tu.insignias.push(nombre)
 
       return conn.reply(
         m.chat,
@@ -160,80 +166,130 @@ let handler = async (m, { conn, text, command }) => {
       )
     }
 
+    // =====================
+    // QUITAR INSIGNIA (FIX)
+    // =====================
+
     if (command === 'quitar') {
-      if (!isRealOwner) return m.reply('❌ Solo los dueños del bot pueden usar este comando.')
+
+      if (!isRealOwner)
+        return m.reply('❌ Solo los dueños pueden usar este comando.')
 
       const target = getTarget()
-      if (!target) return m.reply('✏️ Menciona o responde.')
-      const nombre = text.replace(/@\d+/g, '').trim()
+      if (!target) return m.reply('✏️ Menciona o responde al usuario.')
+
+      const nombre = text.replace(/@\d+/g, '').trim().toLowerCase()
+      if (!nombre) return m.reply('✏️ Escribe la insignia a quitar.')
+
       let tu = global.db.data.users[target]
 
-      if (!tu || !tu.insignias || !tu.insignias.length) return m.reply('No tiene insignias.')
+      if (!tu || !tu.insignias || !tu.insignias.length)
+        return m.reply('❌ Ese usuario no tiene insignias.')
 
-      tu.insignias = tu.insignias.filter(i => i.toLowerCase() !== nombre.toLowerCase())
-      return m.reply('✅ Insignia eliminada.')
-    }
+      const antes = tu.insignias.length
 
-    if (command === 'verinsignias') {
-      if (!isRealOwner) return m.reply('❌ Solo los dueños del bot pueden usar este comando.')
+      tu.insignias = tu.insignias.filter(i =>
+        i.toLowerCase() !== nombre
+      )
 
-      const target = getTarget() || jid
-      let tu = global.db.data.users[target]
-
-      if (!tu || !tu.insignias || !tu.insignias.length) return m.reply('No tiene insignias.')
+      if (antes === tu.insignias.length)
+        return m.reply('⚠️ No se encontró esa insignia.')
 
       return conn.reply(
         m.chat,
-        `🏅 Insignias de @${target.split('@')[0]}\n\n${tu.insignias.join('\n')}`,
+        `🗑️ Insignia eliminada\n\n👤 @${target.split('@')[0]}\n🎖️ ${nombre}`,
         m,
         { mentions: [target] }
       )
     }
 
     // =====================
+    // VER INSIGNIAS GLOBAL
+    // =====================
+
+    if (command === 'verinsignias') {
+
+      if (!isRealOwner)
+        return m.reply('❌ Solo los dueños pueden usar este comando.')
+
+      let lista = []
+
+      for (let id in global.db.data.users) {
+        let u = global.db.data.users[id]
+        if (u.insignias && u.insignias.length) {
+          lista.push(`👤 @${id.split('@')[0]}\n🏅 ${u.insignias.join(', ')}`)
+        }
+      }
+
+      if (!lista.length)
+        return m.reply('❌ Nadie tiene insignias.')
+
+      return conn.reply(
+        m.chat,
+        `🏅 *USUARIOS CON INSIGNIAS*\n\n${lista.join('\n\n')}`,
+        m,
+        {
+          mentions: Object.keys(global.db.data.users)
+        }
+      )
+    }
+
+    // =====================
     // PERFIL
     // =====================
+
     if (command === 'perfil') {
+
       const nacimiento = user.birth || 'No registrado'
       const bio = user.bio || 'Sin biografía'
+
       const edad = user.birth ? calcularEdad(user.birth) : null
       const edadTexto = edad !== null ? edad + ' años' : 'No disponible'
+
       const dias = user.birth ? diasParaCumple(user.birth) : null
+
       let cumpleTexto = 'No disponible'
 
       if (dias !== null) {
-        if (dias === 0) cumpleTexto = '🎉 Hoy es su cumpleaños'
-        else if (dias === 1) cumpleTexto = '⏳ Falta 1 día'
-        else cumpleTexto = '⏳ Faltan ' + dias + ' días'
+        if (dias <= 0) cumpleTexto = '🎉 Hoy'
+        else cumpleTexto = `⏳ ${dias} días`
       }
 
-      // INSIGNIAS AUTOMATICAS
+      // INSIGNIAS AUTO
+
       let insignias = []
-      if (isRealOwner) insignias.push('👑 Dueño del Bot')
-      if (isAdmin) insignias.push('🛡️ Administrador')
-      if (user.insignias && user.insignias.length) insignias.push(...user.insignias)
+
+      if (isRealOwner) insignias.push('👑 Dueño')
+      if (isAdmin) insignias.push('🛡️ Admin')
+
+      if (user.insignias && user.insignias.length)
+        insignias.push(...user.insignias)
+
       if (!insignias.length) insignias.push('Ninguna')
 
       // ROL
+
       let rol = 'Usuario 👤'
+
       if (isRealOwner && isAdmin) rol = 'Dueño 👑 | Admin 🛡️'
       else if (isRealOwner) rol = 'Dueño 👑'
       else if (isAdmin) rol = 'Admin 🛡️'
 
-      // =====================
-      // FECHA DE INGRESO
-      // =====================
+      // INGRESO
+
       let ingresoTexto = 'No disponible'
+
       if (user.joinGroup) {
         const ingreso = new Date(user.joinGroup)
         const hoy = new Date()
         const diasGrupo = Math.floor((hoy - ingreso) / 86400000)
-        ingresoTexto = `${ingreso.toLocaleDateString()} (${diasGrupo} días en el grupo)`
+
+        ingresoTexto =
+          `${ingreso.toLocaleDateString()} (${diasGrupo} días)`
       }
 
-      // =====================
-      // TEXTO FINAL
-      // =====================
+      // TEXTO
+
       const txt = `
 👤 *PERFIL DE USUARIO*
 
@@ -247,26 +303,36 @@ ${insignias.join('\n')}
 🎉 Edad: ${edadTexto}
 🎂 Cumple en: ${cumpleTexto}
 
-📥 Ingresó al grupo: ${ingresoTexto}
-✉️ Mensajes enviados: ${user.mensajes}
+📥 Ingreso: ${ingresoTexto}
+✉️ Mensajes: ${user.mensajes}
 
 📝 Bio: ${bio}
 `.trim()
 
       let pp = null
-      try { pp = await conn.profilePictureUrl(jid, 'image') } catch {}
+      try {
+        pp = await conn.profilePictureUrl(jid, 'image')
+      } catch {}
 
       if (pp) {
-        await conn.sendMessage(m.chat, {
-          image: { url: pp },
-          caption: txt,
-          mentions: [jid]
-        }, { quoted: m })
+        await conn.sendMessage(
+          m.chat,
+          {
+            image: { url: pp },
+            caption: txt,
+            mentions: [jid]
+          },
+          { quoted: m }
+        )
       } else {
-        await conn.sendMessage(m.chat, {
-          text: txt,
-          mentions: [jid]
-        }, { quoted: m })
+        await conn.sendMessage(
+          m.chat,
+          {
+            text: txt,
+            mentions: [jid]
+          },
+          { quoted: m }
+        )
       }
     }
 
