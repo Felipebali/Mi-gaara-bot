@@ -1,4 +1,4 @@
-// 📂 plugins/perfil.js — PERFIL FelixCat 🐾 FUNCIONAL TOTAL
+// 📂 plugins/perfil.js — PERFIL FelixCat 🐾 COMPATIBLE TOTAL
 
 let handler = async (m, { conn, text, command }) => {
 
@@ -8,14 +8,16 @@ let handler = async (m, { conn, text, command }) => {
     const username = jid.split('@')[0]
 
     // =====================
-    // DATABASE
+    // DATABASE SEGURA
     // =====================
-    global.db.data ||= {}
-    global.db.data.users ||= {}
+    if (!global.db.data) global.db.data = {}
+    if (!global.db.data.users) global.db.data.users = {}
 
-    global.db.data.users[jid] ||= {
-      registered: Date.now(),
-      insignias: []
+    if (!global.db.data.users[jid]) {
+      global.db.data.users[jid] = {
+        registered: Date.now(),
+        insignias: []
+      }
     }
 
     let user = global.db.data.users[jid]
@@ -45,7 +47,12 @@ let handler = async (m, { conn, text, command }) => {
 
     const diasParaCumple = (fecha) => {
       try {
-        const [d, m] = fecha.split('/').map(Number)
+        const partes = fecha.split('/')
+        if (partes.length < 2) return null
+
+        const d = Number(partes[0])
+        const m = Number(partes[1])
+
         if (!d || !m) return null
 
         const hoy = new Date()
@@ -70,10 +77,10 @@ let handler = async (m, { conn, text, command }) => {
     // TARGET
     // =====================
     const getTarget = () => {
-      if (m.mentionedJid?.length)
+      if (m.mentionedJid && m.mentionedJid.length)
         return m.mentionedJid[0]
 
-      if (m.quoted?.sender)
+      if (m.quoted && m.quoted.sender)
         return m.quoted.sender
 
       return null
@@ -107,14 +114,16 @@ let handler = async (m, { conn, text, command }) => {
       if (!nombre)
         return m.reply('✏️ Escribe la insignia.')
 
-      global.db.data.users[target] ||= {
-        registered: Date.now(),
-        insignias: []
+      if (!global.db.data.users[target]) {
+        global.db.data.users[target] = {
+          registered: Date.now(),
+          insignias: []
+        }
       }
 
       let tu = global.db.data.users[target]
 
-      tu.insignias ||= []
+      if (!tu.insignias) tu.insignias = []
 
       if (!tu.insignias.includes(nombre))
         tu.insignias.push(nombre)
@@ -137,7 +146,7 @@ let handler = async (m, { conn, text, command }) => {
 
       let tu = global.db.data.users[target]
 
-      if (!tu?.insignias?.length)
+      if (!tu || !tu.insignias || !tu.insignias.length)
         return m.reply('No tiene insignias.')
 
       tu.insignias =
@@ -154,7 +163,7 @@ let handler = async (m, { conn, text, command }) => {
 
       let tu = global.db.data.users[target]
 
-      if (!tu?.insignias?.length)
+      if (!tu || !tu.insignias || !tu.insignias.length)
         return m.reply('No tiene insignias.')
 
       return conn.reply(
@@ -175,7 +184,7 @@ let handler = async (m, { conn, text, command }) => {
       const bio = user.bio || 'Sin biografía'
 
       const edad = user.birth ? calcularEdad(user.birth) : null
-      const edadTexto = edad !== null ? `${edad} años` : 'No disponible'
+      const edadTexto = edad !== null ? edad + ' años' : 'No disponible'
 
       const dias = user.birth ? diasParaCumple(user.birth) : null
 
@@ -184,12 +193,13 @@ let handler = async (m, { conn, text, command }) => {
       if (dias !== null) {
         if (dias === 0) cumpleTexto = '🎉 Hoy es su cumpleaños'
         else if (dias === 1) cumpleTexto = '⏳ Falta 1 día'
-        else cumpleTexto = `⏳ Faltan ${dias} días`
+        else cumpleTexto = '⏳ Faltan ' + dias + ' días'
       }
 
-      const insignias = user.insignias?.length
-        ? user.insignias.join('\n')
-        : 'Ninguna'
+      const insignias =
+        user.insignias && user.insignias.length
+          ? user.insignias.join('\n')
+          : 'Ninguna'
 
       const txt = `
 👤 *PERFIL*
@@ -227,7 +237,7 @@ ${insignias}
 
   } catch (e) {
     console.error(e)
-    m.reply('⚠️ Error.')
+    m.reply('⚠️ Error en perfil.')
   }
 }
 
