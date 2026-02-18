@@ -1,4 +1,4 @@
-// 📂 plugins/perfil.js — PERFIL FelixCat 🐾 CON INSIGNIAS MANUALES
+// 📂 plugins/perfil.js — PERFIL FelixCat 🐾 INSIGNIAS + CUMPLE FIX
 
 let handler = async (m, { conn, text, command, isOwner }) => {
   try {
@@ -47,15 +47,34 @@ let handler = async (m, { conn, text, command, isOwner }) => {
         if (!d || !m) return null
 
         const hoy = new Date()
+        const hoySinHora = new Date(
+          hoy.getFullYear(),
+          hoy.getMonth(),
+          hoy.getDate()
+        )
+
         let cumple = new Date(hoy.getFullYear(), m - 1, d)
 
-        if (cumple < hoy)
+        if (cumple < hoySinHora)
           cumple = new Date(hoy.getFullYear() + 1, m - 1, d)
 
-        return Math.ceil((cumple - hoy) / 86400000)
+        return Math.floor((cumple - hoySinHora) / 86400000)
       } catch {
         return null
       }
+    }
+
+    // =====================
+    // FUNCION TARGET
+    // =====================
+    const getTarget = () => {
+      if (m.mentionedJid?.length)
+        return m.mentionedJid[0]
+
+      if (m.quoted?.sender)
+        return m.quoted.sender
+
+      return null
     }
 
     // =====================
@@ -77,51 +96,59 @@ let handler = async (m, { conn, text, command, isOwner }) => {
     }
 
     // =====================
-    // OTORGAR INSIGNIA
+    // OTORGAR
     // =====================
     if (command === 'otorgar') {
 
       if (!isOwner)
         return m.reply('❌ Solo los dueños del bot pueden otorgar insignias.')
 
-      let target = m.mentionedJid?.[0]
-      if (!target) return m.reply('✏️ Menciona un usuario.')
+      const target = getTarget()
+      if (!target)
+        return m.reply('✏️ Menciona o responde al usuario.')
 
-      global.db.data.users[target] ||= { registered: Date.now(), insignias: [] }
+      const nombre = text.replace(/@\d+/g, '').trim()
+      if (!nombre)
+        return m.reply('✏️ Escribe el nombre de la insignia.')
+
+      global.db.data.users[target] ||= {
+        registered: Date.now(),
+        insignias: []
+      }
 
       let targetUser = global.db.data.users[target]
       targetUser.insignias ||= []
 
-      let nombre = text.replace(/@\d+/g, '').trim()
-      if (!nombre) return m.reply('✏️ Escribe el nombre de la insignia.')
+      if (!targetUser.insignias.includes(nombre))
+        targetUser.insignias.push(nombre)
 
-      targetUser.insignias.push(nombre)
-
-      return m.reply(`
-🏅 Insignia otorgada
-
-👤 @${target.split('@')[0]}
-🎖️ ${nombre}
-`.trim(), null, { mentions: [target] })
+      return conn.reply(
+        m.chat,
+        `🏅 Insignia otorgada\n\n👤 @${target.split('@')[0]}\n🎖️ ${nombre}`,
+        m,
+        { mentions: [target] }
+      )
     }
 
     // =====================
-    // QUITAR INSIGNIA
+    // QUITAR
     // =====================
     if (command === 'quitar') {
 
       if (!isOwner)
         return m.reply('❌ Solo los dueños del bot pueden quitar insignias.')
 
-      let target = m.mentionedJid?.[0]
-      if (!target) return m.reply('✏️ Menciona un usuario.')
+      const target = getTarget()
+      if (!target)
+        return m.reply('✏️ Menciona o responde al usuario.')
+
+      const nombre = text.replace(/@\d+/g, '').trim()
+      if (!nombre)
+        return m.reply('✏️ Escribe la insignia a quitar.')
 
       let targetUser = global.db.data.users[target]
       if (!targetUser?.insignias?.length)
         return m.reply('Este usuario no tiene insignias.')
-
-      let nombre = text.replace(/@\d+/g, '').trim()
-      if (!nombre) return m.reply('✏️ Escribe la insignia a quitar.')
 
       targetUser.insignias =
         targetUser.insignias.filter(i =>
@@ -136,17 +163,18 @@ let handler = async (m, { conn, text, command, isOwner }) => {
     // =====================
     if (command === 'verinsignias') {
 
-      let target = m.mentionedJid?.[0] || jid
-      let targetUser = global.db.data.users[target]
+      const target = getTarget() || jid
 
+      let targetUser = global.db.data.users[target]
       if (!targetUser?.insignias?.length)
         return m.reply('No tiene insignias.')
 
-      return m.reply(`
-🏅 Insignias de @${target.split('@')[0]}
-
-${targetUser.insignias.join('\n')}
-`.trim(), null, { mentions: [target] })
+      return conn.reply(
+        m.chat,
+        `🏅 Insignias de @${target.split('@')[0]}\n\n${targetUser.insignias.join('\n')}`,
+        m,
+        { mentions: [target] }
+      )
     }
 
     // =====================
@@ -161,16 +189,16 @@ ${targetUser.insignias.join('\n')}
       const edadTexto = edad !== null ? `${edad} años` : 'No disponible'
 
       const dias = user.birth ? diasParaCumple(user.birth) : null
+
       let cumpleTexto = 'No disponible'
 
       if (dias !== null) {
         if (dias === 0) cumpleTexto = '🎉 Hoy es su cumpleaños'
-        else cumpleTexto = `${dias} días`
+        else if (dias === 1) cumpleTexto = '⏳ Falta 1 día'
+        else cumpleTexto = `⏳ Faltan ${dias} días`
       }
 
-      // =====================
       // OWNER
-      // =====================
       const senderNumber = jid.replace(/[^0-9]/g, '')
 
       const ownerNumbers = (global.owner || []).map(v => {
@@ -180,9 +208,7 @@ ${targetUser.insignias.join('\n')}
 
       const isRealOwner = ownerNumbers.includes(senderNumber)
 
-      // =====================
       // ADMIN
-      // =====================
       let isAdmin = false
 
       if (m.isGroup) {
@@ -199,9 +225,7 @@ ${targetUser.insignias.join('\n')}
         } catch {}
       }
 
-      // =====================
       // INSIGNIAS
-      // =====================
       user.insignias ||= []
 
       let insignias = []
@@ -209,25 +233,19 @@ ${targetUser.insignias.join('\n')}
       if (isRealOwner) insignias.push('👑 Dueño del Bot')
       if (isAdmin) insignias.push('🛡️ Administrador')
 
-      // manuales
       if (user.insignias.length)
         insignias.push(...user.insignias)
 
       if (!insignias.length)
         insignias.push('Ninguna')
 
-      // =====================
       // ROL
-      // =====================
       let rol = 'Usuario 👤'
 
       if (isRealOwner && isAdmin) rol = 'Dueño 👑 | Admin 🛡️'
       else if (isRealOwner) rol = 'Dueño 👑'
       else if (isAdmin) rol = 'Admin 🛡️'
 
-      // =====================
-      // TEXTO PERFIL
-      // =====================
       const textoPerfil = `
 👤 *PERFIL DE USUARIO*
 
@@ -246,9 +264,6 @@ ${insignias.join('\n')}
 📅 Hoy: ${new Date().toLocaleDateString()}
 `.trim()
 
-      // =====================
-      // FOTO PERFIL
-      // =====================
       let ppUrl = null
 
       try {
@@ -270,8 +285,8 @@ ${insignias.join('\n')}
     }
 
   } catch (err) {
-    console.error('Perfil error:', err)
-    m.reply('⚠️ Error al cargar el perfil.')
+    console.error(err)
+    m.reply('⚠️ Error en perfil.')
   }
 }
 
@@ -287,8 +302,8 @@ handler.command = [
 handler.tags = ['info']
 handler.help = [
   'perfil',
-  'setbr',
-  'bio',
+  'setbr 31/12/1998',
+  'bio texto',
   'otorgar @user Insignia',
   'quitar @user Insignia',
   'verinsignias @user'
