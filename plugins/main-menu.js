@@ -35,6 +35,16 @@ let handler = async (m, { conn }) => {
 ┃ 📝 *.bio texto* – Biografía personal
 ┗━━━━━━━━━━━━━━━━━━━━━┛
 
+┏━━━ 💕 *RELACIONES* ━━━┓
+┃ 💘 *.pareja @usuario* – Proponer relación
+┃ ✅ *.aceptar* – Aceptar propuesta
+┃ ❌ *.rechazar* – Rechazar propuesta
+┃ 💔 *.terminar* – Terminar relación
+┃ 💍 *.casarse* – Casarse (tras 7 días)
+┃ ⚖️ *.divorcio* – Divorciarse
+┃ ❤️ *.relacion* – Ver estado actual
+┗━━━━━━━━━━━━━━━━━━━━━┛
+
 ┏━━━ 📚 *TIPOS DE MENÚ* ━━━┓
 ┃ 🎮 *.menuj*
 ┃ 👥 *.menugp*
