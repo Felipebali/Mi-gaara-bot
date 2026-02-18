@@ -1,4 +1,4 @@
-// 📂 plugins/perfil.js — PERFIL FelixCat 🐾 ZODIACO PRO + GENERO
+// 📂 plugins/perfil.js — PERFIL FelixCat 🐾 ZODIACO PRO + GENERO LIBRE
 
 let handler = async (m, { conn, text, command }) => {
   try {
@@ -18,7 +18,9 @@ let handler = async (m, { conn, text, command }) => {
         registered: Date.now(),
         joinGroup: null,
         insignias: [],
-        genero: null
+        genero: null,
+        birth: null,
+        bio: null
       }
     }
 
@@ -160,24 +162,24 @@ let handler = async (m, { conn, text, command }) => {
       return m.reply('✅ Bio guardada.')
     }
 
+    // ✅ GENERO LIBRE (como bio)
     if (command === 'genero') {
+
       if (!text) {
         return m.reply(
-`✏️ Uso:
+`✏️ Escribe tu género
+
+Ejemplo:
 .genero hombre
 .genero mujer
-.genero otro`
+.genero no binario
+.genero lo que quieras 😸`
         )
       }
 
-      const gen = text.toLowerCase()
+      user.genero = text.trim()
 
-      if (!['hombre', 'mujer', 'otro'].includes(gen))
-        return m.reply('❌ Opciones: hombre | mujer | otro')
-
-      user.genero = gen
-
-      return m.reply(`✅ Género guardado: ${gen}`)
+      return m.reply(`✅ Género guardado:\n${user.genero}`)
     }
 
     if (command === 'otorgar') {
