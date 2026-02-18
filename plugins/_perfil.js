@@ -192,6 +192,29 @@ let handler = async (m, { conn, text, command }) => {
       else if (isRealOwner) rol = 'Dueño 👑'
       else if (isAdmin) rol = 'Admin 🛡️'
 
+      // =====================
+      // FECHA DE INGRESO AL GRUPO
+      // =====================
+      let ingresoTexto = 'No disponible'
+      if (m.isGroup) {
+        try {
+          const meta = await conn.groupMetadata(m.chat)
+          const participante = meta.participants.find(u => {
+            const id = conn.decodeJid ? conn.decodeJid(u.id) : u.id
+            return id === jid
+          })
+          if (participante && participante.joinedTimestamp) {
+            const ingreso = new Date(participante.joinedTimestamp)
+            const hoy = new Date()
+            const diasGrupo = Math.floor((hoy - ingreso) / 86400000)
+            ingresoTexto = `${ingreso.toLocaleDateString()} (${diasGrupo} días en el grupo)`
+          }
+        } catch {}
+      }
+
+      // =====================
+      // TEXTO FINAL
+      // =====================
       const txt = `
 👤 *PERFIL DE USUARIO*
 
@@ -204,6 +227,8 @@ ${insignias.join('\n')}
 🎂 Nacimiento: ${nacimiento}
 🎉 Edad: ${edadTexto}
 🎂 Cumple en: ${cumpleTexto}
+
+📥 Ingresó al grupo: ${ingresoTexto}
 
 📝 Bio: ${bio}
 `.trim()
