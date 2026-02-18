@@ -6,6 +6,15 @@ let handler = async (m, { conn, command }) => {
   if (!db.users) db.users = {}
 
   const sender = m.sender
+
+  const ownerNumbers = (global.owner || []).map(v => {
+    if (Array.isArray(v)) v = v[0]
+    return String(v).replace(/[^0-9]/g, '')
+  })
+
+  const senderNumber = sender.replace(/[^0-9]/g, '')
+  const isOwner = ownerNumbers.includes(senderNumber)
+
   const getUser = (id) => {
     if (!db.users[id]) {
       db.users[id] = {
@@ -257,6 +266,30 @@ let handler = async (m, { conn, command }) => {
     )
   }
 
+  // ========================
+  // 🧹 CLEARSHIP (OWNER)
+  // ========================
+
+  if (command === 'clearship') {
+
+    if (!isOwner)
+      return m.reply('❌ Solo los dueños pueden usar esto.')
+
+    for (let id in db.users) {
+
+      db.users[id].pareja = null
+      db.users[id].estado = 'soltero'
+      db.users[id].propuesta = null
+      db.users[id].propuestaFecha = null
+      db.users[id].relacionFecha = null
+      db.users[id].matrimonioFecha = null
+      db.users[id].amor = 0
+
+    }
+
+    return m.reply('🧹 Todas las relaciones fueron reiniciadas.')
+  }
+
 }
 
 handler.command = [
@@ -267,7 +300,8 @@ handler.command = [
   'casar',
   'divorciar',
   'relacion',
-  'amor'
+  'amor',
+  'clearship'
 ]
 
 export default handler
