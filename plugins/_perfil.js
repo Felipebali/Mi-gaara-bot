@@ -1,25 +1,14 @@
-// 📂 plugins/perfil.js — PERFIL FelixCat 🐾 FIX TOTAL
+// 📂 plugins/perfil.js — PERFIL FelixCat 🐾 FUNCIONAL TOTAL
 
-let handler = async (m, { conn, text, usedPrefix }) => {
+let handler = async (m, { conn, text, command }) => {
+
   try {
 
     const jid = conn.decodeJid ? conn.decodeJid(m.sender) : m.sender
     const username = jid.split('@')[0]
 
     // =====================
-    // DETECTAR COMANDO SEGURO
-    // =====================
-    const body = m.text || ''
-    const prefix = usedPrefix || '.'
-
-    const command = body
-      .slice(prefix.length)
-      .trim()
-      .split(' ')[0]
-      .toLowerCase()
-
-    // =====================
-    // DB SEGURA
+    // DATABASE
     // =====================
     global.db.data ||= {}
     global.db.data.users ||= {}
@@ -56,16 +45,11 @@ let handler = async (m, { conn, text, usedPrefix }) => {
 
     const diasParaCumple = (fecha) => {
       try {
-        const partes = fecha.split('/')
-        if (partes.length < 2) return null
-
-        const d = Number(partes[0])
-        const m = Number(partes[1])
-
+        const [d, m] = fecha.split('/').map(Number)
         if (!d || !m) return null
 
         const hoy = new Date()
-        const hoySinHora = new Date(
+        const hoyBase = new Date(
           hoy.getFullYear(),
           hoy.getMonth(),
           hoy.getDate()
@@ -73,17 +57,17 @@ let handler = async (m, { conn, text, usedPrefix }) => {
 
         let cumple = new Date(hoy.getFullYear(), m - 1, d)
 
-        if (cumple < hoySinHora)
+        if (cumple < hoyBase)
           cumple = new Date(hoy.getFullYear() + 1, m - 1, d)
 
-        return Math.floor((cumple - hoySinHora) / 86400000)
+        return Math.floor((cumple - hoyBase) / 86400000)
       } catch {
         return null
       }
     }
 
     // =====================
-    // FUNCION TARGET
+    // TARGET
     // =====================
     const getTarget = () => {
       if (m.mentionedJid?.length)
@@ -96,26 +80,23 @@ let handler = async (m, { conn, text, usedPrefix }) => {
     }
 
     // =====================
-    // SET NACIMIENTO
+    // COMANDOS
     // =====================
+
     if (command === 'setbr') {
       if (!text) return m.reply('✏️ Uso:\n.setbr 31/12/1998')
+
       user.birth = text.trim()
-      return m.reply('✅ Fecha de nacimiento guardada.')
+      return m.reply('✅ Fecha guardada.')
     }
 
-    // =====================
-    // SET BIO
-    // =====================
     if (command === 'bio') {
-      if (!text) return m.reply('✏️ Uso:\n.bio Hola 😎')
+      if (!text) return m.reply('✏️ Uso:\n.bio texto')
+
       user.bio = text.trim()
-      return m.reply('✅ Biografía guardada.')
+      return m.reply('✅ Bio guardada.')
     }
 
-    // =====================
-    // OTORGAR
-    // =====================
     if (command === 'otorgar') {
 
       const target = getTarget()
@@ -124,17 +105,19 @@ let handler = async (m, { conn, text, usedPrefix }) => {
 
       const nombre = text.replace(/@\d+/g, '').trim()
       if (!nombre)
-        return m.reply('✏️ Escribe el nombre de la insignia.')
+        return m.reply('✏️ Escribe la insignia.')
 
       global.db.data.users[target] ||= {
         registered: Date.now(),
         insignias: []
       }
 
-      let targetUser = global.db.data.users[target]
+      let tu = global.db.data.users[target]
 
-      if (!targetUser.insignias.includes(nombre))
-        targetUser.insignias.push(nombre)
+      tu.insignias ||= []
+
+      if (!tu.insignias.includes(nombre))
+        tu.insignias.push(nombre)
 
       return conn.reply(
         m.chat,
@@ -144,47 +127,39 @@ let handler = async (m, { conn, text, usedPrefix }) => {
       )
     }
 
-    // =====================
-    // QUITAR
-    // =====================
     if (command === 'quitar') {
 
       const target = getTarget()
       if (!target)
-        return m.reply('✏️ Menciona o responde al usuario.')
+        return m.reply('✏️ Menciona o responde.')
 
       const nombre = text.replace(/@\d+/g, '').trim()
-      if (!nombre)
-        return m.reply('✏️ Escribe la insignia a quitar.')
 
-      let targetUser = global.db.data.users[target]
+      let tu = global.db.data.users[target]
 
-      if (!targetUser?.insignias?.length)
-        return m.reply('Este usuario no tiene insignias.')
+      if (!tu?.insignias?.length)
+        return m.reply('No tiene insignias.')
 
-      targetUser.insignias =
-        targetUser.insignias.filter(i =>
+      tu.insignias =
+        tu.insignias.filter(i =>
           i.toLowerCase() !== nombre.toLowerCase()
         )
 
       return m.reply('✅ Insignia eliminada.')
     }
 
-    // =====================
-    // VER INSIGNIAS
-    // =====================
     if (command === 'verinsignias') {
 
       const target = getTarget() || jid
 
-      let targetUser = global.db.data.users[target]
+      let tu = global.db.data.users[target]
 
-      if (!targetUser?.insignias?.length)
+      if (!tu?.insignias?.length)
         return m.reply('No tiene insignias.')
 
       return conn.reply(
         m.chat,
-        `🏅 Insignias de @${target.split('@')[0]}\n\n${targetUser.insignias.join('\n')}`,
+        `🏅 Insignias de @${target.split('@')[0]}\n\n${tu.insignias.join('\n')}`,
         m,
         { mentions: [target] }
       )
@@ -193,6 +168,7 @@ let handler = async (m, { conn, text, usedPrefix }) => {
     // =====================
     // PERFIL
     // =====================
+
     if (command === 'perfil') {
 
       const nacimiento = user.birth || 'No registrado'
@@ -211,16 +187,14 @@ let handler = async (m, { conn, text, usedPrefix }) => {
         else cumpleTexto = `⏳ Faltan ${dias} días`
       }
 
-      user.insignias ||= []
-
-      const insignias = user.insignias.length
+      const insignias = user.insignias?.length
         ? user.insignias.join('\n')
         : 'Ninguna'
 
-      const textoPerfil = `
-👤 *PERFIL DE USUARIO*
+      const txt = `
+👤 *PERFIL*
 
-🆔 Usuario: @${username}
+🆔 @${username}
 
 🏅 Insignias:
 ${insignias}
@@ -230,33 +204,30 @@ ${insignias}
 🎂 Cumple en: ${cumpleTexto}
 
 📝 Bio: ${bio}
-
-📅 Hoy: ${new Date().toLocaleDateString()}
 `.trim()
 
-      let ppUrl = null
-
+      let pp = null
       try {
-        ppUrl = await conn.profilePictureUrl(jid, 'image')
+        pp = await conn.profilePictureUrl(jid, 'image')
       } catch {}
 
-      if (ppUrl) {
+      if (pp) {
         await conn.sendMessage(m.chat, {
-          image: { url: ppUrl },
-          caption: textoPerfil,
+          image: { url: pp },
+          caption: txt,
           mentions: [jid]
         }, { quoted: m })
       } else {
         await conn.sendMessage(m.chat, {
-          text: textoPerfil,
+          text: txt,
           mentions: [jid]
         }, { quoted: m })
       }
     }
 
-  } catch (err) {
-    console.error(err)
-    m.reply('⚠️ Error en perfil.')
+  } catch (e) {
+    console.error(e)
+    m.reply('⚠️ Error.')
   }
 }
 
