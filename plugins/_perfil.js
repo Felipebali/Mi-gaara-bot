@@ -1,6 +1,6 @@
-// 📂 plugins/perfil.js — PERFIL FelixCat 🐾 SIN XP
+// 📂 plugins/perfil.js — PERFIL FelixCat 🐾 CON INSIGNIAS MANUALES
 
-let handler = async (m, { conn, text, command }) => {
+let handler = async (m, { conn, text, command, isOwner }) => {
   try {
 
     const jid = conn.decodeJid ? conn.decodeJid(m.sender) : m.sender
@@ -12,7 +12,8 @@ let handler = async (m, { conn, text, command }) => {
     global.db.data ||= {}
     global.db.data.users ||= {}
     global.db.data.users[jid] ||= {
-      registered: Date.now()
+      registered: Date.now(),
+      insignias: []
     }
 
     let user = global.db.data.users[jid]
@@ -51,8 +52,7 @@ let handler = async (m, { conn, text, command }) => {
         if (cumple < hoy)
           cumple = new Date(hoy.getFullYear() + 1, m - 1, d)
 
-        const diff = Math.ceil((cumple - hoy) / (1000 * 60 * 60 * 24))
-        return diff
+        return Math.ceil((cumple - hoy) / 86400000)
       } catch {
         return null
       }
@@ -74,6 +74,79 @@ let handler = async (m, { conn, text, command }) => {
       if (!text) return m.reply('✏️ Uso:\n.bio Hola 😎')
       user.bio = text.trim()
       return m.reply('✅ Biografía guardada.')
+    }
+
+    // =====================
+    // OTORGAR INSIGNIA
+    // =====================
+    if (command === 'otorgar') {
+
+      if (!isOwner)
+        return m.reply('❌ Solo los dueños del bot pueden otorgar insignias.')
+
+      let target = m.mentionedJid?.[0]
+      if (!target) return m.reply('✏️ Menciona un usuario.')
+
+      global.db.data.users[target] ||= { registered: Date.now(), insignias: [] }
+
+      let targetUser = global.db.data.users[target]
+      targetUser.insignias ||= []
+
+      let nombre = text.replace(/@\d+/g, '').trim()
+      if (!nombre) return m.reply('✏️ Escribe el nombre de la insignia.')
+
+      targetUser.insignias.push(nombre)
+
+      return m.reply(`
+🏅 Insignia otorgada
+
+👤 @${target.split('@')[0]}
+🎖️ ${nombre}
+`.trim(), null, { mentions: [target] })
+    }
+
+    // =====================
+    // QUITAR INSIGNIA
+    // =====================
+    if (command === 'quitar') {
+
+      if (!isOwner)
+        return m.reply('❌ Solo los dueños del bot pueden quitar insignias.')
+
+      let target = m.mentionedJid?.[0]
+      if (!target) return m.reply('✏️ Menciona un usuario.')
+
+      let targetUser = global.db.data.users[target]
+      if (!targetUser?.insignias?.length)
+        return m.reply('Este usuario no tiene insignias.')
+
+      let nombre = text.replace(/@\d+/g, '').trim()
+      if (!nombre) return m.reply('✏️ Escribe la insignia a quitar.')
+
+      targetUser.insignias =
+        targetUser.insignias.filter(i =>
+          i.toLowerCase() !== nombre.toLowerCase()
+        )
+
+      return m.reply('✅ Insignia eliminada.')
+    }
+
+    // =====================
+    // VER INSIGNIAS
+    // =====================
+    if (command === 'verinsignias') {
+
+      let target = m.mentionedJid?.[0] || jid
+      let targetUser = global.db.data.users[target]
+
+      if (!targetUser?.insignias?.length)
+        return m.reply('No tiene insignias.')
+
+      return m.reply(`
+🏅 Insignias de @${target.split('@')[0]}
+
+${targetUser.insignias.join('\n')}
+`.trim(), null, { mentions: [target] })
     }
 
     // =====================
@@ -105,7 +178,7 @@ let handler = async (m, { conn, text, command }) => {
         return String(v).replace(/[^0-9]/g, '')
       })
 
-      const isOwner = ownerNumbers.includes(senderNumber)
+      const isRealOwner = ownerNumbers.includes(senderNumber)
 
       // =====================
       // ADMIN
@@ -127,32 +200,29 @@ let handler = async (m, { conn, text, command }) => {
       }
 
       // =====================
-      // INSIGNIAS AUTOMÁTICAS
+      // INSIGNIAS
       // =====================
+      user.insignias ||= []
+
       let insignias = []
 
-      if (isOwner) insignias.push('👑 Dueño del Bot')
+      if (isRealOwner) insignias.push('👑 Dueño del Bot')
       if (isAdmin) insignias.push('🛡️ Administrador')
-      if (bio && bio !== 'Sin biografía') insignias.push('📝 Perfil Completo')
 
-      if (dias === 0) insignias.push('🎂 Cumpleañero')
+      // manuales
+      if (user.insignias.length)
+        insignias.push(...user.insignias)
 
-      // Usuario nuevo (< 7 días)
-      const diasRegistro = Math.floor((Date.now() - user.registered) / 86400000)
-      if (diasRegistro <= 7) insignias.push('🌱 Nuevo')
-
-      // Usuario activo (si tiene datos guardados)
-      if (user.birth || user.bio) insignias.push('⚡ Activo')
-
-      if (!insignias.length) insignias.push('Ninguna')
+      if (!insignias.length)
+        insignias.push('Ninguna')
 
       // =====================
       // ROL
       // =====================
       let rol = 'Usuario 👤'
 
-      if (isOwner && isAdmin) rol = 'Dueño 👑 | Admin 🛡️'
-      else if (isOwner) rol = 'Dueño 👑'
+      if (isRealOwner && isAdmin) rol = 'Dueño 👑 | Admin 🛡️'
+      else if (isRealOwner) rol = 'Dueño 👑'
       else if (isAdmin) rol = 'Admin 🛡️'
 
       // =====================
@@ -205,8 +275,23 @@ ${insignias.join('\n')}
   }
 }
 
-handler.command = ['perfil', 'setbr', 'bio']
+handler.command = [
+  'perfil',
+  'setbr',
+  'bio',
+  'otorgar',
+  'quitar',
+  'verinsignias'
+]
+
 handler.tags = ['info']
-handler.help = ['perfil', 'setbr', 'bio']
+handler.help = [
+  'perfil',
+  'setbr',
+  'bio',
+  'otorgar @user Insignia',
+  'quitar @user Insignia',
+  'verinsignias @user'
+]
 
 export default handler
