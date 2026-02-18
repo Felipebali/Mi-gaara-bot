@@ -1,4 +1,4 @@
-// 📂 plugins/perfil.js
+// 📂 plugins/perfil.js — PERFIL FelixCat 🐾 SIN XP
 
 let handler = async (m, { conn, text, command }) => {
   try {
@@ -9,14 +9,16 @@ let handler = async (m, { conn, text, command }) => {
     // =====================
     // DB SEGURA
     // =====================
-    global.db.data = global.db.data || {}
-    global.db.data.users = global.db.data.users || {}
-    global.db.data.users[jid] = global.db.data.users[jid] || {}
+    global.db.data ||= {}
+    global.db.data.users ||= {}
+    global.db.data.users[jid] ||= {
+      registered: Date.now()
+    }
 
     let user = global.db.data.users[jid]
 
     // =====================
-    // CALCULAR EDAD
+    // FUNCIONES FECHA
     // =====================
     const calcularEdad = (fecha) => {
       try {
@@ -33,6 +35,24 @@ let handler = async (m, { conn, text, command }) => {
           edad--
 
         return edad
+      } catch {
+        return null
+      }
+    }
+
+    const diasParaCumple = (fecha) => {
+      try {
+        const [d, m] = fecha.split('/').map(Number)
+        if (!d || !m) return null
+
+        const hoy = new Date()
+        let cumple = new Date(hoy.getFullYear(), m - 1, d)
+
+        if (cumple < hoy)
+          cumple = new Date(hoy.getFullYear() + 1, m - 1, d)
+
+        const diff = Math.ceil((cumple - hoy) / (1000 * 60 * 60 * 24))
+        return diff
       } catch {
         return null
       }
@@ -67,8 +87,16 @@ let handler = async (m, { conn, text, command }) => {
       const edad = user.birth ? calcularEdad(user.birth) : null
       const edadTexto = edad !== null ? `${edad} años` : 'No disponible'
 
+      const dias = user.birth ? diasParaCumple(user.birth) : null
+      let cumpleTexto = 'No disponible'
+
+      if (dias !== null) {
+        if (dias === 0) cumpleTexto = '🎉 Hoy es su cumpleaños'
+        else cumpleTexto = `${dias} días`
+      }
+
       // =====================
-      // OWNER DETECCIÓN REAL
+      // OWNER
       // =====================
       const senderNumber = jid.replace(/[^0-9]/g, '')
 
@@ -80,7 +108,7 @@ let handler = async (m, { conn, text, command }) => {
       const isOwner = ownerNumbers.includes(senderNumber)
 
       // =====================
-      // ADMIN DETECCIÓN REAL
+      // ADMIN
       // =====================
       let isAdmin = false
 
@@ -99,12 +127,32 @@ let handler = async (m, { conn, text, command }) => {
       }
 
       // =====================
-      // ROL FINAL
+      // INSIGNIAS AUTOMÁTICAS
+      // =====================
+      let insignias = []
+
+      if (isOwner) insignias.push('👑 Dueño del Bot')
+      if (isAdmin) insignias.push('🛡️ Administrador')
+      if (bio && bio !== 'Sin biografía') insignias.push('📝 Perfil Completo')
+
+      if (dias === 0) insignias.push('🎂 Cumpleañero')
+
+      // Usuario nuevo (< 7 días)
+      const diasRegistro = Math.floor((Date.now() - user.registered) / 86400000)
+      if (diasRegistro <= 7) insignias.push('🌱 Nuevo')
+
+      // Usuario activo (si tiene datos guardados)
+      if (user.birth || user.bio) insignias.push('⚡ Activo')
+
+      if (!insignias.length) insignias.push('Ninguna')
+
+      // =====================
+      // ROL
       // =====================
       let rol = 'Usuario 👤'
 
-      if (isOwner && isAdmin) rol = 'Dueño del bot 👑 | Admin 🛡️'
-      else if (isOwner) rol = 'Dueño del bot 👑'
+      if (isOwner && isAdmin) rol = 'Dueño 👑 | Admin 🛡️'
+      else if (isOwner) rol = 'Dueño 👑'
       else if (isAdmin) rol = 'Admin 🛡️'
 
       // =====================
@@ -116,8 +164,12 @@ let handler = async (m, { conn, text, command }) => {
 🆔 Usuario: @${username}
 ⭐ Rol: ${rol}
 
+🏅 Insignias:
+${insignias.join('\n')}
+
 🎂 Nacimiento: ${nacimiento}
 🎉 Edad: ${edadTexto}
+🎂 Cumple en: ${cumpleTexto}
 
 📝 Bio: ${bio}
 
@@ -131,13 +183,8 @@ let handler = async (m, { conn, text, command }) => {
 
       try {
         ppUrl = await conn.profilePictureUrl(jid, 'image')
-      } catch {
-        ppUrl = null
-      }
+      } catch {}
 
-      // =====================
-      // ENVÍO
-      // =====================
       if (ppUrl) {
         await conn.sendMessage(m.chat, {
           image: { url: ppUrl },
