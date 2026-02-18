@@ -33,7 +33,7 @@ let handler = async (m, { conn }) => {
 ┃ 🪪 *.perfil* – Ver tu perfil
 ┃ 🎂 *.setbr 01/01/2001* – Fecha nacimiento
 ┃ 📝 *.bio texto* – Biografía personal
-┃ 🚻 *.genero hombre/mujer/otro* – Configurar género
+┃ 🚻 *.genero a elección* – Configurar género
 ┗━━━━━━━━━━━━━━━━━━━━━┛
 
 ┏━━━ 💕 *RELACIONES* ━━━┓
