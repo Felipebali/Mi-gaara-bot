@@ -1,4 +1,4 @@
-// 📂 plugins/perfil.js — PERFIL FelixCat 🐾 ULTRA FIX
+// 📂 plugins/perfil.js — PERFIL FelixCat 🐾 ZODIACO PRO
 
 let handler = async (m, { conn, text, command }) => {
   try {
@@ -52,7 +52,7 @@ let handler = async (m, { conn, text, command }) => {
     const isRealOwner = ownerNumbers.includes(senderNumber)
 
     // =====================
-    // ADMIN REAL FIX
+    // ADMIN REAL
     // =====================
 
     let isAdmin = false
@@ -99,6 +99,53 @@ let handler = async (m, { conn, text, command }) => {
     }
 
     // =====================
+    // SIGNO ZODIACAL
+    // =====================
+
+    const obtenerZodiaco = (fecha) => {
+      const [d, m] = fecha.split('/').map(Number)
+      if (!d || !m) return null
+
+      const signos = [
+        { nombre: 'Capricornio ♑', elemento: '🌍 Tierra', personalidad: 'Ambicioso, disciplinado y responsable.' },
+        { nombre: 'Acuario ♒', elemento: '🌪️ Aire', personalidad: 'Original, independiente y visionario.' },
+        { nombre: 'Piscis ♓', elemento: '💧 Agua', personalidad: 'Empático, sensible y creativo.' },
+        { nombre: 'Aries ♈', elemento: '🔥 Fuego', personalidad: 'Valiente, impulsivo y líder natural.' },
+        { nombre: 'Tauro ♉', elemento: '🌍 Tierra', personalidad: 'Paciente, leal y perseverante.' },
+        { nombre: 'Géminis ♊', elemento: '🌪️ Aire', personalidad: 'Comunicativo, curioso y adaptable.' },
+        { nombre: 'Cáncer ♋', elemento: '💧 Agua', personalidad: 'Protector, emocional y familiar.' },
+        { nombre: 'Leo ♌', elemento: '🔥 Fuego', personalidad: 'Carismático, orgulloso y creativo.' },
+        { nombre: 'Virgo ♍', elemento: '🌍 Tierra', personalidad: 'Analítico, perfeccionista y servicial.' },
+        { nombre: 'Libra ♎', elemento: '🌪️ Aire', personalidad: 'Equilibrado, sociable y diplomático.' },
+        { nombre: 'Escorpio ♏', elemento: '💧 Agua', personalidad: 'Intenso, apasionado y misterioso.' },
+        { nombre: 'Sagitario ♐', elemento: '🔥 Fuego', personalidad: 'Aventurero, optimista y sincero.' }
+      ]
+
+      const fechas = [
+        [20,1],[19,2],[21,3],[20,4],[21,5],[21,6],
+        [23,7],[23,8],[23,9],[23,10],[22,11],[22,12]
+      ]
+
+      const index =
+        (m === 1 && d <= 19) ? 0 :
+        (m === 2 && d <= 18) ? 1 :
+        (m === 3 && d <= 20) ? 2 :
+        (m === 4 && d <= 19) ? 3 :
+        (m === 5 && d <= 20) ? 4 :
+        (m === 6 && d <= 20) ? 5 :
+        (m === 7 && d <= 22) ? 6 :
+        (m === 8 && d <= 22) ? 7 :
+        (m === 9 && d <= 22) ? 8 :
+        (m === 10 && d <= 22) ? 9 :
+        (m === 11 && d <= 21) ? 10 :
+        (m === 12 && d <= 21) ? 11 :
+        (m === 12 && d >= 22) || (m === 1 && d >= 20) ? 0 :
+        (m === 2 && d >= 19) ? 2 : 0
+
+      return signos[index]
+    }
+
+    // =====================
     // TARGET
     // =====================
 
@@ -126,8 +173,7 @@ let handler = async (m, { conn, text, command }) => {
 
     if (command === 'otorgar') {
 
-      if (!isRealOwner)
-        return m.reply('❌ Solo los dueños.')
+      if (!isRealOwner) return m.reply('❌ Solo los dueños.')
 
       const target = getTarget()
       if (!target) return m.reply('✏️ Menciona usuario.')
@@ -155,8 +201,7 @@ let handler = async (m, { conn, text, command }) => {
 
     if (command === 'quitar') {
 
-      if (!isRealOwner)
-        return m.reply('❌ Solo los dueños.')
+      if (!isRealOwner) return m.reply('❌ Solo los dueños.')
 
       const target = getTarget()
       if (!target) return m.reply('✏️ Menciona usuario.')
@@ -178,8 +223,7 @@ let handler = async (m, { conn, text, command }) => {
 
     if (command === 'verinsignias') {
 
-      if (!isRealOwner)
-        return m.reply('❌ Solo los dueños.')
+      if (!isRealOwner) return m.reply('❌ Solo los dueños.')
 
       let lista = []
       let mentions = []
@@ -216,10 +260,14 @@ let handler = async (m, { conn, text, command }) => {
       const edadTexto = edad !== null ? edad + ' años' : 'No disponible'
 
       const dias = user.birth ? diasParaCumple(user.birth) : null
+      let cumpleTexto = dias !== null
+        ? (dias <= 0 ? '🎉 Hoy' : `⏳ ${dias} días`)
+        : 'No disponible'
 
-      let cumpleTexto = 'No disponible'
-      if (dias !== null)
-        cumpleTexto = dias <= 0 ? '🎉 Hoy' : `⏳ ${dias} días`
+      const zodiaco = user.birth ? obtenerZodiaco(user.birth) : null
+      const signo = zodiaco?.nombre || 'No disponible'
+      const elemento = zodiaco?.elemento || 'No disponible'
+      const personalidad = zodiaco?.personalidad || 'No disponible'
 
       // INSIGNIAS
 
@@ -236,7 +284,6 @@ let handler = async (m, { conn, text, command }) => {
       // ROL
 
       let rol = 'Usuario 👤'
-
       if (isRealOwner) rol = 'Dueño 👑'
       else if (isAdmin) rol = 'Admin 🛡️'
 
@@ -248,9 +295,7 @@ let handler = async (m, { conn, text, command }) => {
         const ingreso = new Date(user.joinGroup)
         const hoy = new Date()
         const diasGrupo = Math.floor((hoy - ingreso) / 86400000)
-
-        ingresoTexto =
-          `${ingreso.toLocaleDateString()} (${diasGrupo} días)`
+        ingresoTexto = `${ingreso.toLocaleDateString()} (${diasGrupo} días)`
       }
 
       const txt = `
@@ -263,6 +308,10 @@ let handler = async (m, { conn, text, command }) => {
 ${insignias.join('\n')}
 
 🎂 Nacimiento: ${nacimiento}
+♑ Signo: ${signo}
+🌌 Elemento: ${elemento}
+🧠 Personalidad: ${personalidad}
+
 🎉 Edad: ${edadTexto}
 🎂 Cumple en: ${cumpleTexto}
 
@@ -291,7 +340,6 @@ ${insignias.join('\n')}
   }
 }
 
-// 👇 IMPORTANTE PARA CONTAR TODOS LOS MENSAJES
 handler.all = true
 
 handler.command = [
