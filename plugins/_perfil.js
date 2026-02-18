@@ -1,4 +1,4 @@
-// 📂 plugins/perfil.js — PERFIL FelixCat 🐾 FULL FIX
+// 📂 plugins/perfil.js — PERFIL FelixCat 🐾 FIX TOTAL
 
 let handler = async (m, { conn, text, usedPrefix }) => {
   try {
@@ -7,17 +7,23 @@ let handler = async (m, { conn, text, usedPrefix }) => {
     const username = jid.split('@')[0]
 
     // =====================
-    // DETECTAR COMANDO REAL
+    // DETECTAR COMANDO SEGURO
     // =====================
     const body = m.text || ''
-    const command =
-      body.replace(usedPrefix, '').trim().split(' ')[0].toLowerCase()
+    const prefix = usedPrefix || '.'
+
+    const command = body
+      .slice(prefix.length)
+      .trim()
+      .split(' ')[0]
+      .toLowerCase()
 
     // =====================
     // DB SEGURA
     // =====================
     global.db.data ||= {}
     global.db.data.users ||= {}
+
     global.db.data.users[jid] ||= {
       registered: Date.now(),
       insignias: []
@@ -126,7 +132,6 @@ let handler = async (m, { conn, text, usedPrefix }) => {
       }
 
       let targetUser = global.db.data.users[target]
-      targetUser.insignias ||= []
 
       if (!targetUser.insignias.includes(nombre))
         targetUser.insignias.push(nombre)
@@ -153,6 +158,7 @@ let handler = async (m, { conn, text, usedPrefix }) => {
         return m.reply('✏️ Escribe la insignia a quitar.')
 
       let targetUser = global.db.data.users[target]
+
       if (!targetUser?.insignias?.length)
         return m.reply('Este usuario no tiene insignias.')
 
@@ -172,6 +178,7 @@ let handler = async (m, { conn, text, usedPrefix }) => {
       const target = getTarget() || jid
 
       let targetUser = global.db.data.users[target]
+
       if (!targetUser?.insignias?.length)
         return m.reply('No tiene insignias.')
 
@@ -204,10 +211,9 @@ let handler = async (m, { conn, text, usedPrefix }) => {
         else cumpleTexto = `⏳ Faltan ${dias} días`
       }
 
-      // INSIGNIAS
       user.insignias ||= []
 
-      let insignias = user.insignias.length
+      const insignias = user.insignias.length
         ? user.insignias.join('\n')
         : 'Ninguna'
 
