@@ -1,4 +1,4 @@
-// 📂 plugins/perfil.js — PERFIL FelixCat 🐾 FULL FIX
+// 📂 plugins/perfil.js — PERFIL FelixCat 🐾 FINAL FIX
 
 let handler = async (m, { conn, text, command }) => {
   try {
@@ -95,21 +95,38 @@ let handler = async (m, { conn, text, command }) => {
     const isRealOwner = ownerNumbers.includes(senderNumber)
 
     // =====================
-    // ADMIN
+    // ADMIN FIX REAL
     // =====================
 
     let isAdmin = false
 
     if (m.isGroup) {
       try {
-        const meta = await conn.groupMetadata(m.chat)
-        const p = meta.participants.find(u => {
-          const id = conn.decodeJid ? conn.decodeJid(u.id) : u.id
-          return id === jid
+
+        const metadata = await conn.groupMetadata(m.chat)
+
+        const participants = metadata.participants || []
+
+        const userId = conn.decodeJid
+          ? conn.decodeJid(m.sender)
+          : m.sender
+
+        const participant = participants.find(p => {
+          const id = conn.decodeJid
+            ? conn.decodeJid(p.id)
+            : p.id
+          return id === userId
         })
-        if (p && (p.admin === 'admin' || p.admin === 'superadmin'))
-          isAdmin = true
-      } catch {}
+
+        if (participant) {
+          isAdmin =
+            participant.admin === 'admin' ||
+            participant.admin === 'superadmin'
+        }
+
+      } catch (e) {
+        console.log('Error admin:', e)
+      }
     }
 
     // =====================
