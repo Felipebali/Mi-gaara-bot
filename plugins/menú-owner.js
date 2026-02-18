@@ -31,12 +31,10 @@ let handler = async (m, { conn }) => {
 • .gpu — Descargar foto de perfil de usuario 🧑🖼️
 • .gpo — Descargar foto del grupo 🏞️
 
-🛡️ *Administradores*
-• .autoadmin — Dar admin al bot 🧩
-• .dar — Dar admin a todos 🫡
-• .quitar — Quitar admin a todos 🧹
-• .chetar — Activar modo Pro ⚙️
-• .deschetar — Desactivar modo Pro 💤
+🎖️ *Gestión de Insignias (Solo Owner)*
+• .otorgar @user <insignia> — Otorgar insignia 🏅
+• .quitar @user <insignia> — Quitar insignia ❌
+• .verinsignias @user — Ver insignias 📋
 
 🚫 *Lista Negra*
 • .ln @user — Agregar ⚠️
