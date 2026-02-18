@@ -101,8 +101,8 @@ let handler = async (m, { conn, text, command }) => {
       // =====================
       let rol = 'Usuario 👤'
 
-      if (isOwner && isAdmin) rol = 'Dueño 👑 | Admin 🛡️'
-      else if (isOwner) rol = 'Dueño 👑'
+      if (isOwner && isAdmin) rol = 'Dueño del bot 👑 | Admin 🛡️'
+      else if (isOwner) rol = 'Dueño del bot 👑'
       else if (isAdmin) rol = 'Admin 🛡️'
 
       // =====================
