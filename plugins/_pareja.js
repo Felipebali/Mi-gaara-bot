@@ -1,12 +1,32 @@
-// 📂 plugins/parejas.js — Sistema de Parejas FelixCat ❤️💍
+import fs from 'fs'
+import path from 'path'
+
+// 📁 Crear carpeta database automáticamente
+const dir = './database'
+if (!fs.existsSync(dir)) {
+  fs.mkdirSync(dir, { recursive: true })
+}
+
+// 📄 Archivo parejas.json
+const file = path.join(dir, 'parejas.json')
+
+// Crear archivo si no existe
+if (!fs.existsSync(file)) {
+  fs.writeFileSync(file, JSON.stringify({}, null, 2))
+}
+
+// Funciones DB
+const loadDB = () => JSON.parse(fs.readFileSync(file))
+const saveDB = (data) => fs.writeFileSync(file, JSON.stringify(data, null, 2))
 
 let handler = async (m, { conn, command }) => {
 
-  const db = global.db.data
-  if (!db.users) db.users = {}
+  let db = loadDB()
 
   const sender = m.sender
+  const ahora = Date.now()
 
+  // 🔐 Owners globales
   const ownerNumbers = (global.owner || []).map(v => {
     if (Array.isArray(v)) v = v[0]
     return String(v).replace(/[^0-9]/g, '')
@@ -15,9 +35,11 @@ let handler = async (m, { conn, command }) => {
   const senderNumber = sender.replace(/[^0-9]/g, '')
   const isOwner = ownerNumbers.includes(senderNumber)
 
+  // 👤 Crear usuario si no existe
   const getUser = (id) => {
-    if (!db.users[id]) {
-      db.users[id] = {
+
+    if (!db[id]) {
+      db[id] = {
         pareja: null,
         estado: 'soltero',
         propuesta: null,
@@ -27,7 +49,8 @@ let handler = async (m, { conn, command }) => {
         amor: 0
       }
     }
-    return db.users[id]
+
+    return db[id]
   }
 
   const user = getUser(sender)
@@ -38,11 +61,9 @@ let handler = async (m, { conn, command }) => {
     return null
   }
 
-  const ahora = Date.now()
-
-  // ========================
+  // =====================
   // 💌 PROPUESTA
-  // ========================
+  // =====================
 
   if (command === 'pareja') {
 
@@ -55,7 +76,7 @@ let handler = async (m, { conn, command }) => {
     const tu = getUser(target)
 
     if (user.estado !== 'soltero')
-      return m.reply('❌ Ya tienes una relación.')
+      return m.reply('❌ Ya tienes pareja.')
 
     if (tu.estado !== 'soltero')
       return m.reply('❌ Esa persona ya tiene pareja.')
@@ -63,17 +84,19 @@ let handler = async (m, { conn, command }) => {
     tu.propuesta = sender
     tu.propuestaFecha = ahora
 
+    saveDB(db)
+
     return conn.reply(
       m.chat,
-      `💖 @${sender.split('@')[0]} quiere ser tu pareja\n\nResponde con:\n.aceptar o .rechazar`,
+      `💖 @${sender.split('@')[0]} quiere ser pareja de @${target.split('@')[0]} ❤️\n\nResponde:\n.aceptar o .rechazar`,
       m,
-      { mentions: [sender] }
+      { mentions: [sender, target] }
     )
   }
 
-  // ========================
+  // =====================
   // ✅ ACEPTAR
-  // ========================
+  // =====================
 
   if (command === 'aceptar') {
 
@@ -95,17 +118,19 @@ let handler = async (m, { conn, command }) => {
     user.propuesta = null
     user.propuestaFecha = null
 
+    saveDB(db)
+
     return conn.reply(
       m.chat,
-      `💞 Ahora son pareja\n@${sender.split('@')[0]} ❤️ @${proposer.split('@')[0]}`,
+      `💞 ¡Ahora son pareja!\n@${sender.split('@')[0]} ❤️ @${proposer.split('@')[0]}`,
       m,
       { mentions: [sender, proposer] }
     )
   }
 
-  // ========================
+  // =====================
   // ❌ RECHAZAR
-  // ========================
+  // =====================
 
   if (command === 'rechazar') {
 
@@ -117,48 +142,51 @@ let handler = async (m, { conn, command }) => {
     user.propuesta = null
     user.propuestaFecha = null
 
+    saveDB(db)
+
     return conn.reply(
       m.chat,
-      `💔 Rechazaste la propuesta de @${proposer.split('@')[0]}`,
+      `💔 @${sender.split('@')[0]} rechazó a @${proposer.split('@')[0]}`,
       m,
-      { mentions: [proposer] }
+      { mentions: [sender, proposer] }
     )
   }
 
-  // ========================
+  // =====================
   // 💔 TERMINAR
-  // ========================
+  // =====================
 
   if (command === 'terminar') {
 
     if (!user.pareja)
       return m.reply('❌ No tienes pareja.')
 
-    const pareja = getUser(user.pareja)
+    const parejaID = user.pareja
+    const pareja = getUser(parejaID)
 
     pareja.pareja = null
     pareja.estado = 'soltero'
     pareja.relacionFecha = null
     pareja.matrimonioFecha = null
 
-    const ex = user.pareja
-
     user.pareja = null
     user.estado = 'soltero'
     user.relacionFecha = null
     user.matrimonioFecha = null
 
+    saveDB(db)
+
     return conn.reply(
       m.chat,
-      `💔 Relación terminada\n@${sender.split('@')[0]} y @${ex.split('@')[0]}`,
+      `💔 Relación terminada\n@${sender.split('@')[0]} 💔 @${parejaID.split('@')[0]}`,
       m,
-      { mentions: [sender, ex] }
+      { mentions: [sender, parejaID] }
     )
   }
 
-  // ========================
+  // =====================
   // 💍 CASARSE
-  // ========================
+  // =====================
 
   if (command === 'casar') {
 
@@ -181,6 +209,8 @@ let handler = async (m, { conn, command }) => {
     user.matrimonioFecha = ahora
     pareja.matrimonioFecha = ahora
 
+    saveDB(db)
+
     return conn.reply(
       m.chat,
       `💍 ¡Se casaron!\n@${sender.split('@')[0]} ❤️ @${user.pareja.split('@')[0]}`,
@@ -189,17 +219,17 @@ let handler = async (m, { conn, command }) => {
     )
   }
 
-  // ========================
+  // =====================
   // ⚖️ DIVORCIO
-  // ========================
+  // =====================
 
   if (command === 'divorciar') {
 
     if (user.estado !== 'casados')
       return m.reply('❌ No estás casado.')
 
-    const pareja = getUser(user.pareja)
-    const ex = user.pareja
+    const parejaID = user.pareja
+    const pareja = getUser(parejaID)
 
     pareja.pareja = null
     pareja.estado = 'soltero'
@@ -211,83 +241,65 @@ let handler = async (m, { conn, command }) => {
     user.matrimonioFecha = null
     user.relacionFecha = null
 
+    saveDB(db)
+
     return conn.reply(
       m.chat,
-      `⚖️ Divorcio realizado\n@${sender.split('@')[0]} 💔 @${ex.split('@')[0]}`,
+      `⚖️ Divorcio realizado\n@${sender.split('@')[0]} 💔 @${parejaID.split('@')[0]}`,
       m,
-      { mentions: [sender, ex] }
+      { mentions: [sender, parejaID] }
     )
   }
 
-  // ========================
+  // =====================
   // ❤️ AMOR
-  // ========================
+  // =====================
 
   if (command === 'amor') {
 
     if (!user.pareja)
       return m.reply('❌ No tienes pareja.')
 
-    user.amor = (user.amor || 0) + 10
+    user.amor += 10
+
+    saveDB(db)
 
     return m.reply(`❤️ Amor aumentado\nNivel: ${user.amor}`)
   }
 
-  // ========================
+  // =====================
   // 📊 RELACION
-  // ========================
+  // =====================
 
   if (command === 'relacion') {
 
     if (!user.pareja)
       return m.reply('❌ Estás soltero.')
 
-    const pareja = user.pareja
-    const estado = user.estado
-
+    const parejaID = user.pareja
     const dias = Math.floor((ahora - user.relacionFecha) / 86400000)
-
-    let txt = `
-💑 RELACIÓN
-
-👤 Tú: @${sender.split('@')[0]}
-❤️ Pareja: @${pareja.split('@')[0]}
-
-💞 Estado: ${estado}
-📅 Días juntos: ${dias}
-❤️ Amor: ${user.amor || 0}
-`.trim()
 
     return conn.reply(
       m.chat,
-      txt,
+      `💑 RELACIÓN\n\n👤 @${sender.split('@')[0]}\n❤️ @${parejaID.split('@')[0]}\n\n💞 Estado: ${user.estado}\n📅 Días juntos: ${dias}\n❤️ Amor: ${user.amor}`,
       m,
-      { mentions: [sender, pareja] }
+      { mentions: [sender, parejaID] }
     )
   }
 
-  // ========================
+  // =====================
   // 🧹 CLEARSHIP (OWNER)
-  // ========================
+  // =====================
 
   if (command === 'clearship') {
 
     if (!isOwner)
       return m.reply('❌ Solo los dueños pueden usar esto.')
 
-    for (let id in db.users) {
+    db = {}
+    saveDB(db)
 
-      db.users[id].pareja = null
-      db.users[id].estado = 'soltero'
-      db.users[id].propuesta = null
-      db.users[id].propuestaFecha = null
-      db.users[id].relacionFecha = null
-      db.users[id].matrimonioFecha = null
-      db.users[id].amor = 0
-
-    }
-
-    return m.reply('🧹 Todas las relaciones fueron reiniciadas.')
+    return m.reply('🧹 Todas las relaciones fueron borradas.')
   }
 
 }
