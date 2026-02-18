@@ -1,4 +1,4 @@
-// 📂 plugins/perfil.js — PERFIL FelixCat 🐾 ZODIACO PRO
+// 📂 plugins/perfil.js — PERFIL FelixCat 🐾 ZODIACO PRO + GENERO
 
 let handler = async (m, { conn, text, command }) => {
   try {
@@ -17,7 +17,8 @@ let handler = async (m, { conn, text, command }) => {
       global.db.data.users[jid] = {
         registered: Date.now(),
         joinGroup: null,
-        insignias: []
+        insignias: [],
+        genero: null
       }
     }
 
@@ -159,6 +160,26 @@ let handler = async (m, { conn, text, command }) => {
       return m.reply('✅ Bio guardada.')
     }
 
+    if (command === 'genero') {
+      if (!text) {
+        return m.reply(
+`✏️ Uso:
+.genero hombre
+.genero mujer
+.genero otro`
+        )
+      }
+
+      const gen = text.toLowerCase()
+
+      if (!['hombre', 'mujer', 'otro'].includes(gen))
+        return m.reply('❌ Opciones: hombre | mujer | otro')
+
+      user.genero = gen
+
+      return m.reply(`✅ Género guardado: ${gen}`)
+    }
+
     if (command === 'otorgar') {
 
       if (!isRealOwner) return m.reply('❌ Solo los dueños.')
@@ -243,6 +264,7 @@ let handler = async (m, { conn, text, command }) => {
 
       const nacimiento = user.birth || 'No registrado'
       const bio = user.bio || 'Sin biografía'
+      const genero = user.genero || 'No definido'
 
       const edad = user.birth ? calcularEdad(user.birth) : null
       const edadTexto = edad !== null ? edad + ' años' : 'No disponible'
@@ -289,6 +311,8 @@ let handler = async (m, { conn, text, command }) => {
 🏅 Insignias:
 ${insignias.join('\n')}
 
+🚻 Género: ${genero}
+
 🎂 Nacimiento: ${nacimiento}
 ♑ Signo: ${signo}
 🌌 Elemento: ${elemento}
@@ -327,6 +351,7 @@ handler.command = [
   'perfil',
   'setbr',
   'bio',
+  'genero',
   'otorgar',
   'quitar',
   'verinsignias'
