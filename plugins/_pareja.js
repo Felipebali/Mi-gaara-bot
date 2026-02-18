@@ -1,21 +1,12 @@
 import fs from 'fs'
 import path from 'path'
 
-// 📁 Crear carpeta database automáticamente
 const dir = './database'
-if (!fs.existsSync(dir)) {
-  fs.mkdirSync(dir, { recursive: true })
-}
+if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true })
 
-// 📄 Archivo parejas.json
 const file = path.join(dir, 'parejas.json')
+if (!fs.existsSync(file)) fs.writeFileSync(file, JSON.stringify({}, null, 2))
 
-// Crear archivo si no existe
-if (!fs.existsSync(file)) {
-  fs.writeFileSync(file, JSON.stringify({}, null, 2))
-}
-
-// Funciones DB
 const loadDB = () => JSON.parse(fs.readFileSync(file))
 const saveDB = (data) => fs.writeFileSync(file, JSON.stringify(data, null, 2))
 
@@ -26,18 +17,7 @@ let handler = async (m, { conn, command }) => {
   const sender = m.sender
   const ahora = Date.now()
 
-  // 🔐 Owners globales
-  const ownerNumbers = (global.owner || []).map(v => {
-    if (Array.isArray(v)) v = v[0]
-    return String(v).replace(/[^0-9]/g, '')
-  })
-
-  const senderNumber = sender.replace(/[^0-9]/g, '')
-  const isOwner = ownerNumbers.includes(senderNumber)
-
-  // 👤 Crear usuario si no existe
   const getUser = (id) => {
-
     if (!db[id]) {
       db[id] = {
         pareja: null,
@@ -49,7 +29,6 @@ let handler = async (m, { conn, command }) => {
         amor: 0
       }
     }
-
     return db[id]
   }
 
@@ -101,19 +80,26 @@ let handler = async (m, { conn, command }) => {
   if (command === 'aceptar') {
 
     if (!user.propuesta)
-      return m.reply('❌ No tienes propuestas.')
+      return m.reply('❌ No tienes propuestas pendientes.')
 
     const proposer = user.propuesta
-    const tu = getUser(proposer)
+    const proposerUser = getUser(proposer)
+
+    // Verificación extra
+    if (proposerUser.estado !== 'soltero') {
+      user.propuesta = null
+      saveDB(db)
+      return m.reply('❌ La persona ya no está disponible.')
+    }
 
     user.estado = 'novios'
-    tu.estado = 'novios'
+    proposerUser.estado = 'novios'
 
     user.pareja = proposer
-    tu.pareja = sender
+    proposerUser.pareja = sender
 
     user.relacionFecha = ahora
-    tu.relacionFecha = ahora
+    proposerUser.relacionFecha = ahora
 
     user.propuesta = null
     user.propuestaFecha = null
@@ -135,7 +121,7 @@ let handler = async (m, { conn, command }) => {
   if (command === 'rechazar') {
 
     if (!user.propuesta)
-      return m.reply('❌ No tienes propuestas.')
+      return m.reply('❌ No tienes propuestas pendientes.')
 
     const proposer = user.propuesta
 
@@ -185,7 +171,7 @@ let handler = async (m, { conn, command }) => {
   }
 
   // =====================
-  // 💍 CASARSE
+  // 💍 CASAR
   // =====================
 
   if (command === 'casar') {
@@ -261,7 +247,6 @@ let handler = async (m, { conn, command }) => {
       return m.reply('❌ No tienes pareja.')
 
     user.amor += 10
-
     saveDB(db)
 
     return m.reply(`❤️ Amor aumentado\nNivel: ${user.amor}`)
@@ -287,21 +272,6 @@ let handler = async (m, { conn, command }) => {
     )
   }
 
-  // =====================
-  // 🧹 CLEARSHIP (OWNER)
-  // =====================
-
-  if (command === 'clearship') {
-
-    if (!isOwner)
-      return m.reply('❌ Solo los dueños pueden usar esto.')
-
-    db = {}
-    saveDB(db)
-
-    return m.reply('🧹 Todas las relaciones fueron borradas.')
-  }
-
 }
 
 handler.command = [
@@ -312,8 +282,7 @@ handler.command = [
   'casar',
   'divorciar',
   'relacion',
-  'amor',
-  'clearship'
+  'amor'
 ]
 
 export default handler
