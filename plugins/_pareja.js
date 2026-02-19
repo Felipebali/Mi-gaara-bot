@@ -133,147 +133,106 @@ ${tag(sender)} quiere estar con ${tag(target)} ❤️
       m.chat,
       `💞 *¡Relación iniciada!* 💞
 
-${tag(sender)} ❤️ ${tag(proposer)}
-
-Desde ahora están juntos 💓`,
+${tag(sender)} ❤️ ${tag(proposer)}`,
       m,
       { mentions: [sender, proposer] }
     )
   }
 
   // ==============================
-  // ❌ RECHAZAR
+  // 💋 BESAR
   // ==============================
-  if (command === 'rechazar') {
+  if (command === 'besar') {
 
     const user = getUser(sender)
+    const target = getTarget()
 
-    if (!user.propuesta)
-      return m.reply('💭 No hay propuestas pendientes.')
-
-    const proposer = user.propuesta
-
-    user.propuesta = null
-    user.propuestaFecha = null
-
-    saveDB(db)
-
-    return conn.reply(
-      m.chat,
-      `💔 ${tag(sender)} rechazó a ${tag(proposer)} 😢`,
-      m,
-      { mentions: [sender, proposer] }
-    )
-  }
-
-  // ==============================
-  // 💔 TERMINAR
-  // ==============================
-  if (command === 'terminar') {
-
-    const user = getUser(sender)
+    if (!target) return m.reply('💋 Menciona a quien quieres besar.')
 
     if (!user.pareja)
       return m.reply('💔 No tienes pareja.')
 
-    const parejaID = user.pareja
-    const pareja = getUser(parejaID)
+    if (target !== user.pareja) {
+      return conn.reply(
+        m.chat,
+        `🚨 *INFIDELIDAD DETECTADA* 🚨
 
-    pareja.pareja = null
-    pareja.estado = 'soltero'
-    pareja.amor = 0
+${tag(sender)} intentó besar a ${tag(target)} 😳
 
-    user.pareja = null
-    user.estado = 'soltero'
-    user.amor = 0
-
-    saveDB(db)
-
-    return conn.reply(
-      m.chat,
-      `💔 *Relación terminada*
-
-${tag(sender)} 💔 ${tag(parejaID)}`,
-      m,
-      { mentions: [sender, parejaID] }
-    )
-  }
-
-  // ==============================
-  // 💍 CASAR
-  // ==============================
-  if (command === 'casarse') {
-
-    const user = getUser(sender)
-
-    if (!user.pareja)
-      return m.reply('💍 No tienes pareja.')
-
-    if (user.estado === 'casados')
-      return m.reply('💒 Ya están casados.')
-
-    const diasRelacion = (ahora - user.relacionFecha) / 86400000
-
-    if (diasRelacion < 7)
-      return m.reply('⏳ Deben esperar 7 días de relación para casarse.')
+Pero su pareja es ${tag(user.pareja)} 💔🔥`,
+        m,
+        { mentions: [sender, target, user.pareja] }
+      )
+    }
 
     const pareja = getUser(user.pareja)
 
-    user.estado = 'casados'
-    pareja.estado = 'casados'
-
-    user.matrimonioFecha = ahora
-    pareja.matrimonioFecha = ahora
+    let nuevoAmor = (user.amor || 0) + 5
+    user.amor = nuevoAmor
+    pareja.amor = nuevoAmor
 
     saveDB(db)
 
     return conn.reply(
       m.chat,
-      `💍 *¡BODA!* 💍
+      `💋 *Beso romántico* 💋
 
-${tag(sender)} 💖 ${tag(user.pareja)}
+${tag(sender)} besó a ${tag(user.pareja)} 😘
 
-Ahora están casados 💒`,
+❤️ Amor: ${nuevoAmor}`,
       m,
       { mentions: [sender, user.pareja] }
     )
   }
 
   // ==============================
-  // ⚖️ DIVORCIO
+  // 🤗 ABRAZAR
   // ==============================
-  if (command === 'divorciar') {
+  if (command === 'abrazar') {
 
     const user = getUser(sender)
+    const target = getTarget()
 
-    if (user.estado !== 'casados')
-      return m.reply('⚖️ No estás casado.')
+    if (!target) return m.reply('🤗 Menciona a quien quieres abrazar.')
 
-    const parejaID = user.pareja
-    const pareja = getUser(parejaID)
+    if (!user.pareja)
+      return m.reply('💔 No tienes pareja.')
 
-    pareja.pareja = null
-    pareja.estado = 'soltero'
-    pareja.amor = 0
+    if (target !== user.pareja) {
+      return conn.reply(
+        m.chat,
+        `🚨 *¡ALERTA DE CELOS!* 🚨
 
-    user.pareja = null
-    user.estado = 'soltero'
-    user.amor = 0
+${tag(sender)} quiso abrazar a ${tag(target)} 😳
+
+Pero su pareja es ${tag(user.pareja)} 💔`,
+        m,
+        { mentions: [sender, target, user.pareja] }
+      )
+    }
+
+    const pareja = getUser(user.pareja)
+
+    let nuevoAmor = (user.amor || 0) + 3
+    user.amor = nuevoAmor
+    pareja.amor = nuevoAmor
 
     saveDB(db)
 
     return conn.reply(
       m.chat,
-      `⚖️ *Divorcio*
+      `🤗 *Abrazo lleno de amor*
 
-${tag(sender)} 💔 ${tag(parejaID)}`,
+${tag(sender)} abrazó a ${tag(user.pareja)} 🥰
+
+❤️ Amor: ${nuevoAmor}`,
       m,
-      { mentions: [sender, parejaID] }
+      { mentions: [sender, user.pareja] }
     )
   }
 
   // ==============================
-  // ❤️ AMOR (COMPARTIDO)
+  // ❤️ AMOR
   // ==============================
   if (command === 'amor') {
 
@@ -298,7 +257,7 @@ ${tag(sender)} 💔 ${tag(parejaID)}`,
 
 ${tag(sender)} 💕 ${tag(parejaID)}
 
-Nivel de amor: ${nuevoAmor} ❤️`,
+Nivel: ${nuevoAmor}`,
       m,
       { mentions: [sender, parejaID] }
     )
@@ -352,40 +311,6 @@ Amor: ${user.amor}`,
     return conn.reply(m.chat, texto, m, { mentions: Object.keys(db) })
   }
 
-  // ==============================
-  // 🧹 CLEARSHIP
-  // ==============================
-  if (command === 'clearship') {
-
-    const target = getTarget() || sender
-    const user = getUser(target)
-
-    if (!user.pareja)
-      return m.reply('🧹 No hay relación.')
-
-    const parejaID = user.pareja
-    const pareja = getUser(parejaID)
-
-    pareja.pareja = null
-    pareja.estado = 'soltero'
-    pareja.amor = 0
-
-    user.pareja = null
-    user.estado = 'soltero'
-    user.amor = 0
-
-    saveDB(db)
-
-    return conn.reply(
-      m.chat,
-      `🧹 Relación eliminada
-
-${tag(target)} 💔 ${tag(parejaID)}`,
-      m,
-      { mentions: [target, parejaID] }
-    )
-  }
-
 }
 
 handler.command = [
@@ -397,6 +322,8 @@ handler.command = [
   'divorciar',
   'relacion',
   'amor',
+  'besar',
+  'abrazar',
   'clearship',
   'listapareja'
 ]
