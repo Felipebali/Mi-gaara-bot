@@ -39,6 +39,7 @@ let handler = async (m, { conn }) => {
 
   if (!db.usadas) db.usadas = []
 
+  // Reiniciar si se usaron todas
   if (db.usadas.length >= frases.length) {
     db.usadas = []
   }
@@ -63,7 +64,8 @@ let handler = async (m, { conn }) => {
       externalAdReply: {
         title: "🥠 Fortuna del día",
         body: "Tu destino revelado",
-        thumbnailUrl: "https://upload.wikimedia.org/wikipedia/commons/0/0b/Fortune_Cookie.jpg",
+        thumbnailUrl: "https://files.catbox.moe/xli6lh.jpg",
+        sourceUrl: "https://github.com",
         mediaType: 1,
         renderLargerThumbnail: true
       }
