@@ -54,7 +54,6 @@ let handler = async (m, { conn, command }) => {
     const user = getUser(sender)
     const tu = getUser(target)
 
-    // 🔥 si el que envía ya tiene pareja
     if (user.estado !== 'soltero') {
       return conn.reply(
         m.chat,
@@ -62,15 +61,12 @@ let handler = async (m, { conn, command }) => {
 
 ${tag(sender)} intentó buscar otra pareja...
 
-Pero ya está con ${tag(user.pareja)} 💔🔥
-
-⚠️ Respeta tu relación.`,
+Pero ya está con ${tag(user.pareja)} 💔🔥`,
         m,
         { mentions: [sender, user.pareja] }
       )
     }
 
-    // 🔥 si la otra persona ya tiene pareja
     if (tu.estado !== 'soltero') {
 
       const parejaActual = tu.pareja
@@ -81,9 +77,7 @@ Pero ya está con ${tag(user.pareja)} 💔🔥
 
 ${tag(sender)} intentó conquistar a ${tag(target)} 💘
 
-Pero... ${tag(target)} ya está con ${tag(parejaActual)} 😳🔥
-
-💞 El amor ya tiene dueño.`,
+Pero... ${tag(target)} ya está con ${tag(parejaActual)} 😳🔥`,
         m,
         { mentions: [sender, target, parejaActual] }
       )
@@ -187,9 +181,11 @@ Desde ahora están juntos 💓`,
 
     pareja.pareja = null
     pareja.estado = 'soltero'
+    pareja.amor = 0
 
     user.pareja = null
     user.estado = 'soltero'
+    user.amor = 0
 
     saveDB(db)
 
@@ -258,9 +254,11 @@ Ahora están casados 💒`,
 
     pareja.pareja = null
     pareja.estado = 'soltero'
+    pareja.amor = 0
 
     user.pareja = null
     user.estado = 'soltero'
+    user.amor = 0
 
     saveDB(db)
 
@@ -275,7 +273,7 @@ ${tag(sender)} 💔 ${tag(parejaID)}`,
   }
 
   // ==============================
-  // ❤️ AMOR
+  // ❤️ AMOR (COMPARTIDO)
   // ==============================
   if (command === 'amor') {
 
@@ -284,18 +282,25 @@ ${tag(sender)} 💔 ${tag(parejaID)}`,
     if (!user.pareja)
       return m.reply('❤️ No tienes pareja.')
 
-    user.amor += 10
+    const parejaID = user.pareja
+    const pareja = getUser(parejaID)
+
+    let nuevoAmor = (user.amor || 0) + 10
+
+    user.amor = nuevoAmor
+    pareja.amor = nuevoAmor
+
     saveDB(db)
 
     return conn.reply(
       m.chat,
-      `❤️ Amor aumentado
+      `❤️ *Amor aumentado*
 
-${tag(sender)} 💕 ${tag(user.pareja)}
+${tag(sender)} 💕 ${tag(parejaID)}
 
-Nivel: ${user.amor}`,
+Nivel de amor: ${nuevoAmor} ❤️`,
       m,
-      { mentions: [sender, user.pareja] }
+      { mentions: [sender, parejaID] }
     )
   }
 
@@ -363,9 +368,11 @@ Amor: ${user.amor}`,
 
     pareja.pareja = null
     pareja.estado = 'soltero'
+    pareja.amor = 0
 
     user.pareja = null
     user.estado = 'soltero'
+    user.amor = 0
 
     saveDB(db)
 
