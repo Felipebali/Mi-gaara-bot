@@ -241,8 +241,29 @@ ${tag(sender)} 💔 ${tag(parejaID)}`,
   // ======================
   if (command === 'besar') {
 
+    const target = getTarget()
+    if (!target) return m.reply('💋 Menciona a alguien.')
+
     const user = getUser(sender)
-    if (!user.pareja) return m.reply('💔 No tienes pareja.')
+    const tu = getUser(target)
+
+    // target tiene pareja y no sos vos
+    if (tu.pareja && tu.pareja !== sender) {
+      return conn.reply(m.chat,
+        `🚨 *ESA PERSONA TIENE PAREJA*
+
+${tag(target)} está con ${tag(tu.pareja)} ❤️`,
+        m, { mentions: [target, tu.pareja] })
+    }
+
+    if (!user.pareja)
+      return m.reply('💔 No tienes pareja.')
+
+    if (target !== user.pareja) {
+      return conn.reply(m.chat,
+        `😡 Tu pareja es ${tag(user.pareja)} no ${tag(target)}`,
+        m, { mentions: [user.pareja, target] })
+    }
 
     const pareja = getUser(user.pareja)
 
@@ -263,8 +284,28 @@ ${tag(sender)} 💔 ${tag(parejaID)}`,
   // ======================
   if (command === 'abrazar') {
 
+    const target = getTarget()
+    if (!target) return m.reply('🤗 Menciona a alguien.')
+
     const user = getUser(sender)
-    if (!user.pareja) return m.reply('💔 No tienes pareja.')
+    const tu = getUser(target)
+
+    if (tu.pareja && tu.pareja !== sender) {
+      return conn.reply(m.chat,
+        `🚨 *ESA PERSONA TIENE PAREJA*
+
+${tag(target)} está con ${tag(tu.pareja)} ❤️`,
+        m, { mentions: [target, tu.pareja] })
+    }
+
+    if (!user.pareja)
+      return m.reply('💔 No tienes pareja.')
+
+    if (target !== user.pareja) {
+      return conn.reply(m.chat,
+        `😡 Tu pareja es ${tag(user.pareja)}`,
+        m, { mentions: [user.pareja] })
+    }
 
     const pareja = getUser(user.pareja)
 
