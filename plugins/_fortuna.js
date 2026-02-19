@@ -6,49 +6,98 @@ const dir = './database'
 if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true })
 
 const file = path.join(dir, 'fortunas.json')
-if (!fs.existsSync(file)) fs.writeFileSync(file, JSON.stringify({ usadas: [] }, null, 2))
+if (!fs.existsSync(file)) {
+  fs.writeFileSync(file, JSON.stringify({
+    usadas: [],
+    usadasRaras: [],
+    usadasMalas: []
+  }, null, 2))
+}
 
 const loadDB = () => JSON.parse(fs.readFileSync(file))
 const saveDB = (data) => fs.writeFileSync(file, JSON.stringify(data, null, 2))
 
-const frases = [
+// ================= NORMAL
+const normales = [
   "Algo bueno está por llegar a tu vida.",
   "Hoy es un gran día para intentar algo nuevo.",
   "Una sorpresa agradable te espera pronto.",
   "Confía en tu intuición, no fallará.",
-  "Una oportunidad importante aparecerá.",
   "Tu esfuerzo dará frutos antes de lo que crees.",
   "La suerte favorece a los valientes.",
-  "Un encuentro inesperado cambiará tu día.",
-  "No temas tomar decisiones importantes.",
-  "Un deseo que tienes se cumplirá.",
-  "La felicidad está más cerca de lo que imaginas.",
   "Hoy recibirás buenas noticias.",
-  "Un cambio positivo está en camino.",
   "La paciencia será tu mejor aliada.",
   "Alguien piensa mucho en ti.",
-  "La fortuna sonríe a quien persevera.",
-  "Un reto se convertirá en victoria.",
-  "Tu energía atraerá cosas buenas.",
-  "Confía en el proceso de la vida.",
-  "El universo conspira a tu favor."
+  "Un cambio positivo está en camino."
 ]
+
+// ================= RARAS
+const raras = [
+  "🍀 Tendrás un golpe de suerte inesperado.",
+  "💎 Una oportunidad única aparecerá muy pronto.",
+  "✨ El universo conspira fuertemente a tu favor.",
+  "🔥 Hoy atraerás algo que deseas mucho.",
+  "🌟 Un sueño importante comenzará a cumplirse.",
+  "👑 Tendrás reconocimiento de alguien importante.",
+  "🚀 Un avance rápido llegará a tu vida.",
+  "💰 Algo relacionado al dinero mejorará.",
+  "🧭 Tomarás una decisión que cambiará tu futuro.",
+  "🎯 Lograrás algo que creías imposible."
+]
+
+// ================= MALAS
+const malas = [
+  "💀 Hoy no es tu día… pero mañana puede ser peor.",
+  "🥲 Una siesta habría sido mejor idea.",
+  "😿 Algo saldrá mal… pero será gracioso después.",
+  "🍞 Cuidado con lo que comes hoy.",
+  "📉 Tus planes pueden fallar… improvisa.",
+  "🐌 Tendrás un día lento y extraño.",
+  "🌧️ Mejor evita discusiones hoy.",
+  "🤡 Harás algo vergonzoso sin querer.",
+  "📱 Alguien te ignorará hoy.",
+  "🪫 Tu energía estará baja… descansa."
+]
+
+function obtenerFrase(lista, usadasKey, db) {
+  if (!db[usadasKey]) db[usadasKey] = []
+
+  if (db[usadasKey].length >= lista.length) {
+    db[usadasKey] = []
+  }
+
+  const disponibles = lista.filter(f => !db[usadasKey].includes(f))
+  const frase = disponibles[Math.floor(Math.random() * disponibles.length)]
+
+  db[usadasKey].push(frase)
+  return frase
+}
 
 let handler = async (m, { conn }) => {
 
   let db = loadDB()
-  if (!db.usadas) db.usadas = []
 
-  if (db.usadas.length >= frases.length) db.usadas = []
+  // Probabilidades
+  const rand = Math.random()
 
-  const disponibles = frases.filter(f => !db.usadas.includes(f))
-  const frase = disponibles[Math.floor(Math.random() * disponibles.length)]
+  let frase
+  let tipo
 
-  db.usadas.push(frase)
+  if (rand < 0.4) {
+    tipo = "🍀 *Fortuna Rara*"
+    frase = obtenerFrase(raras, 'usadasRaras', db)
+  } else if (rand < 0.8) {
+    tipo = "🥠 *Fortuna Normal*"
+    frase = obtenerFrase(normales, 'usadas', db)
+  } else {
+    tipo = "💀 *Fortuna Mala*"
+    frase = obtenerFrase(malas, 'usadasMalas', db)
+  }
+
   saveDB(db)
 
   const texto = `
-🥠 *Galleta de la Fortuna*
+${tipo}
 
 "${frase}"
 
@@ -61,7 +110,7 @@ let handler = async (m, { conn }) => {
     text: texto,
     contextInfo: {
       externalAdReply: {
-        title: "🥠 Fortuna del día",
+        title: "🥠 Galleta de la Fortuna",
         body: "Mensaje del destino",
         thumbnail: img,
         mediaType: 1,
