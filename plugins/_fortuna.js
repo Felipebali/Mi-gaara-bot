@@ -39,13 +39,11 @@ let handler = async (m, { conn }) => {
 
   if (!db.usadas) db.usadas = []
 
-  // Reiniciar si se usaron todas
   if (db.usadas.length >= frases.length) {
     db.usadas = []
   }
 
   const disponibles = frases.filter(f => !db.usadas.includes(f))
-
   const frase = disponibles[Math.floor(Math.random() * disponibles.length)]
 
   db.usadas.push(frase)
@@ -59,13 +57,19 @@ let handler = async (m, { conn }) => {
 ✨ El destino ha hablado...
 `.trim()
 
-  await conn.sendFile(
-    m.chat,
-    'https://i.imgur.com/0F6GQYQ.png', // imagen galleta
-    'fortuna.jpg',
-    texto,
-    m
-  )
+  await conn.sendMessage(m.chat, {
+    text: texto,
+    contextInfo: {
+      externalAdReply: {
+        title: "🥠 Fortuna del día",
+        body: "Tu destino revelado",
+        thumbnailUrl: "https://i.imgur.com/0F6GQYQ.png",
+        sourceUrl: "https://github.com",
+        mediaType: 1,
+        renderLargerThumbnail: true
+      }
+    }
+  }, { quoted: m })
 }
 
 handler.help = ['fortuna']
