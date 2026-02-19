@@ -1,5 +1,6 @@
 import fs from 'fs'
 import path from 'path'
+import fetch from 'node-fetch'
 
 const dir = './database'
 if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true })
@@ -36,13 +37,9 @@ const frases = [
 let handler = async (m, { conn }) => {
 
   let db = loadDB()
-
   if (!db.usadas) db.usadas = []
 
-  // Reiniciar si se usaron todas
-  if (db.usadas.length >= frases.length) {
-    db.usadas = []
-  }
+  if (db.usadas.length >= frases.length) db.usadas = []
 
   const disponibles = frases.filter(f => !db.usadas.includes(f))
   const frase = disponibles[Math.floor(Math.random() * disponibles.length)]
@@ -58,14 +55,15 @@ let handler = async (m, { conn }) => {
 ✨ El destino ha hablado...
 `.trim()
 
+  const img = await (await fetch('https://files.catbox.moe/xli6lh.jpg')).buffer()
+
   await conn.sendMessage(m.chat, {
     text: texto,
     contextInfo: {
       externalAdReply: {
         title: "🥠 Fortuna del día",
-        body: "Tu destino revelado",
-        thumbnailUrl: "https://files.catbox.moe/xli6lh.jpg",
-        sourceUrl: "https://github.com",
+        body: "Mensaje del destino",
+        thumbnail: img,
         mediaType: 1,
         renderLargerThumbnail: true
       }
