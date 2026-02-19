@@ -44,6 +44,9 @@ let handler = async (m, { conn }) => {
 ┃ 💍 *.casarse* – Casarse (tras 7 días)
 ┃ ⚖️ *.divorcio* – Divorciarse
 ┃ ❤️ *.relacion* – Ver estado actual
+┃ 💋 *.besar* – Besar a tu pareja
+┃ 🤗 *.abrazar* – Abrazar a tu pareja
+┃ 💖 *.amor* – Aumentar amor
 ┗━━━━━━━━━━━━━━━━━━━━━┛
 
 ┏━━━ 📚 *TIPOS DE MENÚ* ━━━┓
