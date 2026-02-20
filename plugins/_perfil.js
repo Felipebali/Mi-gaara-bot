@@ -26,10 +26,6 @@ let handler = async (m, { conn, text, command }) => {
 
     let user = global.db.data.users[jid]
 
-    // =====================
-    // FECHA INGRESO GRUPO
-    // =====================
-
     if (m.isGroup && !user.joinGroup) {
       user.joinGroup = Date.now()
     }
@@ -48,7 +44,7 @@ let handler = async (m, { conn, text, command }) => {
     const isRealOwner = ownerNumbers.includes(senderNumber)
 
     // =====================
-    // ADMIN REAL
+    // ADMIN
     // =====================
 
     let isAdmin = false
@@ -95,7 +91,7 @@ let handler = async (m, { conn, text, command }) => {
     }
 
     // =====================
-    // SIGNO ZODIACAL
+    // SIGNO ZODIACAL CORRECTO
     // =====================
 
     const obtenerZodiaco = (fecha) => {
@@ -117,21 +113,20 @@ let handler = async (m, { conn, text, command }) => {
         { nombre: 'Sagitario ♐', elemento: '🔥 Fuego', personalidad: 'Aventurero, optimista y sincero.' }
       ]
 
-      const index =
-        (m === 1 && d <= 19) ? 0 :
-        (m === 2 && d <= 18) ? 1 :
-        (m === 3 && d <= 20) ? 2 :
-        (m === 4 && d <= 19) ? 3 :
-        (m === 5 && d <= 20) ? 4 :
-        (m === 6 && d <= 20) ? 5 :
-        (m === 7 && d <= 22) ? 6 :
-        (m === 8 && d <= 22) ? 7 :
-        (m === 9 && d <= 22) ? 8 :
-        (m === 10 && d <= 22) ? 9 :
-        (m === 11 && d <= 21) ? 10 :
-        (m === 12 && d <= 21) ? 11 :
-        (m === 12 && d >= 22) || (m === 1 && d >= 20) ? 0 :
-        (m === 2 && d >= 19) ? 2 : 0
+      let index = 0
+
+      if ((m === 1 && d >= 20) || (m === 2 && d <= 18)) index = 1
+      else if ((m === 2 && d >= 19) || (m === 3 && d <= 20)) index = 2
+      else if ((m === 3 && d >= 21) || (m === 4 && d <= 19)) index = 3
+      else if ((m === 4 && d >= 20) || (m === 5 && d <= 20)) index = 4
+      else if ((m === 5 && d >= 21) || (m === 6 && d <= 20)) index = 5
+      else if ((m === 6 && d >= 21) || (m === 7 && d <= 22)) index = 6
+      else if ((m === 7 && d >= 23) || (m === 8 && d <= 22)) index = 7
+      else if ((m === 8 && d >= 23) || (m === 9 && d <= 22)) index = 8
+      else if ((m === 9 && d >= 23) || (m === 10 && d <= 22)) index = 9
+      else if ((m === 10 && d >= 23) || (m === 11 && d <= 21)) index = 10
+      else if ((m === 11 && d >= 22) || (m === 12 && d <= 21)) index = 11
+      else index = 0
 
       return signos[index]
     }
@@ -162,9 +157,7 @@ let handler = async (m, { conn, text, command }) => {
       return m.reply('✅ Bio guardada.')
     }
 
-    // ✅ GENERO LIBRE (como bio)
     if (command === 'genero') {
-
       if (!text) {
         return m.reply(
 `✏️ Escribe tu género
@@ -176,9 +169,7 @@ Ejemplo:
 .genero lo que quieras 😸`
         )
       }
-
       user.genero = text.trim()
-
       return m.reply(`✅ Género guardado:\n${user.genero}`)
     }
 
@@ -346,8 +337,6 @@ ${insignias.join('\n')}
     console.error(e)
   }
 }
-
-handler.all = true
 
 handler.command = [
   'perfil',
