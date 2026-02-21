@@ -14,7 +14,7 @@ let handler = async (m, { conn, usedPrefix, command, isAdmin, isBotAdmin }) => {
     who = m.quoted.sender
   }
 
-  if (!who) return m.reply(`✏️ Uso:\n${usedPrefix + command} @usuario`)
+  if (!who) return m.reply(`✏️ Uso:\n${usedPrefix + command} citando mensaje.`)
 
   who = conn.decodeJid(who)
 
