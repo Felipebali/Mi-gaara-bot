@@ -16,10 +16,15 @@ let handler = async (m, { conn, usedPrefix, command, isAdmin, isBotAdmin }) => {
 
   if (!who) return m.reply(`✏️ Uso:\n${usedPrefix + command} @usuario`)
 
+  // 🔥 NORMALIZAR JID
+  who = conn.decodeJid(who)
+
   // 🔐 PROTEGER OWNERS
   const ownerJids = (global.owner || []).map(v => {
     if (Array.isArray(v)) v = v[0]
-    return String(v).replace(/[^0-9]/g, '') + '@s.whatsapp.net'
+    return conn.decodeJid(
+      String(v).replace(/[^0-9]/g, '') + '@s.whatsapp.net'
+    )
   })
 
   if (ownerJids.includes(who)) return m.react("❌")
@@ -52,7 +57,7 @@ export default handler
 
 
 // =============================
-// 🚨 BEFORE — BORRAR MENSAJES SILENCIADOS
+// 🚨 BEFORE — BORRAR MENSAJES
 // =============================
 
 export async function before(m, { conn }) {
@@ -60,31 +65,34 @@ export async function before(m, { conn }) {
   if (!m.isGroup) return
   if (!m.sender) return
   if (!m.message) return
-  if (m.fromMe) return   // ignorar mensajes del bot
+  if (m.fromMe) return
+
+  // 🔥 NORMALIZAR SENDER
+  const sender = conn.decodeJid(m.sender)
 
   global.db.data = global.db.data || {}
   global.db.data.users = global.db.data.users || {}
 
-  let user = global.db.data.users[m.sender]
+  let user = global.db.data.users[sender]
   if (!user) return
   if (!user.mute) return
   if (!user.mute[m.chat]) return
 
-  // 🔎 Verificar admin real
+  // 🔎 Verificar admin
   let isAdmin = false
 
   try {
     let meta = await conn.groupMetadata(m.chat)
-    let participant = meta.participants.find(p => p.id === m.sender)
+    let participant = meta.participants.find(
+      p => conn.decodeJid(p.id) === sender
+    )
 
     if (participant) {
       isAdmin =
         participant.admin === 'admin' ||
         participant.admin === 'superadmin'
     }
-  } catch (e) {
-    console.log("Error metadata:", e)
-  }
+  } catch {}
 
   if (isAdmin) return
 
@@ -95,7 +103,7 @@ export async function before(m, { conn }) {
         remoteJid: m.chat,
         fromMe: false,
         id: m.key.id,
-        participant: m.sender
+        participant: m.key.participant || sender
       }
     })
 
