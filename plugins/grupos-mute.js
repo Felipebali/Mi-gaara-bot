@@ -1,84 +1,96 @@
 // 📂 plugins/mute.js
 
-let handler = async (m, { conn, text, usedPrefix, command, isAdmin, isBotAdmin }) => {
+let handler = async (m, { conn, usedPrefix, command, isAdmin, isBotAdmin }) => {
 
-  if (!m.isGroup) return m.reply("❌ Solo funciona en grupos.");
-  if (!isAdmin) return m.reply("⚠️ Solo admins pueden usar este comando.");
-  if (!isBotAdmin) return m.reply("⚠️ El bot debe ser admin.");
+  if (!m.isGroup) return m.reply("❌ Solo funciona en grupos.")
+  if (!isAdmin) return m.reply("⚠️ Solo admins pueden usar este comando.")
+  if (!isBotAdmin) return m.reply("⚠️ El bot debe ser admin.")
 
-  let who;
+  let who
 
   if (m.mentionedJid && m.mentionedJid[0]) {
-    who = m.mentionedJid[0];
+    who = m.mentionedJid[0]
   } else if (m.quoted) {
-    who = m.quoted.sender;
+    who = m.quoted.sender
   }
 
-  if (!who) return m.reply(`✏️ Uso:\n${usedPrefix + command} @usuario`);
+  if (!who) return m.reply(`✏️ Uso:\n${usedPrefix + command} @usuario`)
 
   // 🔐 PROTEGER OWNERS
   const ownerJids = (global.owner || []).map(v => {
-    if (Array.isArray(v)) v = v[0];
-    return String(v).replace(/[^0-9]/g, '') + '@s.whatsapp.net';
-  });
+    if (Array.isArray(v)) v = v[0]
+    return String(v).replace(/[^0-9]/g, '') + '@s.whatsapp.net'
+  })
 
-  if (ownerJids.includes(who)) return m.react("❌");
+  if (ownerJids.includes(who)) return m.react("❌")
 
   // 📂 BASE
-  global.db.data.users = global.db.data.users || {};
-  global.db.data.users[who] = global.db.data.users[who] || {};
+  global.db.data = global.db.data || {}
+  global.db.data.users = global.db.data.users || {}
+  global.db.data.users[who] = global.db.data.users[who] || {}
 
-  let user = global.db.data.users[who];
+  let user = global.db.data.users[who]
 
-  user.mute = user.mute || {};
-  user.mute[m.chat] = user.mute[m.chat] || false;
+  user.mute = user.mute || {}
+  user.mute[m.chat] = user.mute[m.chat] || false
 
-  let estado = (command === "desilenciar" || command === "unmute") ? false : true;
+  let estado = (command === "desilenciar" || command === "unmute") ? false : true
 
-  user.mute[m.chat] = estado;
+  user.mute[m.chat] = estado
 
-  await m.react("☑️");
+  await m.react("☑️")
 
-  m.reply(estado
-    ? "🔇 Usuario silenciado correctamente."
-    : "🔊 Usuario desilenciado correctamente."
-  );
+  m.reply(
+    estado
+      ? "🔇 Usuario silenciado correctamente."
+      : "🔊 Usuario desilenciado correctamente."
+  )
+}
 
-};
+handler.command = ["silenciar", "mute", "desilenciar", "unmute"]
+handler.group = true
+handler.admin = true
+handler.botAdmin = true
 
-handler.command = [
-  "silenciar",
-  "mute",
-  "desilenciar",
-  "unmute"
-];
-
-handler.group = true;
-handler.admin = true;
-handler.botAdmin = true;
-
-export default handler;
-
+export default handler
 
 
 // =============================
 // 🚨 BEFORE (BORRAR MENSAJES)
 // =============================
 
-export async function before(m, { conn, isAdmin }) {
+export async function before(m, { conn }) {
 
-  if (!m.isGroup) return false;
-  if (!m.sender) return false;
+  if (!m.isGroup) return false
+  if (!m.sender) return false
 
-  global.db.data.users = global.db.data.users || {};
-  let user = global.db.data.users[m.sender];
+  global.db.data = global.db.data || {}
+  global.db.data.users = global.db.data.users || {}
 
-  if (!user) return false;
-  if (!user.mute) return false;
-  if (!user.mute[m.chat]) return false;
+  let user = global.db.data.users[m.sender]
+  if (!user) return false
 
-  // ❗ No borrar admins
-  if (isAdmin) return false;
+  if (!user.mute) return false
+  if (!user.mute[m.chat]) return false
+
+  // 🔎 Verificar si es admin REAL
+  let isAdmin = false
+
+  try {
+    let meta = await conn.groupMetadata(m.chat)
+    let participant = meta.participants.find(p => p.id === m.sender)
+
+    if (participant) {
+      isAdmin =
+        participant.admin === 'admin' ||
+        participant.admin === 'superadmin'
+    }
+  } catch (e) {
+    console.log("Error obteniendo admin:", e)
+  }
+
+  // ❗ No borrar mensajes de admins
+  if (isAdmin) return false
 
   try {
 
@@ -87,13 +99,13 @@ export async function before(m, { conn, isAdmin }) {
         remoteJid: m.chat,
         fromMe: false,
         id: m.key.id,
-        participant: m.sender
+        participant: m.key.participant || m.sender
       }
-    });
+    })
 
   } catch (e) {
-    console.log("Error borrando:", e);
+    console.log("❌ Error borrando:", e)
   }
 
-  return true;
+  return true
 }
