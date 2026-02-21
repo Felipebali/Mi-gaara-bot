@@ -32,16 +32,12 @@ let handler = async (m, { conn, usedPrefix, command, isAdmin, isBotAdmin }) => {
   let user = global.db.data.users[who]
 
   user.mute = user.mute || {}
-  user.mute[m.chat] = user.mute[m.chat] || false
+  user.mute[m.chat] = (command === "desilenciar" || command === "unmute") ? false : true
 
-  let estado = (command === "desilenciar" || command === "unmute") ? false : true
-
-  user.mute[m.chat] = estado
-
-  await m.react("☑️")
+  await m.react("✅")
 
   m.reply(
-    estado
+    user.mute[m.chat]
       ? "🔇 Usuario silenciado correctamente."
       : "🔊 Usuario desilenciado correctamente."
   )
@@ -56,24 +52,25 @@ export default handler
 
 
 // =============================
-// 🚨 BEFORE (BORRAR MENSAJES)
+// 🚨 BEFORE — BORRAR MENSAJES SILENCIADOS
 // =============================
 
 export async function before(m, { conn }) {
 
-  if (!m.isGroup) return false
-  if (!m.sender) return false
+  if (!m.isGroup) return
+  if (!m.sender) return
+  if (!m.message) return
+  if (m.fromMe) return   // ignorar mensajes del bot
 
   global.db.data = global.db.data || {}
   global.db.data.users = global.db.data.users || {}
 
   let user = global.db.data.users[m.sender]
-  if (!user) return false
+  if (!user) return
+  if (!user.mute) return
+  if (!user.mute[m.chat]) return
 
-  if (!user.mute) return false
-  if (!user.mute[m.chat]) return false
-
-  // 🔎 Verificar si es admin REAL
+  // 🔎 Verificar admin real
   let isAdmin = false
 
   try {
@@ -86,11 +83,10 @@ export async function before(m, { conn }) {
         participant.admin === 'superadmin'
     }
   } catch (e) {
-    console.log("Error obteniendo admin:", e)
+    console.log("Error metadata:", e)
   }
 
-  // ❗ No borrar mensajes de admins
-  if (isAdmin) return false
+  if (isAdmin) return
 
   try {
 
@@ -99,7 +95,7 @@ export async function before(m, { conn }) {
         remoteJid: m.chat,
         fromMe: false,
         id: m.key.id,
-        participant: m.key.participant || m.sender
+        participant: m.sender
       }
     })
 
@@ -107,5 +103,4 @@ export async function before(m, { conn }) {
     console.log("❌ Error borrando:", e)
   }
 
-  return true
 }
