@@ -16,7 +16,6 @@ let handler = async (m, { conn, usedPrefix, command, isAdmin, isBotAdmin }) => {
 
   if (!who) return m.reply(`✏️ Uso:\n${usedPrefix + command} @usuario`)
 
-  // 🔥 NORMALIZAR JID
   who = conn.decodeJid(who)
 
   // 🔐 PROTEGER OWNERS
@@ -37,7 +36,8 @@ let handler = async (m, { conn, usedPrefix, command, isAdmin, isBotAdmin }) => {
   let user = global.db.data.users[who]
 
   user.mute = user.mute || {}
-  user.mute[m.chat] = (command === "desilenciar" || command === "unmute") ? false : true
+  user.mute[m.chat] =
+    (command === "desilenciar" || command === "unmute") ? false : true
 
   await m.react("✅")
 
@@ -53,21 +53,17 @@ handler.group = true
 handler.admin = true
 handler.botAdmin = true
 
-export default handler
-
-
 // =============================
-// 🚨 BEFORE — BORRAR MENSAJES
+// 🚨 BEFORE REAL — BORRAR MENSAJES
 // =============================
 
-export async function before(m, { conn }) {
+handler.before = async function (m, { conn }) {
 
   if (!m.isGroup) return
   if (!m.sender) return
   if (!m.message) return
   if (m.fromMe) return
 
-  // 🔥 NORMALIZAR SENDER
   const sender = conn.decodeJid(m.sender)
 
   global.db.data = global.db.data || {}
@@ -112,3 +108,5 @@ export async function before(m, { conn }) {
   }
 
 }
+
+export default handler
