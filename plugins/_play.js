@@ -1,7 +1,11 @@
 import yts from 'yt-search'
-import { spawn } from 'child_process'
-import fs from 'fs'
 import fetch from 'node-fetch'
+
+const COOLDOWN = 2 * 60 * 1000 // 2 minutos
+
+// =============================
+// 🔥 SISTEMA YT
+// =============================
 
 const yt = {
   static: Object.freeze({
@@ -10,45 +14,36 @@ const yt = {
       'accept-encoding': 'gzip, deflate, br, zstd',
       origin: 'https://frame.y2meta-uk.com',
       'user-agent':
-        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36'
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
     }
   }),
+
   resolveConverterPayload(link, f = '128k') {
-    const formatos = ['128k', '320k', '144p', '240p', '360p', '720p', '1080p']
-    if (!formatos.includes(f)) throw Error('Formato inválido')
-    const tipo = f.endsWith('k') ? 'mp3' : 'mp4'
+    const tipo = 'mp3'
     return {
       link,
       format: tipo,
-      audioBitrate: tipo === 'mp3' ? f.replace('k', '') : '128',
-      videoQuality: tipo === 'mp4' ? f.replace('p', '') : '720',
-      filenameStyle: 'pretty',
-      vCodec: 'h264'
+      audioBitrate: '128',
+      filenameStyle: 'pretty'
     }
   },
-  sanitizeFileName(n) {
-    const ext = n.match(/\.[^.]+$/)[0]
-    const name = n
-      .replace(ext, '')
-      .replace(/[^A-Za-z0-9]/g, '_')
-      .replace(/_+/g, '_')
-      .toLowerCase()
-    return name + ext
-  },
+
   async getBuffer(u) {
     const r = await fetch(u)
     const ab = await r.arrayBuffer()
     return Buffer.from(ab)
   },
+
   async getKey() {
     const r = await fetch(this.static.baseUrl + '/v2/sanity/key', {
       headers: this.static.headers
     })
     return r.json()
   },
-  async convert(u, f) {
+
+  async convert(u) {
     const { key } = await this.getKey()
-    const p = this.resolveConverterPayload(u, f)
+    const p = this.resolveConverterPayload(u)
     const r = await fetch(this.static.baseUrl + '/v2/converter', {
       method: 'POST',
       headers: { key, ...this.static.headers },
@@ -56,31 +51,86 @@ const yt = {
     })
     return r.json()
   },
-  async download(u, f) {
-    const { url, filename } = await this.convert(u, f)
+
+  async download(u) {
+    const { url, filename } = await this.convert(u)
     const buffer = await this.getBuffer(url)
-    return { buffer, fileName: this.sanitizeFileName(filename) }
+    return { buffer, fileName: filename }
   }
 }
 
-let handler = async (m, { conn, args }) => {
-  if (!args.length) {
-    return m.reply('🎵 *Usa:* .play nombre de la canción')
+// =============================
+// 🎵 HANDLER
+// =============================
+
+let handler = async (m, { conn, args, isAdmin, isOwner }) => {
+
+  if (!args.length) return m.reply('🎵 Usa: .play nombre de la canción')
+
+  const sender = m.sender
+
+  // =============================
+  // 📂 BASE DE DATOS
+  // =============================
+
+  if (!global.db.data.users[sender])
+    global.db.data.users[sender] = {}
+
+  let user = global.db.data.users[sender]
+
+  if (!user.playCooldown) user.playCooldown = 0
+  if (!user.warn) user.warn = 0
+
+  const now = Date.now()
+
+  // =============================
+  // 👑 OWNER SIN LIMITES
+  // =============================
+
+  if (!isOwner) {
+
+    const lastUse = user.playCooldown || 0
+
+    if (now - lastUse < COOLDOWN) {
+
+      const restante = COOLDOWN - (now - lastUse)
+      const seg = Math.ceil(restante / 1000)
+
+      // ⚠️ SOLO USUARIOS NORMALES TIENEN WARN
+      if (!isAdmin) {
+        user.warn += 1
+
+        return m.reply(
+          `⏳ Espera ${seg}s para usar el comando.\n` +
+          `⚠️ Advertencias: ${user.warn}`
+        )
+      }
+
+      // 🛡 ADMIN SIN WARN
+      return m.reply(`⏳ Espera ${seg}s para usar el comando.`)
+    }
+
+    // Guardar nuevo tiempo
+    user.playCooldown = now
   }
 
+  // =============================
+  // 🔎 BUSCAR VIDEO
+  // =============================
+
   try {
+
     await m.react('🔎')
 
     const query = args.join(' ')
     const search = await yts(query)
 
-    if (!search.videos.length) {
+    if (!search.videos.length)
       return m.reply('❌ No se encontraron resultados')
-    }
 
     const video = search.videos[0]
 
-    // Enviar info del video con miniatura
+    // Info del video
     await conn.sendMessage(
       m.chat,
       {
@@ -89,7 +139,7 @@ let handler = async (m, { conn, args }) => {
           `👤 ${video.author.name}\n` +
           `⏱ ${video.timestamp}\n` +
           `👁 ${video.views.toLocaleString()}\n\n` +
-          `⏳ Descargando audio...`,
+          `⏳ Descargando...`,
         contextInfo: {
           externalAdReply: {
             title: video.title,
@@ -104,9 +154,8 @@ let handler = async (m, { conn, args }) => {
     )
 
     // Descargar audio
-    const { buffer, fileName } = await yt.download(video.url, '128k')
+    const { buffer, fileName } = await yt.download(video.url)
 
-    // Enviar audio puro, sin miniatura
     await conn.sendMessage(
       m.chat,
       {
@@ -118,6 +167,7 @@ let handler = async (m, { conn, args }) => {
     )
 
     await m.react('✅')
+
   } catch (e) {
     console.error(e)
     m.reply('❌ Error al reproducir la canción')
