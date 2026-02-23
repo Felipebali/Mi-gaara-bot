@@ -91,7 +91,7 @@ let handler = async (m, { conn, text, command }) => {
     }
 
     // =====================
-    // SIGNO ZODIACAL CORRECTO
+    // SIGNO ZODIACAL
     // =====================
 
     const obtenerZodiaco = (fecha) => {
@@ -158,20 +158,14 @@ let handler = async (m, { conn, text, command }) => {
     }
 
     if (command === 'genero') {
-      if (!text) {
-        return m.reply(
-`✏️ Escribe tu género
-
-Ejemplo:
-.genero hombre
-.genero mujer
-.genero no binario
-.genero lo que quieras 😸`
-        )
-      }
+      if (!text) return m.reply('✏️ Escribe tu género')
       user.genero = text.trim()
       return m.reply(`✅ Género guardado:\n${user.genero}`)
     }
+
+    // =====================
+    // OTORGAR INSIGNIA
+    // =====================
 
     if (command === 'otorgar') {
 
@@ -201,6 +195,10 @@ Ejemplo:
       )
     }
 
+    // =====================
+    // 🔥 QUITAR INSIGNIAS (MEJORADO)
+    // =====================
+
     if (command === 'quitar') {
 
       if (!isRealOwner) return m.reply('❌ Solo los dueños.')
@@ -208,20 +206,33 @@ Ejemplo:
       const target = getTarget()
       if (!target) return m.reply('✏️ Menciona usuario.')
 
+      if (!global.db.data.users[target])
+        return m.reply('❌ Usuario sin datos.')
+
       let tu = global.db.data.users[target]
 
-      if (!tu || !tu.insignias?.length)
+      if (!tu.insignias || !tu.insignias.length)
         return m.reply('❌ No tiene insignias.')
+
+      const antes = tu.insignias.join(', ')
 
       tu.insignias = []
 
       return conn.reply(
         m.chat,
-        `🗑️ Insignias eliminadas\n👤 @${target.split('@')[0]}`,
+`🗑️ *Insignias eliminadas*
+
+👤 @${target.split('@')[0]}
+🏅 Antes tenía:
+${antes}`,
         m,
         { mentions: [target] }
       )
     }
+
+    // =====================
+    // VER INSIGNIAS
+    // =====================
 
     if (command === 'verinsignias') {
 
