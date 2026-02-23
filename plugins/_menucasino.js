@@ -1,3 +1,6 @@
+let cooldown = 5000 // 5 segundos
+let lastUse = {}
+
 let handler = async (m, { conn, usedPrefix, command, args }) => {
 
   // 🔐 Verificar owner
@@ -7,16 +10,31 @@ let handler = async (m, { conn, usedPrefix, command, args }) => {
 
   if (!isOwner) return
 
+  // ⏱️ Cooldown
+  if (lastUse[m.sender] && Date.now() - lastUse[m.sender] < cooldown) {
+    return m.reply('⏳ Espera unos segundos para volver a jugar')
+  }
+  lastUse[m.sender] = Date.now()
+
+  // 👤 Crear usuario si no existe
+  if (!global.db.data.users[m.sender]) {
+    global.db.data.users[m.sender] = { money: 1000 }
+  }
+
   let user = global.db.data.users[m.sender]
-  if (!user.money) user.money = 1000
+
+  if (!user.money || user.money < 0) user.money = 1000
+
+  // 🎰 Jackpot global
+  if (!global.db.data.jackpot) global.db.data.jackpot = 5000
 
   const menu = `
-╔═══🎰 *CASINO OWNER* 🎰═══╗
+╔═══🎰 *CASINO OWNER VIP* 🎰═══╗
 ║
 ║ 🎲 ${usedPrefix}slot
 ║ 🎰 ${usedPrefix}ruleta
 ║ 🃏 ${usedPrefix}blackjack
-║ 💎 ${usedPrefix}apostar
+║ 💎 ${usedPrefix}apostar <cantidad>
 ║ 💰 ${usedPrefix}balance
 ║ 🎯 ${usedPrefix}doble
 ║ 🪙 ${usedPrefix}coinflip
@@ -26,18 +44,19 @@ let handler = async (m, { conn, usedPrefix, command, args }) => {
 ║
 ╚════════════════════╝
 
-👑 Exclusivo propietarios
+👑 Propietario detectado
 💰 Dinero: ${user.money}
+🏆 Jackpot: ${global.db.data.jackpot}
 `
 
   // 🎰 MENU
-  if (command === 'menucasino' || command === 'casino') {
+  if (/^(menucasino|casino)$/i.test(command)) {
     return conn.reply(m.chat, menu, m)
   }
 
   // 💰 BALANCE
   if (command === 'balance') {
-    return conn.reply(m.chat, `💰 Tienes: ${user.money}`, m)
+    return conn.reply(m.chat, `💰 Tu dinero actual: ${user.money}`, m)
   }
 
   // 🎲 SLOT
@@ -51,10 +70,20 @@ let handler = async (m, { conn, usedPrefix, command, args }) => {
 
     if (win) {
       user.money += 500
-      return conn.reply(m.chat, `🎰 ${a} | ${b} | ${c}\n\n💎 GANASTE 500`, m)
+      global.db.data.jackpot += 200
+      return conn.reply(m.chat,
+`🎰 ${a} | ${b} | ${c}
+
+💎 ¡GANASTE 500!
+💰 Dinero: ${user.money}`, m)
     } else {
-      user.money -= 100
-      return conn.reply(m.chat, `🎰 ${a} | ${b} | ${c}\n\n❌ Perdiste 100`, m)
+      user.money = Math.max(0, user.money - 100)
+      global.db.data.jackpot += 100
+      return conn.reply(m.chat,
+`🎰 ${a} | ${b} | ${c}
+
+❌ Perdiste 100
+💰 Dinero: ${user.money}`, m)
     }
   }
 
@@ -65,30 +94,43 @@ let handler = async (m, { conn, usedPrefix, command, args }) => {
       user.money += 300
       return conn.reply(m.chat, `🎰 La ruleta giró...\n💚 GANASTE 300`, m)
     } else {
-      user.money -= 150
+      user.money = Math.max(0, user.money - 150)
       return conn.reply(m.chat, `🎰 La ruleta giró...\n💔 Perdiste 150`, m)
     }
   }
 
-  // 🃏 BLACKJACK SIMPLE
+  // 🃏 BLACKJACK
   if (command === 'blackjack') {
     let player = Math.floor(Math.random()*21)+1
     let dealer = Math.floor(Math.random()*21)+1
 
     if (player > dealer) {
       user.money += 400
-      return conn.reply(m.chat, `🃏 Tú: ${player}\n🤖 Dealer: ${dealer}\n\nGANASTE 400`, m)
+      return conn.reply(m.chat,
+`🃏 Blackjack
+
+👤 Tú: ${player}
+🤖 Dealer: ${dealer}
+
+🔥 GANASTE 400`, m)
     } else {
-      user.money -= 200
-      return conn.reply(m.chat, `🃏 Tú: ${player}\n🤖 Dealer: ${dealer}\n\nPerdiste 200`, m)
+      user.money = Math.max(0, user.money - 200)
+      return conn.reply(m.chat,
+`🃏 Blackjack
+
+👤 Tú: ${player}
+🤖 Dealer: ${dealer}
+
+💀 Perdiste 200`, m)
     }
   }
 
   // 💎 APOSTAR
   if (command === 'apostar') {
     let bet = parseInt(args[0])
-    if (!bet) return m.reply('💰 Ejemplo: .apostar 100')
-    if (bet > user.money) return m.reply('❌ No tienes dinero')
+
+    if (!bet || bet <= 0) return m.reply(`💰 Ejemplo: ${usedPrefix}apostar 100`)
+    if (bet > user.money) return m.reply('❌ No tienes suficiente dinero')
 
     let win = Math.random() < 0.5
 
@@ -96,14 +138,15 @@ let handler = async (m, { conn, usedPrefix, command, args }) => {
       user.money += bet
       return conn.reply(m.chat, `🎉 Ganaste ${bet}`, m)
     } else {
-      user.money -= bet
+      user.money = Math.max(0, user.money - bet)
       return conn.reply(m.chat, `💀 Perdiste ${bet}`, m)
     }
   }
 
   // 🎯 DOBLE
   if (command === 'doble') {
-    if (user.money <= 0) return m.reply('No tienes dinero')
+    if (user.money <= 0) return m.reply('❌ No tienes dinero')
+
     let win = Math.random() < 0.5
 
     if (win) {
@@ -117,33 +160,53 @@ let handler = async (m, { conn, usedPrefix, command, args }) => {
 
   // 🪙 COINFLIP
   if (command === 'coinflip') {
-    let result = Math.random() < 0.5 ? 'Cara' : 'Cruz'
-    return conn.reply(m.chat, `🪙 Salió: ${result}`, m)
+    let result = Math.random() < 0.5 ? 'Cara 🪙' : 'Cruz 🪙'
+    return conn.reply(m.chat, `🪙 Resultado: ${result}`, m)
   }
 
   // 🎲 DADOS
   if (command === 'dados') {
     let dice = Math.floor(Math.random()*6)+1
-    user.money += dice * 10
-    return conn.reply(m.chat, `🎲 Sacaste ${dice}\n💰 Ganaste ${dice*10}`, m)
+    let reward = dice * 20
+    user.money += reward
+
+    return conn.reply(m.chat,
+`🎲 Sacaste: ${dice}
+
+💰 Ganaste: ${reward}`, m)
   }
 
   // 🎁 PREMIO
   if (command === 'premio') {
     let reward = Math.floor(Math.random()*500)+100
     user.money += reward
-    return conn.reply(m.chat, `🎁 Premio: ${reward}`, m)
+    return conn.reply(m.chat, `🎁 Premio recibido: ${reward}`, m)
   }
 
   // 🏆 JACKPOT
   if (command === 'jackpot') {
+
     let win = Math.random() < 0.2
+
     if (win) {
-      user.money += 2000
-      return conn.reply(m.chat, `🏆 JACKPOT!!!\n💰 +2000`, m)
+      let reward = global.db.data.jackpot
+      user.money += reward
+      global.db.data.jackpot = 5000
+
+      return conn.reply(m.chat,
+`🏆 JACKPOT GANADO!!!
+
+💰 Premio: ${reward}
+💎 Nuevo saldo: ${user.money}`, m)
     } else {
-      user.money -= 300
-      return conn.reply(m.chat, `💀 No hubo jackpot\n-300`, m)
+      user.money = Math.max(0, user.money - 300)
+      global.db.data.jackpot += 300
+
+      return conn.reply(m.chat,
+`💀 No hubo jackpot
+
+💰 Dinero: ${user.money}
+🏆 Jackpot acumulado: ${global.db.data.jackpot}`, m)
     }
   }
 
